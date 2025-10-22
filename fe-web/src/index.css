@@ -1,12 +1,12 @@
 @font-face {
-    font-family: 'NoonnuBasicGothic';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noon-2410@1.0/NoonnuBasicGothicRegular.woff2') format('woff2');
-    font-weight: normal;
+    font-family: 'GounBatang';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2108@1.1/GowunBatang-Bold.woff') format('woff');
+    font-weight: 900;
     font-display: swap;
 }
 
 * {
-  font-family: 'NoonnuBasicGothic', serif;
+  font-family: 'GounBatang', serif;
 }
 
 html, body {
