@@ -186,6 +186,7 @@ body {
   margin: 2rem 0;
   transition: 1s ease-in-out;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  -webkit-text-stroke: 0.8px #fff;
 }
 
 /* -------------------------------------------------- */
