@@ -175,7 +175,6 @@
   -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
   padding: 32px;
-  box-shadow: 0 20px 60px rgba(40, 66, 123, 0.2);
   margin-bottom: 32px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
@@ -234,7 +233,7 @@
 .cl-materials-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 20px;
 }
 
 .cl-empty-materials {
