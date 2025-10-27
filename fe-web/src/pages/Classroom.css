@@ -1,23 +1,24 @@
-/* ===== Root ===== */
+/* ===== Root & Header ===== */
 .cr-root {
-  min-height: 100vh;
-  background-image: url('../assets/join/background.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  overflow-y: auto;
+  height: 100vh; /* ⬅️ 화면 높이 고정 */
+  overflow: hidden; /* ⬅️ 페이지 스크롤 차단 */
+  background: linear-gradient(135deg, #f0f4f8 0%, #e8f1f8 100%);
 }
 
-/* ===== Header ===== */
 .cr-header {
+  position: sticky;
   top: 0;
   width: 100%;
-  height: 80px;
+  height: 70px;
   z-index: 100;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.08);
 }
 
 .cr-header-wrapper {
-  max-width: 1400px;
   margin: 0 auto;
   padding: 0 40px;
   height: 100%;
@@ -26,274 +27,311 @@
   justify-content: space-between;
 }
 
+.cr-header-left,
+.cr-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .cr-header-title {
-  font-size: 30px;
-  font-weight: 700;
-  background: #192b55;
+  font-size: 24px;
+  font-weight: 800;
+  color: #192b55;
   -webkit-text-stroke: 0.8px #192b55;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   letter-spacing: -0.5px;
   margin: 0;
 }
 
-.cr-header-spacer {
-  flex: 1;
-}
-
+.cr-back-chip,
 .cr-logout-button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  background: transparent;
+  padding: 8px 12px;
+  background: #f1f5f9;
   border: none;
-  border-radius: 10px;
-  color: #192b55;
+  border-radius: 8px;
+  color: #475569;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  margin-left: 10px;
+  transition: 0.2s;
 }
-
+.cr-back-chip:hover,
 .cr-logout-button:hover {
-  background: #192b55;
-  color: white;
-  box-shadow: 0 4px 12px rgba(40, 66, 123, 0.25);
-  transform: translateY(-2px);
-}
-
-.cr-back-to-classrooms {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: transparent;
-  border: none;
-  border-radius: 10px;
+  background: #e2e8f0;
   color: #192b55;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
 }
 
-.cr-back-to-classrooms:hover {
-  background: #192b55;
-  color: white;
-  box-shadow: 0 4px 12px rgba(40, 66, 123, 0.25);
-  transform: translateY(-2px);
-}
-
-/* ===== Container ===== */
-.cr-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 10px 40px 40px;
-}
-
-/* ===== Info Section ===== */
-.cr-info-section {
-  margin-bottom: 40px;
-}
-
-.cr-info-card {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 30px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(40, 66, 123, 0.08);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+/* ===== Shell Layout: Left Sticky + Right Main ===== */
+.cr-shell {
+  height: calc(100vh - 70px); /* ⬅️ 헤더 제외한 영역을 꽉 채움 */
+  box-sizing: border-box;
+  padding: 24px 40px 24px;
+  display: grid;
+  grid-template-columns: 280px 1fr;
   gap: 24px;
+  overflow: hidden; /* ⬅️ 바깥 스크롤 차단 */
 }
 
-.cr-info-group {
+/* Left panel: 고정 보이기 (스크롤 없음) */
+.cr-side {
+  position: sticky;
+  align-self: start;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
+  gap: 16px;
+  overflow: hidden; /* ⬅️ 좌측 패널 자체 스크롤 방지 */
 }
 
-.cr-info-title {
-  font-size: 24px;
+.cr-class-badge {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border-radius: 14px;
+  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.cr-class-grade {
+  font-size: 18px;
+  font-weight: 900;
+  color: #192b55;
+}
+.cr-class-class {
+  font-size: 18px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.cr-kpis {
+  display: grid;
+  gap: 12px;
+}
+.cr-kpi {
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border-radius: 14px;
+  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.cr-kpi-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.cr-kpi-value {
+  font-size: 18px;
   font-weight: 900;
   color: #192b55;
   margin: 0;
 }
 
-.cr-info-subject {
-  font-size: 20px;
-  color: #6b7280;
-  margin: 0;
-  font-weight: 600;
-}
-
-.cr-info-label {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 600;
-  margin: 0;
-}
-
-.cr-info-teacher {
-  font-size: 20px;
-  font-weight: 800;
-  color: #192b55;
-  margin: 0;
-}
-
-.cr-info-count {
-  font-size: 20px;
-  font-weight: 800;
-  color: #192b55;
-  margin: 0;
-}
-
-.cr-info-divider {
-  width: 1px;
-  height: 50px;
-  background: #e5e7eb;
-}
-
-/* ===== Main Section ===== */
-.cr-main-section {
+/* ===== Right main grid (스크롤은 내부 리스트에만) ===== */
+.cr-main {
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+} /* ⬅️ 바깥 스크롤 차단 */
+.cr-main-grid {
+  height: 100%; /* ⬅️ 섹션이 높이 계산 가능 */
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 32px;
+  gap: 24px;
 }
 
-.cr-materials-container,
-.cr-students-container {
-  display: flex;
-  flex-direction: column;
-}
-
+/* Section card */
 .cr-section {
-  background: white;
-  border-radius: 16px;
-  padding: 0px; /* 기존 유지 */
-  box-shadow: 0 4px 20px rgba(40, 66, 123, 0.08);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 0;
+  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   display: flex;
   flex-direction: column;
-  min-height: 0; /* flex 컨테이너 자식 스크롤 끊김 방지 */
-}
-
-.cr-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  min-height: 0; /* ⬅️ 내부 스크롤 위해 필수 */
+  gap: 10px;
 }
 
 .cr-section-title {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 18px;
-  font-weight: 800;
   color: #192b55;
-  padding: 30px 30px 10px 30px;
+  padding: 24px 24px 8px;
 }
-
-.cr-section-title svg {
-  color: #192b55;
-  font-size: 24px;
-}
-
 .cr-section-title h3 {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
 }
 
-.cr-create-btn {
+/* ===== Toolbar ===== */
+.cr-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 12px;
+}
+.cr-toolbar-row {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.cr-input-wrap {
+  flex: 1;
+  min-width: 220px;
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  margin: 14px 24px 0px 10px;
-  background: #192b55;
-  color: white;
-  border: none;
+  height: 38px;
+  padding: 0 10px;
+  background: #fff;
+  border: 2px solid rgba(0, 0, 0, 0.06);
   border-radius: 10px;
-  font-weight: 700;
-  font-size: 13px;
+}
+.cr-input-wrap svg {
+  opacity: 0.6;
+}
+.cr-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+.cr-sort-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #eee;
+  border: none;
+  font-size: 12px;
+  font-weight: 800;
+  color: #374151;
   cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
+  transition: 0.15s;
 }
 
-.cr-create-btn:hover {
-  transform: translateY(-2px);
+.cr-label-chips {
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  padding-bottom: 2px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.cr-label-chips::-webkit-scrollbar {
+  display: none;
+}
+.cr-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(247, 248, 249, 0.7);
+  border: none;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: 0.15s;
+}
+/* active 색상은 TSX 인라인으로 들어오므로 효과만 */
+.cr-chip.active {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+.cr-chip.active:hover {
+  filter: brightness(0.96);
 }
 
-.make-file {
-  font-size: 16px;
+/* ===== Lists (여기가 내부 스크롤 주인공) ===== */
+.cr-materials-list,
+.cr-students-list {
+  flex: 1; /* ⬅️ 남은 높이를 모두 차지 */
+  min-height: 0; /* ⬅️ overflow 동작 보장 */
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden; /* 내부에 또 스크롤 컨테이너가 있을 때 깜박임 방지(선택) */
 }
 
-/* ===== Empty State ===== */
+/* 재사용 스크롤 헬퍼: max-height 제거, 부모 높이 기반으로 스크롤 */
+.cr-scroll-y {
+  flex: 1; /* ⬅️ 높이 채우기 */
+  min-height: 0;
+  overflow-y: auto; /* ⬅️ 리스트 자체 스크롤 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cr-scroll-y::-webkit-scrollbar {
+  display: none;
+}
+
 .cr-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 48px 20px;
   color: #9ca3af;
   text-align: center;
 }
-
-.cr-empty-state svg {
-  margin-bottom: 16px;
-  opacity: 0.5;
+.cr-empty-main {
+  font-size: 18px !important;
+  margin-top: 8px;
 }
-
-.cr-empty-state p {
-  font-size: 14px;
-  margin: 0;
-}
-
 .cr-empty-hint {
-  font-size: 12px !important;
+  font-size: 14px !important;
   color: #d1d5db !important;
   margin-top: 8px;
 }
 
-/* ===== Materials ===== */
-.cr-materials-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 30px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
+/* Material card */
 .cr-material-card {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: #f7f8f9;
+  position: relative;
+  overflow: hidden;
+  background: rgba(247, 248, 249, 0.7);
+  backdrop-filter: blur(10px);
   border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  border: none;
+  transition: 0.2s;
+  cursor: default;
+  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.1);
 }
-
 .cr-material-card:hover {
-  background: white;
-  box-shadow: 0 8px 24px 8px rgba(0, 0, 0, 0.18);
-  transform: translateY(-4px);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
-
+.cr-material-label-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
 .cr-material-icon {
   width: 44px;
   height: 44px;
@@ -301,116 +339,78 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(25, 43, 85, 0.1);
+  background: #E9EAEF;
   color: #192b55;
   flex-shrink: 0;
 }
-
 .cr-material-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-
 .cr-material-info h4 {
-  font-size: 18px;
+  margin: 0;
+  font-size: 16px;
   font-weight: 700;
   color: #1f2937;
-  margin: 0;
 }
-
 .cr-material-info span {
-  font-size: 16px;
+  font-size: 12px;
   color: #6b7280;
 }
-
 .cr-material-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
 .cr-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 36px;
   height: 36px;
   border: none;
-  background: #E1E3E9;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(225, 227, 233, 0.7);
   color: #192b55;
   cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
+  transition: 0.15s;
 }
-
 .cr-action-btn:hover {
-  background: #192b55;
-  color: white;
-  border-color: #192b55;
+  background: #cbd5e1;
+  color: #192b55;
 }
-
 .cr-action-btn.delete:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: #fecaca;
+  color: #991b1b;
 }
 
-/* ===== Students ===== */
-
-/* ✅ 스크롤은 바깥 래퍼가 담당 */
-.cr-students-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.cr-students-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow: visible;  /* 호버 섀도우 안잘리게 유지 */
-  padding: 30px;
-}
-
-.cr-students-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.cr-students-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.cr-students-scroll::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.cr-students-scroll::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
+/* Students */
 .cr-student-card {
-  padding: 20px;
-  background: #f7f8f9;
+  padding: 16px;
+  background: rgba(247, 248, 249, 0.7);
+  backdrop-filter: blur(10px);
   border-radius: 12px;
-  transition: all 0.3s ease;
+  border: none;
+  transition: 0.2s;
+  cursor: pointer;
+  transition: 0.2s;
+  cursor: default;
+  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.1);
+  
 }
-
 .cr-student-card:hover {
-  background: white;
-  box-shadow: 0 8px 24px 8px rgba(0, 0, 0, 0.18);
-  transform: translateY(-4px);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
-
 .cr-student-header {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
-
 .cr-student-avatar {
   width: 50px;
   height: 50px;
@@ -420,44 +420,30 @@
   justify-content: center;
   font-size: 24px;
   background: rgba(25, 43, 85, 0.1);
-  flex-shrink: 0;
 }
-
-/* 이미지 아바타 전용 (원형, 크기 동일, 커버) */
 .cr-student-avatar-img {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   object-fit: cover;
-  flex-shrink: 0;
+  border-radius: 50%;
   display: block;
 }
-
-/* 반응형에서 기존 아바타와 동일하게 축소 */
-@media (max-width: 768px) {
-  .cr-student-avatar-img {
-    width: 36px;
-    height: 36px;
-  }
-}
-
 .cr-student-info {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-
 .cr-student-info h4 {
-  font-size: 18px;
+  margin: 0;
+  font-size: 16px;
   font-weight: 700;
   color: #1f2937;
-  margin: 0;
 }
-
 .cr-student-info p {
-  font-size: 16px;
-  color: #6b7280;
   margin: 0;
+  font-size: 14px;
+  color: #6b7280;
 }
 
 .cr-student-progress {
@@ -465,33 +451,28 @@
   flex-direction: column;
   gap: 8px;
 }
-
 .cr-progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-
 .cr-progress-label {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 600;
   color: #6b7280;
 }
-
 .cr-progress-percent {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #192b55;
 }
-
 .cr-progress-bar {
   width: 100%;
   height: 8px;
-  background: #e5e7eb;
+  background: rgba(229, 231, 235, 0.5);
   border-radius: 999px;
   overflow: hidden;
 }
-
 .cr-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #fae100 0%, #ffe44d 100%);
@@ -499,93 +480,40 @@
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ===== 공용: 내부 스크롤 + 스크롤바 숨김 ===== */
-.cr-scroll-y {
-  /* 원하는 고정 높이로 조정 가능 (예: 520px) */
-  max-height: 600px;
-  overflow-y: auto;
-
-  /* 스크롤바 숨김 (크로스브라우저) */
-  scrollbar-width: none;       /* Firefox */
-  -ms-overflow-style: none;    /* IE/Edge legacy */
-}
-.cr-scroll-y::-webkit-scrollbar { display: none; } /* Chrome/Safari */
-
 /* ===== Responsive ===== */
-@media (max-width: 1024px) {
-  .cr-main-section {
+@media (max-width: 1200px) {
+  .cr-main-grid {
     grid-template-columns: 1fr;
   }
 }
-
+@media (max-width: 960px) {
+  .cr-shell {
+    grid-template-columns: 1fr;
+  }
+  .cr-side {
+    position: static;
+    top: auto;
+    gap: 12px;
+  }
+  .cr-kpis {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 @media (max-width: 768px) {
   .cr-header-wrapper {
     padding: 0 20px;
   }
-
   .cr-header-title {
-    font-size: 22px;
+    font-size: 20px;
   }
-
-  .cr-back-to-classrooms span,
+  .cr-back-chip span,
   .cr-logout-button span {
     display: none;
   }
-
-  .cr-container {
-    padding: 100px 20px 20px;
-  }
-
-  .cr-section {
+  .cr-shell {
     padding: 20px;
-    gap: 50px;
   }
-
-  .cr-info-card {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 20px;
-    gap: 16px;
-  }
-
-  .cr-info-divider {
-    display: none;
-  }
-
-  .cr-create-btn span {
-    display: none;
-  }
-
-  .cr-create-btn {
-    padding: 8px 12px;
-  }
-
-  .cr-material-card,
-  .cr-student-card {
-    padding: 12px;
-  }
-
-  .cr-material-icon {
-    width: 40px;
-    height: 40px;
-  }
-
-  .cr-student-avatar {
-    width: 36px;
-    height: 36px;
-  }
-
-  .cr-action-btn {
-    width: 32px;
-    height: 32px;
-  }
-
-  /* 모바일에서 학생 리스트는 높이 제한 해제 */
-  .cr-students-scroll {
-    max-height: none;
-  }
-
-  .cr-main-section {
-    gap: 20px;
+  .cr-kpis {
+    grid-template-columns: 1fr;
   }
 }

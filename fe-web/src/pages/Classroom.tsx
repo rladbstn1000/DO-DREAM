@@ -1,4 +1,3 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
@@ -6,12 +5,14 @@ import {
   FolderOpen,
   FileText,
   LogOut,
-  Plus,
-  Send,
-  Trash2,
   ArrowLeft,
+  Trash2,
+  Search,
+  SortDesc,
+  SortAsc,
+  Tag,
 } from 'lucide-react';
-import MaterialSendModal from '@/component/MaterialSendModal';
+import { useMemo, useState } from 'react';
 import './Classroom.css';
 import male from '../assets/classroom/male.png';
 import female from '../assets/classroom/female.png';
@@ -28,8 +29,10 @@ type Student = {
 type Material = {
   id: string;
   title: string;
-  uploadDate: string;
+  uploadDate: string; // YYYY.MM.DD
   content: string;
+  label?: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'gray';
+  teacherId?: string;
 };
 
 type ClassroomProps = {
@@ -37,7 +40,28 @@ type ClassroomProps = {
   classroomId?: string;
 };
 
-export default function Classroom({ onNavigateToEditor, classroomId: propClassroomId }: ClassroomProps) {
+const LABELS: Record<
+  NonNullable<Material['label']>,
+  { name: string; color: string }
+> = {
+  red: { name: '빨강', color: '#ef4444' },
+  orange: { name: '주황', color: '#f97316' },
+  yellow: { name: '노랑', color: '#eab308' },
+  green: { name: '초록', color: '#22c55e' },
+  blue: { name: '파랑', color: '#3b82f6' },
+  purple: { name: '보라', color: '#a855f7' },
+  gray: { name: '회색', color: '#9ca3af' },
+};
+
+function parseDate(d: string) {
+  const [y, m, day] = d.split('.').map((x) => parseInt(x, 10));
+  return new Date(y, m - 1, day);
+}
+
+export default function Classroom({
+  onNavigateToEditor,
+  classroomId: propClassroomId,
+}: ClassroomProps) {
   const { classroomId: urlClassroomId } = useParams<{ classroomId: string }>();
   const navigate = useNavigate();
   const classroomId = urlClassroomId || propClassroomId || '1';
@@ -48,70 +72,26 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       title: '1학기 수업 자료',
       uploadDate: '2024.03.15',
       content: '첫 번째 자료의 내용입니다.',
+      label: 'red',
+      teacherId: 'teacher1',
     },
     {
       id: '2',
       title: '학습 참고 자료',
       uploadDate: '2024.03.20',
       content: '학습 참고 자료의 내용입니다.',
+      label: 'blue',
+      teacherId: 'teacher1',
     },
     {
-      id: '1',
-      title: '1학기 수업 자료',
-      uploadDate: '2024.03.15',
-      content: '첫 번째 자료의 내용입니다.',
-    },
-    {
-      id: '2',
-      title: '학습 참고 자료',
-      uploadDate: '2024.03.20',
-      content: '학습 참고 자료의 내용입니다.',
-    },
-    {
-      id: '1',
-      title: '1학기 수업 자료',
-      uploadDate: '2024.03.15',
-      content: '첫 번째 자료의 내용입니다.',
-    },
-    {
-      id: '2',
-      title: '학습 참고 자료',
-      uploadDate: '2024.03.20',
-      content: '학습 참고 자료의 내용입니다.',
-    },
-    {
-      id: '1',
-      title: '1학기 수업 자료',
-      uploadDate: '2024.03.15',
-      content: '첫 번째 자료의 내용입니다.',
-    },
-    {
-      id: '2',
-      title: '학습 참고 자료',
-      uploadDate: '2024.03.20',
-      content: '학습 참고 자료의 내용입니다.',
+      id: '3',
+      title: '심화 학습 문제',
+      uploadDate: '2024.03.25',
+      content: '심화 학습 문제입니다.',
+      label: 'green',
+      teacherId: 'teacher1',
     },
   ]);
-
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [selectedMaterialForSend, setSelectedMaterialForSend] =
-    useState<Material | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // classroomId에 따른 반 정보
-  const classroomInfo: Record<string, { grade: string; class: string; subject: string }> = {
-    '1': { grade: '3학년', class: '1반', subject: '국어' },
-    '2': { grade: '3학년', class: '2반', subject: '수학' },
-    '3': { grade: '2학년', class: '1반', subject: '영어' },
-    '4': { grade: '2학년', class: '3반', subject: '과학' },
-  };
-
-  const currentClassroom = classroomInfo[classroomId] || classroomInfo['1'];
-
-  const teacher = {
-    name: '김싸피',
-    email: 'teacher@school.com',
-  };
 
   const students: Student[] = [
     {
@@ -164,122 +144,16 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
     },
   ];
 
-  const handleCreateMaterial = () => {
-    fileInputRef.current?.click();
+  const classroomInfo: Record<
+    string,
+    { grade: string; class: string; subject: string }
+  > = {
+    '1': { grade: '3학년', class: '1반', subject: '국어' },
+    '2': { grade: '3학년', class: '2반', subject: '수학' },
+    '3': { grade: '2학년', class: '1반', subject: '영어' },
+    '4': { grade: '2학년', class: '3반', subject: '과학' },
   };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    await Swal.fire({
-      title: '텍스트 추출 중입니다',
-      html: '<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;"><div style="width: 50px; height: 50px; border: 4px solid #192b55; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div><p style="color: #374151; font-size: 18px;">파일을 처리하는 중입니다...</p></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      didOpen: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        const mockExtractedText = `이것은 "${file.name}"에서 추출된 샘플 텍스트입니다.
-
-여기에 파일에서 추출된 실제 내용이 들어갈 예정입니다.
-지금은 UI 흐름을 보여주기 위한 샘플 텍스트입니다.
-
-나중에 실제 API를 연결하면 PDF, PPT, Word 문서, TXT 파일에서 텍스트를 추출할 수 있습니다.
-
-학생들에게 더 나은 학습 경험을 제공하기 위해 다양한 형식의 자료를 지원합니다.`;
-
-        await Swal.close();
-        onNavigateToEditor(mockExtractedText);
-      },
-    });
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handlePublishMaterial = (title: string, content: string) => {
-    const newMaterial: Material = {
-      id: String(materials.length + 1),
-      title,
-      uploadDate: new Date().toLocaleDateString('ko-KR'),
-      content,
-    };
-
-    setMaterials((prev) => [newMaterial, ...prev]);
-
-    Swal.fire({
-      icon: 'success',
-      title: '자료 발행 완료!',
-      text: `"${title}"이(가) 자료함에 추가되었습니다.`,
-      confirmButtonColor: '#192b55',
-      confirmButtonText: '확인',
-    });
-  };
-
-  const handleSendMaterial = (materialId: string) => {
-    const material = materials.find((m) => m.id === materialId);
-    if (material) {
-      setSelectedMaterialForSend(material);
-      setShowSendModal(true);
-    }
-  };
-
-  const handleDeleteMaterial = (materialId: string) => {
-    Swal.fire({
-      title: '자료를 삭제하시겠습니까?',
-      text: '이 작업은 되돌릴 수 없습니다',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#d1d5db',
-      confirmButtonText: '삭제',
-      cancelButtonText: '취소',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setMaterials((prev) => prev.filter((m) => m.id !== materialId));
-        Swal.fire({
-          icon: 'success',
-          title: '자료가 삭제되었습니다',
-          confirmButtonColor: '#192b55',
-        });
-      }
-    });
-  };
-
-  const handleConfirmSend = (studentIds: string[]) => {
-  const studentNames = students
-    .filter((s) => studentIds.includes(s.id))
-    .map((s) => s.name);
-
-  Swal.fire({
-    icon: 'success',
-    title: '자료 전송 완료!',
-    html: `
-      <div class="cr-swal-body">
-        <p class="cr-swal-material">"${selectedMaterialForSend?.title}"</p>
-        <p class="cr-swal-names">${studentNames.join(', ')}</p>
-        <p class="cr-swal-count">${studentNames.length}명에게 전송되었습니다</p>
-      </div>
-    `,
-    confirmButtonColor: '#192b55',
-    confirmButtonText: '확인',
-    customClass: {
-      popup: 'cr-swal',            // 팝업 전체
-      title: 'cr-swal-title',      // 타이틀
-      confirmButton: 'cr-swal-confirm', // 확인 버튼
-    },
-    }).then(() => {
-      setShowSendModal(false);
-      setSelectedMaterialForSend(null);
-    });
-  };
-
-
-  const handleOpenStudent = (studentId: string) => {
-    navigate(`/student/${studentId}`);
-  };
+  const currentClassroom = classroomInfo[classroomId] || classroomInfo['1'];
 
   const handleLogout = () => {
     Swal.fire({
@@ -288,6 +162,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       showCancelButton: true,
       confirmButtonColor: '#192b55',
       cancelButtonColor: '#d1d5db',
+      reverseButtons: true,
       confirmButtonText: '로그아웃',
       cancelButtonText: '취소',
     }).then((result) => {
@@ -301,87 +176,232 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
     });
   };
 
-  useEffect(() => {
-    const handleMaterialPublished = (event: any) => {
-      handlePublishMaterial(event.detail.title, event.detail.content);
-    };
+  /* ===== 자료 툴바 상태 ===== */
+  const [matQuery, setMatQuery] = useState('');
+  const [matSort, setMatSort] = useState<'new' | 'old'>('new');
+  const [activeLabels, setActiveLabels] = useState<Set<Material['label']>>(
+    new Set(),
+  );
 
-    window.addEventListener('materialPublished', handleMaterialPublished);
-    return () =>
-      window.removeEventListener('materialPublished', handleMaterialPublished);
+  const toggleLabel = (label: Material['label']) => {
+    setActiveLabels((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const filteredMaterials = useMemo(() => {
+    const q = matQuery.trim().toLowerCase();
+    let list = materials.filter((m) =>
+      q ? m.title.toLowerCase().includes(q) : true,
+    );
+    if (activeLabels.size > 0)
+      list = list.filter((m) => m.label && activeLabels.has(m.label));
+    list.sort((a, b) =>
+      matSort === 'new'
+        ? parseDate(b.uploadDate).getTime() - parseDate(a.uploadDate).getTime()
+        : parseDate(a.uploadDate).getTime() - parseDate(b.uploadDate).getTime(),
+    );
+    return list;
+  }, [materials, matQuery, matSort, activeLabels]);
+
+  const handleDeleteMaterial = (materialId: string) => {
+    Swal.fire({
+      title: '자료를 삭제하시겠습니까?',
+      text: '이 작업은 되돌릴 수 없습니다',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#d1d5db',
+      confirmButtonText: '삭제',
+      cancelButtonText: '취소',
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setMaterials((prev) => prev.filter((m) => m.id !== materialId));
+        Swal.fire({
+          icon: 'success',
+          title: '자료가 삭제되었습니다',
+          confirmButtonColor: '#192b55',
+        });
+      }
+    });
+  };
+
+  /* ===== 학생 툴바 상태 ===== */
+  const [stuQuery, setStuQuery] = useState('');
+  const [stuSort, setStuSort] = useState<'progress' | 'name'>('progress');
+
+  const filteredStudents = useMemo(() => {
+    const q = stuQuery.trim().toLowerCase();
+    let list = students.filter((s) =>
+      q
+        ? s.name.toLowerCase().includes(q) || s.grade.toLowerCase().includes(q)
+        : true,
+    );
+    list.sort((a, b) =>
+      stuSort === 'progress'
+        ? b.progressRate - a.progressRate
+        : a.name.localeCompare(b.name, 'ko'),
+    );
+    return list;
+  }, [students, stuQuery, stuSort]);
+
+  /* ===== 좌측 KPI 최신 날짜 ===== */
+  const latestDate = useMemo(() => {
+    if (materials.length === 0) return '-';
+    const latest = materials
+      .map((m) => parseDate(m.uploadDate))
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+    const y = latest.getFullYear();
+    const mm = String(latest.getMonth() + 1).padStart(2, '0');
+    const dd = String(latest.getDate()).padStart(2, '0');
+    return `${y}.${mm}.${dd}`;
   }, [materials]);
 
   return (
     <div className="cr-root">
+      {/* Header */}
       <header className="cr-header">
         <div className="cr-header-wrapper">
-          <h1 className="cr-header-title">DO:DREAM</h1>
-          <div className="cr-header-spacer" />
-          <button className="cr-back-to-classrooms" onClick={() => navigate('/classrooms')}>
-            <ArrowLeft size={18} />
-            <span>돌아가기</span>
-          </button>
-          <button className="cr-logout-button" onClick={handleLogout}>
-            <LogOut size={18} />
-            <span>로그아웃</span>
-          </button>
+          <div className="cr-header-left">
+            <h1 className="cr-header-title">DO:DREAM</h1>
+          </div>
+          <div className="cr-header-right">
+            <button
+              className="cr-back-chip"
+              onClick={() => navigate('/classrooms')}
+              aria-label="돌아가기"
+            >
+              <ArrowLeft size={16} />
+              <span>돌아가기</span>
+            </button>
+            <button className="cr-logout-button" onClick={handleLogout}>
+              <LogOut size={18} />
+              <span>로그아웃</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="cr-container">
-        {/* Top Section - Classroom Info */}
-        <div className="cr-info-section">
-          <div className="cr-info-card">
-            <div className="cr-info-group">
-              <h2 className="cr-info-title">{currentClassroom.grade} {currentClassroom.class}</h2>
+      {/* 좌측 sticky 인포 + 우측 본문 */}
+      <div className="cr-shell">
+        {/* Left Info Panel (sticky) */}
+        <aside className="cr-side">
+          <div className="cr-class-badge">
+            <span className="cr-class-grade">{currentClassroom.grade}</span>
+            <span className="cr-class-class">{currentClassroom.class}</span>
+          </div>
+
+          <div className="cr-kpis">
+            <div className="cr-kpi">
+              <p className="cr-kpi-label">자료</p>
+              <p className="cr-kpi-value">{materials.length}개</p>
             </div>
-            <div className="cr-info-divider" />
-            <div className="cr-info-group">
-              <p className="cr-info-label">담당 선생님</p>
-              <h3 className="cr-info-teacher">{teacher.name}</h3>
+            <div className="cr-kpi">
+              <p className="cr-kpi-label">학생</p>
+              <p className="cr-kpi-value">{students.length}명</p>
             </div>
-            <div className="cr-info-divider" />
-            <div className="cr-info-group">
-              <p className="cr-info-label">담당 과목</p>
-              <h3 className="cr-info-teacher">{currentClassroom.subject}</h3>
-            </div>
-            <div className="cr-info-divider" />
-            <div className="cr-info-group">
-              <p className="cr-info-label">전체 학생</p>
-              <h3 className="cr-info-count">{students.length}명</h3>
+            <div className="cr-kpi">
+              <p className="cr-kpi-label">최근 업데이트</p>
+              <p className="cr-kpi-value">{latestDate}</p>
             </div>
           </div>
-        </div>
+        </aside>
 
-        {/* Main Section */}
-        <div className="cr-main-section">
-          {/* Left - Materials */}
-          <div className="cr-materials-container">
-            <div className="cr-section">
-              <div className="cr-section-header">
-                <div className="cr-section-title">
-                  <FolderOpen size={20} />
-                  <h3>자료함</h3>
-                </div>
-                <button className="cr-create-btn" onClick={handleCreateMaterial}>
-                  <Plus size={20} />
-                  <span className="make-file">자료 만들기</span>
-                </button>
+        {/* Right Main */}
+        <main className="cr-main">
+          <div className="cr-main-grid">
+            {/* Materials */}
+            <section className="cr-section">
+              <div className="cr-section-title">
+                <FolderOpen size={20} />
+                <h3>공유된 학습 자료</h3>
               </div>
 
-              {/* ✅ 내부 스크롤 + 스크롤바 숨김 */}
+              {/* 자료 툴바: 1줄(검색+정렬), 2줄(라벨칩) */}
+              <div className="cr-toolbar">
+                <div className="cr-toolbar-row">
+                  <div className="cr-input-wrap">
+                    <Search size={16} />
+                    <input
+                      className="cr-input"
+                      type="text"
+                      placeholder="자료 제목 검색"
+                      value={matQuery}
+                      onChange={(e) => setMatQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    className="cr-sort-btn"
+                    onClick={() =>
+                      setMatSort((s) => (s === 'new' ? 'old' : 'new'))
+                    }
+                    title={matSort === 'new' ? '오래된 순' : '최신 순'}
+                  >
+                    {matSort === 'new' ? (
+                      <SortDesc size={16} />
+                    ) : (
+                      <SortAsc size={16} />
+                    )}
+                    <span>{matSort === 'new' ? '최신 순' : '오래된 순'}</span>
+                  </button>
+                </div>
+
+                <div
+                  className="cr-label-chips"
+                  role="listbox"
+                  aria-label="라벨 필터"
+                >
+                  {(
+                    Object.keys(LABELS) as Array<NonNullable<Material['label']>>
+                  ).map((key) => (
+                    <button
+                      key={key}
+                      className={`cr-chip ${activeLabels.has(key) ? 'active' : ''}`}
+                      onClick={() => toggleLabel(key)}
+                      title={LABELS[key].name}
+                      style={
+                        activeLabels.has(key)
+                          ? {
+                              backgroundColor: LABELS[key].color, // ✅ 배경을 라벨 색으로
+                              borderColor: LABELS[key].color, // ✅ 테두리도 같은 색
+                              color: '#ffffff',
+                            }
+                          : undefined
+                      }
+                    >
+                      <Tag size={14} />
+                      <span>{LABELS[key].name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 자료 리스트 */}
               <div className="cr-materials-list cr-scroll-y">
-                {materials.length === 0 ? (
+                {filteredMaterials.length === 0 ? (
                   <div className="cr-empty-state">
                     <FolderOpen size={48} />
-                    <p>아직 자료가 없습니다</p>
+                    <p className="cr-empty-main">조건에 맞는 자료가 없습니다</p>
                     <p className="cr-empty-hint">
-                      자료 만들기 버튼을 눌러 새로운 자료를 추가하세요
+                      검색어나 라벨 필터를 확인해보세요
                     </p>
                   </div>
                 ) : (
-                  materials.map((material) => (
+                  filteredMaterials.map((material) => (
                     <div key={material.id} className="cr-material-card">
+                      {material.label && (
+                        <div
+                          className="cr-material-label-bar"
+                          style={{
+                            backgroundColor: LABELS[material.label].color,
+                          }}
+                        />
+                      )}
                       <div className="cr-material-icon">
                         <FileText size={20} />
                       </div>
@@ -390,13 +410,6 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
                         <span>{material.uploadDate}</span>
                       </div>
                       <div className="cr-material-actions">
-                        <button
-                          className="cr-action-btn"
-                          onClick={() => handleSendMaterial(material.id)}
-                          title="자료 전송"
-                        >
-                          <Send size={16} />
-                        </button>
                         <button
                           className="cr-action-btn delete"
                           onClick={() => handleDeleteMaterial(material.id)}
@@ -409,22 +422,59 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
                   ))
                 )}
               </div>
-            </div>
-          </div>
+            </section>
 
-          {/* Right - Students */}
-          <div className="cr-students-container">
-            <div className="cr-section">
+            {/* Students */}
+            <section className="cr-section">
               <div className="cr-section-title">
                 <User size={20} />
-                <h3>학생 관리 ({students.length}명)</h3>
+                <h3>학생 관리 ({filteredStudents.length}명)</h3>
               </div>
 
-              {/* ✅ 내부 스크롤 + 스크롤바 숨김 */}
+              {/* 학생 툴바: 1줄(검색+정렬) */}
+              <div className="cr-toolbar">
+                <div className="cr-toolbar-row">
+                  <div className="cr-input-wrap">
+                    <Search size={16} />
+                    <input
+                      className="cr-input"
+                      type="text"
+                      placeholder="이름 또는 학년/반 검색"
+                      value={stuQuery}
+                      onChange={(e) => setStuQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    className="cr-sort-btn"
+                    onClick={() =>
+                      setStuSort((s) =>
+                        s === 'progress' ? 'name' : 'progress',
+                      )
+                    }
+                    title={stuSort === 'progress' ? '이름순' : '진행률순'}
+                  >
+                    {stuSort === 'progress' ? (
+                      <SortDesc size={16} />
+                    ) : (
+                      <SortAsc size={16} />
+                    )}
+                    <span>
+                      {stuSort === 'progress' ? '진행률순' : '이름순'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 학생 리스트 */}
               <div className="cr-students-scroll cr-scroll-y">
                 <div className="cr-students-list">
-                  {students.map((student) => (
-                    <div key={student.id} className="cr-student-card" onClick={() => handleOpenStudent(student.id)}>
+                  {filteredStudents.map((student) => (
+                    <div
+                      key={student.id}
+                      className="cr-student-card"
+                      onClick={() => navigate(`/student/${student.id}`)}
+                    >
                       <div className="cr-student-header">
                         {student.avatarUrl ? (
                           <img
@@ -433,7 +483,9 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
                             alt={`${student.name} 아바타`}
                           />
                         ) : (
-                          <div className="cr-student-avatar">{student.avatar}</div>
+                          <div className="cr-student-avatar">
+                            {student.avatar}
+                          </div>
                         )}
 
                         <div className="cr-student-info">
@@ -441,10 +493,14 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
                           <p>{student.grade}</p>
                         </div>
                       </div>
+
+                      {/* 진행률 뷰(슬라이더 아님) */}
                       <div className="cr-student-progress">
                         <div className="cr-progress-header">
-                          <span className="cr-progress-label">현재 학습 진행률</span>
-                          <span className="cr-progress-percent">{student.progressRate}%</span>
+                          <span className="cr-progress-label">학습 진행률</span>
+                          <span className="cr-progress-percent">
+                            {student.progressRate}%
+                          </span>
                         </div>
                         <div className="cr-progress-bar">
                           <div
@@ -455,33 +511,22 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
                       </div>
                     </div>
                   ))}
+
+                  {filteredStudents.length === 0 && (
+                    <div className="cr-empty-state" style={{ padding: 24 }}>
+                      <User size={36} />
+                      <p>조건에 맞는 학생이 없습니다</p>
+                      <p className="cr-empty-hint">
+                        검색어나 정렬을 확인해보세요
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
-              {/* ✅ 끝 */}
-            </div>
+            </section>
           </div>
-        </div>
+        </main>
       </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.ppt,.pptx,.doc,.docx,.txt"
-        onChange={handleFileUpload}
-        style={{ display: 'none' }}
-      />
-
-      {showSendModal && selectedMaterialForSend && (
-        <MaterialSendModal
-          students={students}
-          selectedMaterial={selectedMaterialForSend}
-          onClose={() => {
-            setShowSendModal(false);
-            setSelectedMaterialForSend(null);
-          }}
-          onSend={handleConfirmSend}
-        />
-      )}
     </div>
   );
 }
