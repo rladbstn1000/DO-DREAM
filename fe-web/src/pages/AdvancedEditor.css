@@ -1,46 +1,46 @@
 /* ================================
-   AdvancedEditor.css (FULL)
-   일반 다크 테마 & 버튼 우측 정렬
+   AdvancedEditor.css (Tab Layout)
+   깔끔하고 일관성 있는 레이아웃
    ================================ */
 
-/* Light theme tokens */
 :root {
   --ae-primary: #192b55;
-  --ae-primary-2: #192b55;
-  --ae-primary-weak: rgba(37, 99, 235, 0.08);
-  --ae-danger: #dc2626;
+  --ae-primary-dark: #192b55;
+  --ae-danger: #ef4444;
+  --ae-success: #10b981;
+  --ae-warning: #f59e0b;
   --ae-border: #e5e7eb;
-  --ae-muted: #6b7280;
   --ae-text: #1f2937;
+  --ae-text-muted: #6b7280;
   --ae-card: #ffffff;
-  --ae-card-soft: #f7f8f9;
-  --ae-bg-grad-1: #f5f7fa;
-  --ae-bg-grad-2: #c3cfe2;
+  --ae-card-soft: #f9fafb;
+  --ae-bg: #f3f4f6;
 }
 
-/* Dark theme tokens */
 .ae-root.dark {
-  --ae-bg: #0f1115;
-  --ae-surface: #171a21;
-  --ae-surface-2: #1c1f26;
-  --ae-text: #e6e6e6;
-  --ae-muted: #a3a3a3;
-  --ae-border: #2a2e36;
+  --ae-bg: #0f172a;
+  --ae-card: #1e293b;
+  --ae-card-soft: #334155;
+  --ae-text: #e2e8f0;
+  --ae-text-muted: #cbd5e1;
+  --ae-border: #475569;
+  --ae-primary: #31447283;
+  --ae-primary-dark: #192b55;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 /* ===== Root ===== */
 .ae-root {
   min-height: 100vh;
-  background: #e7ecf3;
-  /* ⬇️ 뷰포트가 스크롤하도록 overflow 제거 */
-  overflow: visible;
+  background: var(--ae-bg);
   display: flex;
   flex-direction: column;
   transition: background 0.3s ease;
-}
-
-.ae-root.dark {
-  background: var(--ae-bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ae-text);
 }
 
 /* ===== Header ===== */
@@ -48,332 +48,281 @@
   position: fixed;
   top: 0;
   width: 100%;
-  height: 80px;
+  height: 60px;
   background: var(--ae-card);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-  z-index: 100;
   border-bottom: 1px solid var(--ae-border);
-  transition: all 0.3s ease;
-}
-.ae-root.dark .ae-header {
-  background: var(--ae-surface);
-  border-bottom-color: var(--ae-border);
-  box-shadow: none;
+  z-index: 99;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .ae-header-wrapper {
-  max-width: 1600px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 40px;
+  padding: 0 20px;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
-.ae-header-spacer {
-  width: 40px;
-  flex: 0 0 40px;
+
+.ae-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ae-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ae-back-btn:hover {
+  background: var(--ae-card-soft);
 }
 
 .ae-title-section {
   flex: 1;
   text-align: center;
+  min-width: 0;
+  background: #192b5522;
+  border-radius: 10px;
 }
 
 .ae-title {
-  font-size: 30px;
-  font-weight: 900;
-  color: var(--ae-primary);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ae-text);
   cursor: pointer;
   transition: all 0.2s ease;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.ae-root.dark .ae-title {
-  color: var(--ae-text);
-}
+
 .ae-title:hover {
-  background: var(--ae-primary-weak);
+  background: var(--ae-card-soft);
 }
 
 .ae-title-input {
-  font-size: 30px;
-  font-weight: 900;
-  color: var(--ae-primary);
-  border: 1.5px solid var(--ae-primary);
-  border-radius: 8px;
-  padding: 8px 12px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ae-text);
+  border: 2px solid var(--ae-primary);
+  border-radius: 6px;
+  padding: 6px 12px;
   text-align: center;
   outline: none;
   width: 100%;
-  max-width: 560px;
+  max-width: 300px;
   font-family: inherit;
-}
-.ae-root.dark .ae-title-input {
-  background: var(--ae-surface-2);
-  color: var(--ae-text);
-  border-color: var(--ae-border);
-}
-.ae-title-input:focus {
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  background: var(--ae-card-soft);
 }
 
 .ae-header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-/* 아이콘 버튼 */
 .ae-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  border: none;
-  background: #fff;
-  color: #111827;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--ae-border);
+  background: var(--ae-card-soft);
+  color: var(--ae-text);
+  cursor: pointer;
   transition: all 0.2s ease;
 }
+
 .ae-icon-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: #d1d5db;
-}
-.ae-root.dark .ae-icon-btn {
-  background: var(--ae-surface-2);
-  border-color: var(--ae-border);
-  color: var(--ae-text);
-}
-.ae-root.dark .ae-icon-btn:hover {
-  background: #232631;
-  border-color: #303544;
+  background: var(--ae-border);
+  border-color: var(--ae-primary);
 }
 
-/* 공통 filled 버튼 */
-.ae-btn-filled {
-  background: var(--ae-primary);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-weight: 800;
-  font-size: 14px;
-  padding: 10px 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  /* box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); */
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-.ae-btn-filled:hover {
-  transform: translateY(-2px);
-}
-.ae-btn-filled:active {
-  transform: translateY(0);
-}
-.ae-btn-filled.ae-publish {
-  padding: 10px 20px;
-}
-
-/* ===== Main Container ===== */
-.ae-container {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 20px;
-  margin-top: 100px;
-  padding: 20px;
-  max-width: 1600px;
-  margin-left: auto;
-  margin-right: auto;
-  width: 100%;
-  min-height: calc(100vh - 100px);
-}
-
-/* ===== Chapters Panel ===== */
-.ae-chapters-panel {
-  background: var(--ae-card);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  height: fit-content;
-
-  /* ⬇️ 스크롤 따라붙기 */
-  position: sticky;
-  top: 100px; /* 헤더 높이 보정 */
-  align-self: start; /* grid stretch 방지 (sticky 동작 안정화) */
-
-  transition: all 0.3s ease;
-}
-.ae-root.dark .ae-chapters-panel {
-  background: var(--ae-surface);
-  box-shadow: none;
-  border: 1px solid var(--ae-border);
-}
-
-.ae-chapters-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--ae-border);
-}
-.ae-root.dark .ae-chapters-header {
-  border-bottom-color: var(--ae-border);
-}
-
-.ae-chapters-header h2 {
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--ae-primary);
-  margin: 0;
-}
-.ae-root.dark .ae-chapters-header h2 {
-  color: var(--ae-text);
-}
-
-.ae-add-chapter-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
+.ae-btn-publish {
   background: var(--ae-primary);
   color: #fff;
   border: none;
   border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-}
-.ae-add-chapter-btn:hover {
-  transform: scale(1.05);
+  white-space: nowrap;
 }
 
-.ae-chapters-list {
+.ae-btn-publish:hover {
+  background: #FEC73D;
+  color: #000;
+  transform: translateY(-1px);
+}
+
+/* ===== Chapter Tabs ===== */
+.ae-chapter-tabs {
+  position: fixed;
+  top: 60px;
+  width: 100%;
+  background: var(--ae-card);
+  border-bottom: 1px solid var(--ae-border);
+  z-index: 98;
+  overflow: hidden;
+}
+
+.ae-tabs-scroll {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 48px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: calc(100vh - 250px);
-  overflow-y: auto;
-}
-.ae-chapters-list::-webkit-scrollbar {
-  width: 6px;
-}
-.ae-chapters-list::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
 }
 
-.ae-chapter-item {
+.ae-tabs-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+
+.ae-tabs-scroll::-webkit-scrollbar-thumb {
+  background: var(--ae-border);
+  border-radius: 2px;
+}
+
+.ae-tab {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
-  background: #f9fafb;
-  border: 1px solid var(--ae-border);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.ae-root.dark .ae-chapter-item {
-  background: var(--ae-surface-2);
-  border-color: var(--ae-border);
-}
-.ae-chapter-item:hover {
-  background: #fff;
-}
-.ae-root.dark .ae-chapter-item:hover {
-  background: #232631;
-}
-.ae-chapter-item.active {
-  background: var(--ae-primary);
-  border-color: var(--ae-primary);
-  color: #fff;
-}
-
-.ae-chapter-name {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ae-text);
-}
-.ae-root.dark .ae-chapter-name {
-  color: var(--ae-text);
-}
-.ae-chapter-item.active .ae-chapter-name {
-  color: #fff;
-}
-
-.ae-chapter-input {
-  flex: 1;
-  padding: 6px 8px;
-  background: rgba(255, 255, 255, 0.6);
+  padding: 6px 12px;
+  background: var(--ae-card-soft);
   border: 1px solid var(--ae-border);
   border-radius: 6px;
-  color: #111827;
-  font-size: 14px;
-  font-weight: 700;
-  outline: none;
-}
-.ae-root.dark .ae-chapter-input {
-  background: var(--ae-surface);
-  color: var(--ae-text);
-  border-color: var(--ae-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
 }
 
-.ae-chapter-actions {
+.ae-tab:hover {
+  background: var(--ae-border);
+  border-color: var(--ae-primary);
+}
+
+.ae-tab.active {
+  background: var(--ae-primary);
+  color: #fff;
+  border-color: var(--ae-primary);
+}
+
+.ae-tab-title {
+  font-size: 14px;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ae-tab-input {
+  width: 100px;
+  padding: 3px 6px;
+  border: 1px solid var(--ae-border);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  background: #fff;
+  color: var(--ae-text);
+}
+
+.ae-tab-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
-.ae-chapter-item:hover .ae-chapter-actions,
-.ae-chapter-item.active .ae-chapter-actions {
+
+.ae-tab:hover .ae-tab-actions,
+.ae-tab.active .ae-tab-actions {
   opacity: 1;
 }
 
-.ae-chapter-action-btn {
+.ae-tab-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  background: rgba(0, 0, 0, 0.06);
-  color: #111827;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.ae-tab.active .ae-tab-action {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ae-tab-action:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.ae-tab-action.delete:hover {
+  background: var(--ae-danger);
+  color: #fff;
+}
+
+.ae-tab-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--ae-primary);
+  color: #fff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-}
-.ae-chapter-item.active .ae-chapter-action-btn {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
-}
-.ae-chapter-action-btn:hover {
-  background: #111827;
-  color: #fff;
-}
-.ae-chapter-action-btn.delete:hover {
-  background: var(--ae-danger);
+  flex-shrink: 0;
 }
 
-/* ===== Editor Area ===== */
-.ae-editor-area {
+.ae-tab-add:hover {
+  transform: scale(1.08);
+}
+
+/* ===== Main Content Area ===== */
+.ae-main {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 108px;
+  padding: 16px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  flex: 1;
 }
 
 /* ===== Toolbar ===== */
@@ -381,59 +330,49 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px 12px;
   background: var(--ae-card);
-  border-radius: 16px;
-  /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); */
-  transition: all 0.3s ease;
+  border-radius: 8px;
+  border: 1px solid var(--ae-border);
   flex-wrap: wrap;
-  justify-content: flex-start;
-  /* border: 1px solid var(--ae-border); */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   position: sticky;
-  top: 100px;   /* 헤더 높이와 동일한 기준 */
-  z-index: 70;
-}
-.ae-root.dark .ae-toolbar {
-  background: var(--ae-surface);
-  box-shadow: none;
+  top: 108px;
+  z-index: 50;
 }
 
 .ae-toolbar-group {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: nowrap;
 }
 
 .ae-tool-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--ae-border);
-  background: #fff;
-  border-radius: 8px;
+  background: var(--ae-card-soft);
+  border-radius: 6px;
   cursor: pointer;
-  color: #374151;
+  color: var(--ae-text);
   transition: all 0.2s ease;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
-.ae-tool-btn:hover {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: #d1d5db;
-  color: #111827;
+
+.ae-tool-btn:hover:not(:disabled) {
+  background: var(--ae-border);
+  border-color: var(--ae-primary);
+  color: var(--ae-primary);
 }
-.ae-root.dark .ae-tool-btn {
-  background: var(--ae-surface-2);
-  border-color: var(--ae-border);
-  color: var(--ae-text);
-}
-.ae-root.dark .ae-tool-btn:hover {
-  background: #232631;
-  border-color: #303544;
+
+.ae-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .ae-tool-btn.active,
@@ -443,67 +382,100 @@
   border-color: var(--ae-primary);
 }
 
-.ae-tool-btn.danger:hover {
-  background: var(--ae-danger);
-  border-color: var(--ae-danger);
-  color: #fff;
-}
-
-.ae-subscript,
-.ae-superscript {
-  font-size: 12px;
-  font-weight: 800;
-}
-
 .ae-divider {
   width: 1px;
-  height: 24px;
+  height: 18px;
   background: var(--ae-border);
-  margin: 0 6px;
+  margin: 0 2px;
 }
-.ae-root.dark .ae-divider {
-  background: var(--ae-border);
+
+/* ===== Split Hint ===== */
+.ae-split-hint {
+  padding: 10px 12px;
+  background: #fef3c7;
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideDown 0.3s ease;
+}
+
+.ae-split-hint strong {
+  font-weight: 700;
+}
+
+.ae-split-hint span {
+  flex: 1;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ===== Editor Wrapper ===== */
 .ae-editor-wrapper {
   background: var(--ae-card);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  /* ⬇️ 내부 오버플로 제거 → 내용 높이만큼 페이지가 커짐 */
-  overflow: visible;
+  border-radius: 8px;
+  border: 1px solid var(--ae-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
   flex: 1;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
-  border: 1px solid var(--ae-border);
-}
-.ae-root.dark .ae-editor-wrapper {
-  background: var(--ae-surface);
-  box-shadow: none;
+  min-height: 400px;
 }
 
-/* ===== Prose / Content ===== */
+/* ===== Editor Content ===== */
 .ae-editor {
-  padding: 32px;
+  padding: 24px;
   flex: 1;
-  font-size: 17px;
-  line-height: 1.8;
+  font-size: 15px;
+  line-height: 1.7;
   color: var(--ae-text);
-  /* 내부 스크롤 제거 */
-  overflow: visible;
+  overflow-y: auto;
+}
+
+.ae-editor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ae-editor::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ae-editor::-webkit-scrollbar-thumb {
+  background: var(--ae-border);
+  border-radius: 4px;
+}
+
+.ae-editor::-webkit-scrollbar-thumb:hover {
+  background: var(--ae-primary);
 }
 
 .ae-editor p {
   margin-bottom: 1rem;
   margin-top: 0;
 }
+
 .ae-editor strong {
-  font-weight: 800;
+  font-weight: 700;
 }
+
 .ae-editor em {
   font-style: italic;
 }
+
 .ae-editor u {
   text-decoration: underline;
 }
@@ -514,68 +486,60 @@
 .ae-editor h4,
 .ae-editor h5,
 .ae-editor h6 {
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  font-weight: 900;
+  margin-top: 1.3rem;
+  margin-bottom: 0.8rem;
+  font-weight: 700;
   color: var(--ae-primary);
-}
-.ae-root.dark .ae-editor h1,
-.ae-root.dark .ae-editor h2,
-.ae-root.dark .ae-editor h3,
-.ae-root.dark .ae-editor h4,
-.ae-root.dark .ae-editor h5,
-.ae-root.dark .ae-editor h6 {
-  color: #9bbcff;
 }
 
 .ae-editor h1 {
-  font-size: 2em;
+  font-size: 1.875em;
 }
+
 .ae-editor h2 {
-  font-size: 1.75em;
-}
-.ae-editor h3 {
   font-size: 1.5em;
+}
+
+.ae-editor h3 {
+  font-size: 1.25em;
 }
 
 .ae-editor ul,
 .ae-editor ol {
   margin-left: 24px;
   margin-bottom: 1rem;
-  margin-top: 0;
 }
+
 .ae-editor li {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 }
 
 .ae-editor blockquote {
   border-left: 4px solid var(--ae-primary);
   padding-left: 16px;
   margin-left: 0;
-  color: var(--ae-muted);
+  color: var(--ae-text);
   font-style: italic;
+  opacity: 0.8;
 }
 
 .ae-editor code {
-  background: #f3f4f6;
+  background: var(--ae-card-soft);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: 'Menlo', 'Courier New', monospace;
   font-size: 0.9em;
-}
-.ae-root.dark .ae-editor code {
-  background: var(--ae-surface-2);
-  color: #bfe0ff;
 }
 
 .ae-editor pre {
   background: #1f2937;
   color: #e0e0e0;
-  padding: 16px;
-  border-radius: 10px;
+  padding: 14px;
+  border-radius: 8px;
   overflow-x: auto;
   margin: 1rem 0;
 }
+
 .ae-editor pre code {
   background: none;
   padding: 0;
@@ -585,10 +549,6 @@
 .ae-editor a {
   color: var(--ae-primary);
   text-decoration: underline;
-  cursor: pointer;
-}
-.ae-root.dark .ae-editor a {
-  color: #9bbcff;
 }
 
 .ae-editor table {
@@ -596,146 +556,153 @@
   width: 100%;
   margin: 1rem 0;
 }
-.ae-editor table,
-.ae-editor thead,
-.ae-editor tbody,
-.ae-editor tr,
+
 .ae-editor th,
 .ae-editor td {
   border: 1px solid var(--ae-border);
+  padding: 10px;
 }
 
 .ae-editor th {
-  background: #f3f4f6;
-  font-weight: 800;
-  padding: 12px;
-}
-.ae-root.dark .ae-editor th {
-  background: var(--ae-surface-2);
+  background: var(--ae-card-soft);
+  font-weight: 700;
 }
 
-.ae-editor td {
-  padding: 12px;
-}
-
-/* === 챕터 분할선 (커스텀 HR) === */
+/* ===== Chapter Break ===== */
 .ae-editor hr.ae-chapter-break {
   border: 0;
-  border-top: 3px dashed var(--ae-primary);
-  margin: 24px 0;
-  opacity: 0.9;
+  border-top: 2px dashed var(--ae-primary);
+  margin: 20px 0;
+  opacity: 0.6;
 }
 
-/* TipTap focus */
-.ProseMirror,
-.ProseMirror:focus,
-.ProseMirror-focused {
+/* ===== TipTap Focus ===== */
+.ProseMirror {
   outline: none;
 }
 
-/* ===== Scrollbar (선택 사항) ===== */
-.ae-editor::-webkit-scrollbar {
-  width: 8px;
+/* ===== Label Grid ===== */
+.ae-label-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  padding: 8px;
+  justify-content: center;
+  max-width: 280px;
+  margin: 0 auto;
 }
-.ae-editor::-webkit-scrollbar-track {
-  background: transparent;
+
+.ae-label-option {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
 }
-.ae-editor::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 4px;
+
+.ae-label-option:hover {
+  transform: scale(1.08);
 }
-.ae-root.dark .ae-editor::-webkit-scrollbar-thumb {
-  background: #3d3f4a;
-}
-.ae-editor::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+
+.ae-label-option.active {
+  border: 3px solid #000;
 }
 
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
-  .ae-container {
-    grid-template-columns: 220px 1fr;
-    gap: 16px;
-    padding: 16px;
-  }
-  .ae-chapters-panel {
-    padding: 16px;
-  }
-  .ae-toolbar-group {
-    gap: 2px;
-  }
-  .ae-tool-btn {
-    width: 34px;
-    height: 34px;
-  }
-  .ae-editor {
-    padding: 24px;
-  }
-}
-
-@media (max-width: 768px) {
-  .ae-header-wrapper {
-    padding: 0 20px;
-    gap: 10px;
-  }
-  .ae-title {
-    font-size: 22px;
-  }
-
-  .ae-header-actions {
-    gap: 8px;
-  }
-  .ae-btn-filled {
-    padding: 8px 12px;
-    font-size: 13px;
-  }
-  .ae-btn-filled.ae-publish {
-    padding: 8px 14px;
-  }
-
-  .ae-container {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .ae-main {
+    margin-top: 108px;
     padding: 12px;
-    margin-top: 90px;
-  }
-
-  .ae-chapters-panel {
-    position: static;
-    max-height: 150px;
-    padding: 12px;
-  }
-  .ae-chapters-list {
-    flex-direction: row;
-    overflow-x: auto;
-    max-height: 100px;
-  }
-  .ae-chapter-item {
-    flex-shrink: 0;
-    width: 140px;
   }
 
   .ae-toolbar {
     gap: 4px;
     padding: 8px;
   }
+
   .ae-tool-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 12px;
+    width: 28px;
+    height: 28px;
   }
 
   .ae-editor {
     padding: 16px;
-    font-size: 15px;
   }
-  .ae-editor h1 {
-    font-size: 1.5em;
+}
+
+@media (max-width: 768px) {
+  .ae-header-wrapper {
+    padding: 0 16px;
+    gap: 12px;
   }
-  .ae-editor h2 {
-    font-size: 1.3em;
+
+  .ae-title {
+    font-size: 16px;
   }
-  .ae-editor h3 {
-    font-size: 1.1em;
+
+  .ae-tabs-scroll {
+    padding: 0 16px;
+  }
+
+  .ae-main {
+    margin-top: 108px;
+    padding: 12px;
+  }
+
+  .ae-editor {
+    padding: 14px;
+    font-size: 14px;
+  }
+
+  .ae-label-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .ae-header {
+    height: 56px;
+  }
+
+  .ae-header-wrapper {
+    padding: 0 12px;
+  }
+
+  .ae-chapter-tabs {
+    top: 56px;
+  }
+
+  .ae-tabs-scroll {
+    padding: 0 12px;
+    height: 44px;
+  }
+
+  .ae-main {
+    margin-top: 100px;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .ae-tool-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+  }
+
+  .ae-editor {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .ae-btn-publish {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 }
