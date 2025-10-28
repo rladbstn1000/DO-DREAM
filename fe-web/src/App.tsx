@@ -34,8 +34,7 @@ export default function App() {
   };
 
   const handlePublishAndReturn = (title: string, chapters: Chapter[]) => {
-    // Classroom 페이지에서 materialPublished 이벤트로 처리됨
-    navigate(-1); // 이전 페이지로 돌아가기
+    navigate(-1);
     setExtractedText('');
   };
 
@@ -71,7 +70,8 @@ export default function App() {
         path="/classroom/:classroomId" 
         element={
           isLoggedIn ? 
-          <Classroom onNavigateToEditor={handleNavigateToEditor} /> : 
+          <Classroom /> 
+          : 
           <Navigate to="/" replace />
         } 
       />
@@ -91,7 +91,15 @@ export default function App() {
       />
 
       {/* 학생 페이지 */}
-      <Route path="/student/:studentId" element={<StudentRoom />} />
+      <Route 
+        path="/student/:studentId" 
+        element={
+          isLoggedIn ? 
+          <StudentRoom /> 
+          : 
+          <Navigate to="/" replace />
+        } 
+      />
 
       {/* 기본 라우트 */}
       <Route path="*" element={<Navigate to="/" replace />} />
