@@ -37,3 +37,6 @@ out/
 .vscode/
 
 src/main/resources/firebase/*.json
+
+### Custom ###
+application-secret.yml
