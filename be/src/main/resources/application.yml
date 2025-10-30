@@ -71,3 +71,15 @@ jwt:
   secret: ${jwtSecret}
   access-exp-seconds: 900
   refresh-exp-seconds: 1209600
+
+aws:
+  s3:
+    bucket: ${awsS3Bucket}
+    region: ${awsRegion}
+    upload-prefix: pdf
+    presign-exp-minutes: 5
+  cloudfront:
+    domain: ${cloudFrontDomain}
+    key-pair-id: ${cloudFrontKeyId}
+    private-key-pem: ${privateKeyPem}
+
