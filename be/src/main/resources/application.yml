@@ -14,9 +14,9 @@ spring:
     import: vault://
 
   datasource:
-    url: jdbc:mysql://localhost:3306/dodream
-    username: dodream
-    password: dodream
+    url: jdbc:mysql://localhost:3306/dodream_test
+    username: root
+    password: ssafy1234
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -34,6 +34,16 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
       file-size-threshold: 2KB
+  data:
+    redis:
+      port: 6379
+
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+
 
 logging:
   level:
@@ -56,3 +66,8 @@ clova:
   ocr:
     api-url: ${CLOVA_API_URL}
     secret-key: ${CLOVA_SECRET_KEY}
+
+jwt:
+  secret: "fPv/sc/25zTF5LBJQcgLh0xvS117nJopIfN1mph5gUc="
+  access-exp-seconds: 900
+  refresh-exp-seconds: 1209600
