@@ -22,6 +22,16 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
       file-size-threshold: 2KB
+  data:
+    redis:
+      port: 6379
+
+server:
+  servlet:
+    session:
+      cookie:
+        same-site: lax
+
 
 logging:
   level:
