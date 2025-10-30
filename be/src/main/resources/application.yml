@@ -3,12 +3,12 @@ spring:
     name: DODREAM
   datasource:
     url: jdbc:mysql://localhost:3306/dodream
-    username: dodream
-    password: dodream
+    username: root
+    password: ssafy
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -22,6 +22,16 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
       file-size-threshold: 2KB
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
 
 logging:
   level:
