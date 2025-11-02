@@ -1,5 +1,8 @@
 package A704.DODREAM.material.service;
 
+import A704.DODREAM.fcm.dto.FcmResponse;
+import A704.DODREAM.fcm.dto.FcmSendRequest;
+import A704.DODREAM.fcm.service.FcmService;
 import A704.DODREAM.material.dto.MaterialShareRequest;
 import A704.DODREAM.material.dto.MaterialShareResponse;
 import A704.DODREAM.material.entity.Material;
@@ -10,6 +13,8 @@ import A704.DODREAM.user.entity.User;
 import A704.DODREAM.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,6 +24,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -26,6 +32,7 @@ public class MaterialShareService {
     private final MaterialShareRepository materialShareRepository;
     private final MaterialRepository materialRepository;
     private final UserRepository userRepository;
+    private final FcmService fcmService;
 
     //자료 공유
     @Transactional
@@ -87,6 +94,8 @@ public class MaterialShareService {
 
         List<MaterialShare> savedShares = materialShareRepository.saveAll(sharesToSave);
 
+        sendNotifications(savedShares, teacher, material);
+
         for(MaterialShare share : savedShares){
 
             results.add(MaterialShareResponse.ShareResult.builder()
@@ -113,4 +122,38 @@ public class MaterialShareService {
                 .build();
     }
 
+    @Async
+    public void sendNotifications(
+            List<MaterialShare> shares,
+            User teacher,
+            Material material
+    ){
+        if(shares.isEmpty()){
+            return;
+        }
+
+        try {
+            // 학생 ID 목록 추출
+            List<Long> studentIds = shares.stream()
+                    .map(share -> share.getStudent().getId())
+                    .collect(Collectors.toList());
+
+            // 배치로 한 번에 전송
+            FcmSendRequest fcmRequest = FcmSendRequest.builder()
+                    .userIds(studentIds)
+                    .title("새 학습자료가 공유되었습니다")
+                    .body(String.format("%s 선생님이 '%s'를 공유했습니다",
+                            teacher.getName(), material.getTitle()))
+                    .build();
+
+            FcmResponse fcmResponse = fcmService.sendMessageTo(fcmRequest);
+
+            log.info("자료 공유 알림 전송 완료: 자료ID={}, {}",
+                    material.getId(), fcmResponse.getMessage());
+
+        } catch (Exception e) {
+            log.error("자료 공유 알림 전송 실패: 자료ID={}", material.getId(), e);
+        }
+
+    }
 }
