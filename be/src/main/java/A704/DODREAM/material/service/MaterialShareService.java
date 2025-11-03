@@ -3,6 +3,7 @@ package A704.DODREAM.material.service;
 import A704.DODREAM.fcm.dto.FcmResponse;
 import A704.DODREAM.fcm.dto.FcmSendRequest;
 import A704.DODREAM.fcm.service.FcmService;
+import A704.DODREAM.material.dto.MaterialShareListResponse;
 import A704.DODREAM.material.dto.MaterialShareRequest;
 import A704.DODREAM.material.dto.MaterialShareResponse;
 import A704.DODREAM.material.entity.Material;
@@ -133,12 +134,10 @@ public class MaterialShareService {
         }
 
         try {
-            // 학생 ID 목록 추출
             List<Long> studentIds = shares.stream()
                     .map(share -> share.getStudent().getId())
                     .collect(Collectors.toList());
 
-            // 배치로 한 번에 전송
             FcmSendRequest fcmRequest = FcmSendRequest.builder()
                     .userIds(studentIds)
                     .title("새 학습자료가 공유되었습니다")
@@ -154,6 +153,47 @@ public class MaterialShareService {
         } catch (Exception e) {
             log.error("자료 공유 알림 전송 실패: 자료ID={}", material.getId(), e);
         }
+    }
 
+    public MaterialShareListResponse getSharedMaterialByStudent(Long studentId){
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
+
+        List<MaterialShare> shares = materialShareRepository.findByStudentId(studentId);
+
+        return MaterialShareListResponse.builder()
+                .studentId(student.getId())
+                .studentName(student.getName())
+                .totalCount(shares.size())
+                .materials(toInfoList(shares))
+                .build();
+    }
+
+    public MaterialShareListResponse getSharedMaterialByStudentAndTeacher(
+            Long studentId, Long teacherId){
+
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
+
+        User teacher = userRepository.findById(teacherId)
+                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+
+        List<MaterialShare> shares = materialShareRepository.findByStudentIdAndTeacherId(studentId, teacherId);
+
+        return MaterialShareListResponse.builder()
+                .studentId(student.getId())
+                .studentName(student.getName())
+                .teacherId(teacher.getId())
+                .teacherName(teacher.getName())
+                .totalCount(shares.size())
+                .materials(toInfoList(shares))
+                .build();
+    }
+
+    private List<MaterialShareListResponse.SharedMaterialInfo> toInfoList(
+            List<MaterialShare> shares){
+        return shares.stream()
+                .map(MaterialShareListResponse.SharedMaterialInfo::from)
+                .collect(Collectors.toList());
     }
 }

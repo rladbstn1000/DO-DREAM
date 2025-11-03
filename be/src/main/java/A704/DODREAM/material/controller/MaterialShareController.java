@@ -1,5 +1,6 @@
 package A704.DODREAM.material.controller;
 
+import A704.DODREAM.material.dto.MaterialShareListResponse;
 import A704.DODREAM.material.dto.MaterialShareRequest;
 import A704.DODREAM.material.dto.MaterialShareResponse;
 import A704.DODREAM.material.service.MaterialShareService;
@@ -8,10 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Material Share", description = "학습자료 공유 API")
 @Slf4j
@@ -33,5 +31,30 @@ public class MaterialShareController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "학생이 공유받은 자료 목록 조회",
+            description = "특정 학생이 공유받은 모든 학습 자료를 최신순으로 조회합니다."
+    )
+    @GetMapping("/shared/student/{studentId}")
+    public ResponseEntity<MaterialShareListResponse> getSharedMaterialByStudent(
+            @PathVariable Long studentId
+    ){
+        MaterialShareListResponse response = materialShareService.getSharedMaterialByStudent(studentId);
+        return ResponseEntity.ok(response);
+    }
 
+    @Operation(
+            summary = "학생이 특정 선생님으로부터 공유받은 자료 목록 조회",
+            description = "특정 학생이 특정 선생님으로부터 공유받은 학습 자료를 최신순으로 조회합니다."
+    )
+    @GetMapping("/shared/student/{studentId}/teacher/{teacherId}")
+    public ResponseEntity<MaterialShareListResponse> getSharedMaterialsByStudent(
+            @PathVariable Long studentId,
+            @PathVariable Long teacherId
+    )
+    {
+        MaterialShareListResponse response = materialShareService
+                .getSharedMaterialByStudentAndTeacher(studentId, teacherId);
+        return ResponseEntity.ok(response);
+    }
 }
