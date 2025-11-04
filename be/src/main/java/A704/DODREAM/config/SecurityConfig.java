@@ -56,7 +56,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/swagger-ui/**", "/api/v3/api-docs/**",
 					"/swagger-ui/**", "/v3/api-docs/**").permitAll()
 				// 공개 엔드포인트
-				.requestMatchers("/api/auth/**", "/actuator/**", "/health").permitAll()
+				.requestMatchers("/api/auth/**", "/auth/**", "/actuator/**", "/health").permitAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
 				.anyRequest().authenticated()
@@ -78,6 +78,7 @@ public class SecurityConfig {
 			String u = req.getRequestURI();
 			return "OPTIONS".equalsIgnoreCase(req.getMethod())
 				|| u.startsWith("/api/auth/")
+				|| u.startsWith("/auth/")
 				|| u.startsWith("/api/swagger-ui/")
 				|| u.startsWith("/api/v3/api-docs/")
 				|| u.startsWith("/swagger-ui/")
