@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 
 @Entity
-@Table(name = "teacher_registry")
+@Table(name = "teacher_registries")
 @Getter
 public class TeacherRegistry {
 	@Id
