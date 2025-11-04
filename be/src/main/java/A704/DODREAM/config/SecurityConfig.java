@@ -33,12 +33,10 @@ public class SecurityConfig {
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-				// ★ springdoc 경로 모두 허용 (프리픽스 유무 둘 다)
-				.requestMatchers(
-					"/api/swagger-ui/**", "/api/v3/api-docs/**",
-					"/swagger-ui/**", "/v3/api-docs/**"
-				).permitAll()
-				// ★ 인증/헬스
+				// springdoc (프리픽스 유무 모두 허용)
+				.requestMatchers("/api/swagger-ui/**", "/api/v3/api-docs/**",
+					"/swagger-ui/**", "/v3/api-docs/**").permitAll()
+				// 공개 엔드포인트
 				.requestMatchers("/api/auth/**", "/actuator/**", "/health").permitAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
@@ -57,20 +55,19 @@ public class SecurityConfig {
 		JwtAuthFilter(JwtUtil jwt) { this.jwt = jwt; }
 
 		@Override
+		protected boolean shouldNotFilter(HttpServletRequest req) {
+			String u = req.getRequestURI();
+			return "OPTIONS".equalsIgnoreCase(req.getMethod())
+				|| u.startsWith("/api/auth/")
+				|| u.startsWith("/api/swagger-ui/")
+				|| u.startsWith("/api/v3/api-docs/")
+				|| u.startsWith("/swagger-ui/")
+				|| u.startsWith("/v3/api-docs/");
+		}
+
+		@Override
 		protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
 			throws ServletException, IOException {
-
-			String uri = req.getRequestURI();
-			if ("OPTIONS".equalsIgnoreCase(req.getMethod())
-				|| uri.startsWith("/api/auth/")
-				|| uri.startsWith("/api/swagger-ui/")
-				|| uri.startsWith("/api/v3/api-docs/")
-				|| uri.startsWith("/swagger-ui/")
-				|| uri.startsWith("/v3/api-docs/")) {
-				chain.doFilter(req, res);
-				return; // ★ 조기 반환
-			}
-
 			String h = req.getHeader("Authorization");
 			if (h != null && h.startsWith("Bearer ")) {
 				String at = h.substring(7);
@@ -80,8 +77,7 @@ public class SecurityConfig {
 					String role = c.get("role", String.class);
 					var auth = new UsernamePasswordAuthenticationToken(
 						sub, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-					org.springframework.security.core.context.SecurityContextHolder
-						.getContext().setAuthentication(auth);
+					org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
 				} catch (Exception ignored) {}
 			}
 			chain.doFilter(req, res);
