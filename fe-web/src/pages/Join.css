@@ -288,6 +288,28 @@ body {
   transform: translateX(0);
 }
 
+/* 2단계(이메일/비번) 접힘/펼침 */
+.signup-step2 {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height .35s ease, opacity .25s ease;
+}
+.signup-step2.open {
+  max-height: 400px; /* 내용에 맞게 충분히 */
+  opacity: 1;
+}
+
+.btn-verify {
+  width: 100%;
+}
+
+.btn-submit-signup {
+  width: 100%;
+  margin-top: 6px;
+}
+
+
 /* (옵션) 부유 애니메이션 — 필요하면 주석 해제
 @keyframes hero-float {
   0%   { transform: translate(35%, 0) translateY(0); }
