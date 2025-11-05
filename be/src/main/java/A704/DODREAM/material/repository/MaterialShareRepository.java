@@ -36,17 +36,23 @@ public interface MaterialShareRepository extends JpaRepository<MaterialShare, Lo
     @Query("SELECT ms FROM MaterialShare ms " +
             "JOIN FETCH ms.material m " +
             "JOIN FETCH ms.teacher t " +
-            "WHERE ms.sharedClass = :classId " +
+            "WHERE ms.sharedGrade = :gradeLevel " +
+            "AND ms.sharedClass = :classNumber " +
+            "AND ms.sharedYear = :year " +
             "AND ms.teacher.id = :teacherId " +
             "AND ms.id IN (" +
             "  SELECT MAX(ms2.id) FROM MaterialShare ms2 " +
-            "  WHERE ms2.sharedClass = :classId " +
+            "  WHERE ms2.sharedGrade = :gradeLevel " +
+            "  AND ms2.sharedClass = :classNumber " +
+            "  AND ms2.sharedYear = :year " +
             "  AND ms2.teacher.id = :teacherId " +
-            "  GROUP BY ms2.sharedClass, ms2.material.id" +
+            "  GROUP BY ms2.material.id" +
             ") " +
             "ORDER BY ms.sharedAt DESC")
-
-    List<MaterialShare> findByClassIdAndTeacherId(Long classId, Long teacherId);
-
-
+    List<MaterialShare> findByClassInfoAndTeacherId(
+            Integer gradeLevel,
+            Integer classNumber,
+            Integer year,
+            Long teacherId
+    );
 }

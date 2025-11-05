@@ -235,7 +235,12 @@ public class MaterialShareService {
         Classroom classroom = classroomRepository.findById(classId)
                 .orElseThrow(() -> new IllegalArgumentException("반을 찾을 수 없습니다."));
 
-        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(classId, teacherId);
+        List<MaterialShare> shares = materialShareRepository.findByClassInfoAndTeacherId(
+                classroom.getGradeLevel(),
+                classroom.getClassNumber(),
+                classroom.getYear(),
+                teacherId
+        );
 
         return MaterialShareListResponse.builder()
                 .totalCount(shares.size())
