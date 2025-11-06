@@ -126,9 +126,7 @@ public class MaterialShareService {
                         .teacher(teacher)
                         .student(student)
                         .shareType(info.getType())
-                        .sharedGrade(sharedGrade)
-                        .sharedClass(sharedClass)
-                        .sharedYear(sharedYear)
+                        .classroom(classroom)
                         .sharedAt(LocalDateTime.now())
                         .build();
 
@@ -225,6 +223,22 @@ public class MaterialShareService {
         return MaterialShareListResponse.builder()
                 .studentId(student.getId())
                 .studentName(student.getName())
+                .totalCount(shares.size())
+                .materials(toInfoList(shares))
+                .build();
+    }
+
+    public MaterialShareListResponse getSharedMaterialByClass(Long classId, Long teacherId) {
+
+        Classroom classroom = classroomRepository.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("반을 찾을 수 없습니다."));
+
+        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(
+                classId,
+                teacherId
+        );
+
+        return MaterialShareListResponse.builder()
                 .totalCount(shares.size())
                 .materials(toInfoList(shares))
                 .build();
