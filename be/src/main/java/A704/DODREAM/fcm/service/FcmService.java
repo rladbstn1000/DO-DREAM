@@ -151,9 +151,9 @@ public class FcmService {
     }
 
     @Transactional
-    public TokenResponseDto registerToken(TokenRegisterDto dto){
+    public TokenResponseDto registerToken(TokenRegisterDto dto, Long userId){
         // 사용자 확인
-        User user = userRepository.findById(dto.getUserId())
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         // 이미 등록된 Token인지 확인
@@ -196,11 +196,15 @@ public class FcmService {
 
 
     @Transactional
-    public TokenResponseDto deleteToken(String token){
+    public TokenResponseDto deleteToken(String token, Long userId){
         Optional<UserDevices> device = userDevicesRepository.findByFcmToken(token);
 
         if(device.isPresent()) {
             UserDevices userDevice = device.get();
+
+            if(!userDevice.getUser().getId().equals(userId)){
+                throw new IllegalArgumentException("해당 토큰을 삭제할 권한이 없습니다.");
+            }
 
             userDevice.setActive(false);
             userDevicesRepository.save(userDevice);

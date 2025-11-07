@@ -9,7 +9,6 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class TokenRegisterDto {
-    private Long userId;
     private String token;
     private DeviceType deviceType;
 }

@@ -1,5 +1,6 @@
 package A704.DODREAM.fcm.controller;
 
+import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.fcm.dto.FcmSendRequest;
 import A704.DODREAM.fcm.dto.FcmResponse;
 import A704.DODREAM.fcm.dto.TokenRegisterDto;
@@ -8,6 +9,7 @@ import A704.DODREAM.fcm.service.FcmService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -39,8 +41,10 @@ public class FcmController {
     )
     @PostMapping("/token")
     public ResponseEntity<TokenResponseDto> registerToken(
-            @RequestBody TokenRegisterDto tokenRegisterDto) {
-        TokenResponseDto response = fcmService.registerToken(tokenRegisterDto);
+            @RequestBody TokenRegisterDto tokenRegisterDto,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        Long userId = userPrincipal.userId();
+        TokenResponseDto response = fcmService.registerToken(tokenRegisterDto, userId);
         return ResponseEntity.ok(response);
     }
 
@@ -51,8 +55,10 @@ public class FcmController {
     )
     @DeleteMapping("/token")
     public ResponseEntity<TokenResponseDto> deleteToken(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam String token){
-        TokenResponseDto response = fcmService.deleteToken(token);
+        Long userId = userPrincipal.userId();
+        TokenResponseDto response = fcmService.deleteToken(token, userId);
         return ResponseEntity.ok(response);
     }
 }

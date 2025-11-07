@@ -13,7 +13,6 @@ import java.util.Map;
 @Builder
 public class MaterialShareRequest {
     private Long materialId;
-    private Long teacherId;
 
     private Map<Long, ClassShareInfo> shares;
 

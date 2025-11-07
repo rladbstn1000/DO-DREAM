@@ -43,15 +43,13 @@ public class MaterialShareService {
 
     // 자료 공유
     @Transactional
-    public MaterialShareResponse shareMaterial(MaterialShareRequest request){
+    public MaterialShareResponse shareMaterial(MaterialShareRequest request, Long teacherId){
+
+        User teacher = userRepository.getReferenceById(teacherId);
 
         // 자료 조회
         Material material = materialRepository.findById(request.getMaterialId())
                 .orElseThrow(() -> new IllegalArgumentException("자료를 찾을 수 없습니다."));
-
-        // 선생님 조회
-        User teacher = userRepository.findById(request.getTeacherId())
-                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
 
         // classroom 정보 조회
         Set<Long> classIds = request.getShares().keySet();
@@ -83,16 +81,6 @@ public class MaterialShareService {
             if(classroom == null){
                 log.error("반 정보를 찾을 수 없습니다. calssId={}", classId);
                 continue;
-            }
-
-            Integer sharedGrade = null;
-            Integer sharedClass = null;
-            Integer sharedYear = null;
-
-            if(info.getType() == ShareType.CLASS){
-                sharedGrade = classroom.getGradeLevel();
-                sharedClass = classroom.getClassNumber();
-                sharedYear = classroom.getYear();
             }
 
             for (Long studentId : info.getStudentIds()) {
@@ -196,8 +184,7 @@ public class MaterialShareService {
     }
 
     public MaterialShareListResponse getSharedMaterialByStudent(Long studentId){
-        User student = userRepository.findById(studentId)
-                .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
+        User student = userRepository.getReferenceById(studentId);
 
         List<MaterialShare> shares = materialShareRepository.findByStudentId(studentId);
 
@@ -215,9 +202,6 @@ public class MaterialShareService {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
 
-        User teacher = userRepository.findById(teacherId)
-                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
-
         List<MaterialShare> shares = materialShareRepository.findByStudentIdAndTeacherId(studentId, teacherId);
 
         return MaterialShareListResponse.builder()
@@ -233,10 +217,7 @@ public class MaterialShareService {
         Classroom classroom = classroomRepository.findById(classId)
                 .orElseThrow(() -> new IllegalArgumentException("반을 찾을 수 없습니다."));
 
-        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(
-                classId,
-                teacherId
-        );
+        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(classId, teacherId);
 
         return MaterialShareListResponse.builder()
                 .totalCount(shares.size())

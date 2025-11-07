@@ -1,5 +1,6 @@
 package A704.DODREAM.material.controller;
 
+import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.material.dto.MaterialShareListResponse;
 import A704.DODREAM.material.dto.MaterialShareRequest;
 import A704.DODREAM.material.dto.MaterialShareResponse;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Material Share", description = "학습 자료 공유 API")
@@ -27,44 +29,51 @@ public class MaterialShareController {
     )
     @PostMapping("/share")
     public ResponseEntity<MaterialShareResponse> shareMaterial(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestBody MaterialShareRequest request){
-        MaterialShareResponse response = materialShareService.shareMaterial(request);
+        Long teacherId = userPrincipal.userId();
+        MaterialShareResponse response = materialShareService.shareMaterial(request, teacherId);
         return ResponseEntity.ok(response);
     }
 
     @Operation(
-            summary = "학생이 공유받은 자료 목록 조회",
+            summary = "공유받은 자료 목록 조회 (학생/앱)",
             description = "특정 학생이 공유받은 모든 학습 자료를 최신순으로 조회합니다."
     )
-    @GetMapping("/shared/student/{studentId}")
+    @GetMapping("/shared")
     public ResponseEntity<MaterialShareListResponse> getSharedMaterialByStudent(
-            @PathVariable Long studentId
+            @AuthenticationPrincipal UserPrincipal userPrincipal
     ){
+        Long studentId = userPrincipal.userId();
         MaterialShareListResponse response = materialShareService.getSharedMaterialByStudent(studentId);
         return ResponseEntity.ok(response);
     }
 
     @Operation(
-            summary = "학생이 특정 선생님으로부터 공유받은 자료 목록 조회",
+            summary = "내가 특정 학생에게 공유한 자료 목록 조회 (선생님/웹)",
             description = "특정 학생이 특정 선생님으로부터 공유받은 학습 자료를 최신순으로 조회합니다."
     )
-    @GetMapping("/shared/student/{studentId}/teacher/{teacherId}")
+    @GetMapping("/shared/student/{studentId}")
     public ResponseEntity<MaterialShareListResponse> getSharedMaterialsByStudent(
-            @PathVariable Long studentId,
-            @PathVariable Long teacherId
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long studentId
     )
     {
+        Long teacherId = userPrincipal.userId();
+
         MaterialShareListResponse response = materialShareService
                 .getSharedMaterialByStudentAndTeacher(studentId, teacherId);
         return ResponseEntity.ok(response);
     }
 
     @Operation( summary = "공유된 자료 반별 조회")
-    @GetMapping("/shared/class/{classId}/teacher/{teacherId}")
+    @GetMapping("/shared/class/{classId}")
     public ResponseEntity<MaterialShareListResponse> getSharedMaterialsByClass(
-            @PathVariable Long classId,
-            @PathVariable Long teacherId
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long classId
     ){
+        Long teacherId = userPrincipal.userId();
+
         MaterialShareListResponse response = materialShareService
                 .getSharedMaterialByClass(classId, teacherId);
 
