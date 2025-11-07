@@ -16,8 +16,8 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class MaterialShareRequest {
-	private Long materialId;
-	private Long teacherId;
+
+    private Long materialId;
 
 	private Map<Long, ClassShareInfo> shares;
 

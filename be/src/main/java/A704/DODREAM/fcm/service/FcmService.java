@@ -152,11 +152,11 @@ public class FcmService {
 			.build();
 	}
 
-	@Transactional
-	public TokenResponseDto registerToken(TokenRegisterDto dto) {
-		// 사용자 확인
-		User user = userRepository.findById(dto.getUserId())
-			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    @Transactional
+    public TokenResponseDto registerToken(TokenRegisterDto dto, Long userId){
+        // 사용자 확인
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
 		// 이미 등록된 Token인지 확인
 		Optional<UserDevices> existingDevice =
@@ -194,12 +194,15 @@ public class FcmService {
 			.build();
 	}
 
-	@Transactional
-	public TokenResponseDto deleteToken(String token) {
-		Optional<UserDevices> device = userDevicesRepository.findByFcmToken(token);
+    @Transactional
+    public TokenResponseDto deleteToken(String token, Long userId){
+        Optional<UserDevices> device = userDevicesRepository.findByFcmToken(token);
+        if (device.isPresent()) {
+            UserDevices userDevice = device.get();
 
-		if (device.isPresent()) {
-			UserDevices userDevice = device.get();
+            if(!userDevice.getUser().getId().equals(userId)){
+                throw new IllegalArgumentException("해당 토큰을 삭제할 권한이 없습니다.");
+            }
 
 			userDevice.setActive(false);
 			userDevicesRepository.save(userDevice);
@@ -213,15 +216,13 @@ public class FcmService {
 					.build())
 				.build();
 		}
+        return TokenResponseDto.builder()
+                .success(false)
+                .message("토큰을 찾을 수 없습니다")
+                .build();
+    }
 
-		return TokenResponseDto.builder()
-			.success(false)
-			.message("토큰을 찾을 수 없습니다")
-			.build();
-	}
-
-	public List<UserDevices> getUserDevices(Long userId) {
-		return userDevicesRepository.findByUserIdAndIsActiveTrue(userId);
-	}
-
+    public List<UserDevices> getUserDevices(Long userId){
+        return userDevicesRepository.findByUserIdAndIsActiveTrue(userId);
+    }
 }

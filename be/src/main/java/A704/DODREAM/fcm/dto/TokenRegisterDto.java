@@ -13,7 +13,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class TokenRegisterDto {
-	private Long userId;
-	private String token;
-	private DeviceType deviceType;
+    private String token;
+    private DeviceType deviceType;
 }
