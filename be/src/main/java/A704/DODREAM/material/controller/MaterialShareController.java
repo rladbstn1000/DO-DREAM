@@ -1,6 +1,13 @@
 package A704.DODREAM.material.controller;
 
 import A704.DODREAM.auth.dto.request.UserPrincipal;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import A704.DODREAM.material.dto.MaterialShareListResponse;
 import A704.DODREAM.material.dto.MaterialShareRequest;
 import A704.DODREAM.material.dto.MaterialShareResponse;
@@ -9,7 +16,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class MaterialShareController {
 
-    private final MaterialShareService materialShareService;
+	private final MaterialShareService materialShareService;
 
     @Operation(
             summary = "학습 자료 공유 + 푸시 알림",
@@ -76,7 +82,6 @@ public class MaterialShareController {
 
         MaterialShareListResponse response = materialShareService
                 .getSharedMaterialByClass(classId, teacherId);
-
-        return ResponseEntity.ok(response);
-    }
+		return ResponseEntity.ok(response);
+	}
 }
