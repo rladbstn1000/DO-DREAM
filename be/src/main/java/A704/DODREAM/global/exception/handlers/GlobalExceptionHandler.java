@@ -56,26 +56,6 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ErrorCode.INVALID_INPUT, errorMessage));
     }
 
-    private boolean isUniqueViolation(Throwable t) {
-        while (t != null) {
-            if (t instanceof org.hibernate.exception.ConstraintViolationException cve) {
-                // 자세한 정보 로깅 추가
-                log.error("ConstraintViolationException - SQL: {}, SQLState: {}, ErrorCode: {}",
-                        cve.getSQL(), cve.getSQLState(), cve.getErrorCode());
-
-                String state = cve.getSQLState();
-                int code = cve.getErrorCode();
-                if ("23000".equals(state) || "23505".equals(state) || code == 1062) return true;
-            }
-            if (t instanceof java.sql.SQLIntegrityConstraintViolationException) {
-                log.error("SQLIntegrityConstraintViolationException: {}", t.getMessage());
-                return true;
-            }
-            t = t.getCause();
-        }
-        return false;
-    }
-
     // 3. 커스텀 예외
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
@@ -83,8 +63,20 @@ public class GlobalExceptionHandler {
         log.warn("Custom exception: {}", errorCode.getMessage());
 
         return ResponseEntity
-                .badRequest()
-                .body(ApiResponse.error(ErrorCode.INVALID_INPUT, ErrorCode.INVALID_INPUT.getMessage()));
+                .status(getHttpStatus(errorCode))
+                .body(ApiResponse.error(errorCode, errorCode.getMessage()));
+    }
+
+    // HTTP 상태 코드 매핑
+    private HttpStatus getHttpStatus(ErrorCode errorCode) {
+        String code = errorCode.getCode();
+        if (code.contains("404")) return HttpStatus.NOT_FOUND;
+        if (code.contains("401")) return HttpStatus.UNAUTHORIZED;
+        if (code.contains("403")) return HttpStatus.FORBIDDEN;
+        if (code.contains("409")) return HttpStatus.CONFLICT;
+        if (code.contains("410")) return HttpStatus.GONE;
+        if (code.contains("500")) return HttpStatus.INTERNAL_SERVER_ERROR;
+        return HttpStatus.BAD_REQUEST;
     }
 
     // 4. 알 수 없는 예외 (최종 fallback)

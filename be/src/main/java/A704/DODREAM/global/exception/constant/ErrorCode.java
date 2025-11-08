@@ -11,6 +11,12 @@ public enum ErrorCode {
     USER_NOT_FOUND("USER_404", "사용자를 찾을 수 없습니다."),
     USER_WITHDRAWN("USER_410", "탈퇴한 사용자입니다."),
 
+    //선생님 관련 (TEACHER)
+    TEACHER_INFO_MISMATCH("TEACHER_400", "학사정보(이름/교원번호)가 일치하지 않습니다."),
+    DUPLICATED_EMAIL("TEACHER_409", "이미 사용 중인 이메일입니다."),
+    TEACHER_INVALID_CREDENTIALS("TEACHER_401", "이메일 혹은 비밀번호가 올바르지 않습니다."),
+    NOT_TEACHER_ACCOUNT("TEACHER_403", "교사 계정이 아닙니다."),
+
     // 학생 관련 (STUDENT)
     STUDENT_INFO_MISMATCH("STUDENT_400", "학번/이름이 일치하지 않습니다."),
 
