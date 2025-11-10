@@ -14,13 +14,18 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+
+ --memo-height: 380px;
+  --memo-scale: 1; 
+  --memo-pad: 16px;
 }
 
 @font-face {
-    font-family: 'YeogiOttaeJalnan';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_four@1.2/JalnanOTF00.woff') format('woff');
-    font-weight: normal;
-    font-display: swap;
+  font-family: 'YeogiOttaeJalnan';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_four@1.2/JalnanOTF00.woff')
+    format('woff');
+  font-weight: normal;
+  font-display: swap;
 }
 
 * {
@@ -30,9 +35,11 @@
 /* ===== Root ===== */
 .cl-root {
   min-height: 100vh;
-  background-image: url("../assets/join/background.jpg");
+  background-image: url('../assets/join/background.jpg');
   overflow-y: auto;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica',
+    'Arial', sans-serif;
 }
 
 /* ===== Header ===== */
@@ -115,7 +122,7 @@
   height: 100vh;
   padding: 32px 24px;
   padding-top: calc(70px + 32px);
-  overflow-y: auto;
+  overflow-y: hidden;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -138,19 +145,12 @@
   align-items: center;
   text-align: center;
   gap: 12px;
-  transition: all var(--transition-base);
 }
 
 .cl-profile-avatar-mini {
   height: 120px;
   object-fit: cover;
   border: none;
-  transition: all var(--transition-base);
-}
-
-.cl-profile-avatar-mini:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
 }
 
 .cl-profile-name-mini {
@@ -178,81 +178,102 @@
 .cl-sidebar-divider {
   width: 100%;
   height: 1px;
-  background: rgba(226, 232, 240, 0.5);
+  background: rgba(226, 232, 240, 0.9);
 }
 
-/* ===== Memo ===== */
-.cl-memo {
-  height: 100%;
-  margin-top: auto;
-  background: rgba(25, 43, 85, 0.95);
-  backdrop-filter: blur(8px);
-  border-radius: var(--radius-lg);
-  padding: 16px;
+/* 하단에 딱 붙어있는 카드 컨테이너 */
+.cl-memo{
   position: sticky;
-  bottom: 16px;
-  box-shadow: 0 8px 24px rgba(25, 43, 85, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all var(--transition-base);
+  bottom: 0;
+  height: calc(var(--memo-height) * var(--memo-scale));
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
 }
 
-.cl-memo:hover {
-  box-shadow: 0 12px 32px rgba(25, 43, 85, 0.25);
+.cl-memo-stage{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
+.cl-memo-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* 입력 방해 X */
+}
+
+/* 🔍 확대 래퍼: 사이드바 폭은 그대로, 요소만 배율 확대 */
+.cl-memo-zoom{
+  position: absolute;
+  left: 50%;
+  bottom: 0px;
+  width: 100%;          /* 기준은 사이드바 안쪽 너비 */
+  aspect-ratio: 0.78;   /* memo.png 비율에 맞춰 조정 */
+  transform: translateX(-50%) scale(var(--memo-scale));
+  transform-origin: bottom center;   /* 아래쪽을 기준으로 키워서 자연스러움 */
+}
+
+/* 배경 이미지(잘림 없이) */
+.cl-memo-zoom::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("../assets/classList/memo.png") no-repeat center bottom / contain;
+  pointer-events: none;
+}
+
+/* 상단 타이틀은 이미지 위에 떠 있게 */
 .cl-memo-header {
+  position: absolute;
+  right: 30px;
+  top: 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 12px;
-}
-
-.cl-memo-title {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  font-weight: 600;
-  font-size: 12px;
-  color: #fff;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  z-index: 1;
 }
 
 .cl-memo-latest {
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  color: #94a3b8;
   font-weight: 600;
 }
 
-.cl-memo-textarea {
-  width: 100%;
-  height: 180px;
-  resize: none;
-  min-height: 100px;
-  max-height: 50vh;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.95);
+/* 🟢 실제 글을 입력하는 종이 영역(이미지 빈칸에 맞춰 좌표 지정) */
+.cl-memo-input{
+  position: absolute;
+  left: 20px;   /* 이미지 빈칸에 맞춰 한 번만 잡아두면 됨 */
+  right: 20px;
+  top: 78px;
+  bottom: 30px;
+  padding: 0px 10px 10px 10px;
+  border: none;
+  background: none;
   font-size: 12px;
   color: #192b55;
   outline: none;
-  transition: all var(--transition-fast);
-  font-family: inherit;
+  resize: none;
 }
 
-.cl-memo-textarea::placeholder {
-  color: #94a3b8;
+.cl-memo-input::placeholder {
+  color: #192b55;
 }
 
-.cl-memo-textarea:focus {
-  background: #fff;
-  box-shadow: 0 0 0 2px rgba(25, 43, 85, 0.1);
-  border-color: rgba(25, 43, 85, 0.2);
+/* 반응형: 모바일에서 사이드바가 상단으로 이동할 때는 sticky 해제(원한다면 유지 가능) */
+@media (max-width: 1024px) {
+  .cl-memo {
+    position: static;
+    height: calc(var(--memo-height) - 40px);
+    margin-top: 0;
+  }
 }
 
 /* ===== Main Content ===== */
@@ -500,7 +521,7 @@
 .cl-divider {
   width: 1px;
   height: 20px;
-  background: rgba(226, 232, 240, 0.4);
+  background: rgba(226, 232, 240, 0.9);
 }
 
 /* ===== Materials Header ===== */
@@ -767,7 +788,9 @@
 
 .cl-label-option.active {
   border-color: rgba(0, 0, 0, 0.2);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 3px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.1);
   transform: scale(1.1);
 }
 

@@ -490,21 +490,23 @@ export default function ClassroomList({
 
             {/* ▼ 메모장 (하단 고정) */}
             <div className="cl-memo">
-              <div className="cl-memo-header">
-                <div className="cl-memo-title">
-                  <NotebookPen size={14} />
-                  <span>메모장</span>
-                </div>
-                <div className="cl-memo-latest" title="오늘 날짜">
-                  <span>오늘은 {formatKST(new Date())}</span>
+              <div className="cl-memo-stage">
+                <div className="cl-memo-zoom">
+                  <div className="cl-memo-header">
+                    <div className="cl-memo-latest" title="오늘 날짜">
+                      <span>Today : {formatKST(new Date())}</span>
+                    </div>
+                  </div>
+
+                  {/* 이미지 안의 ‘종이 영역’에 정확히 겹치는 입력 박스 */}
+                  <textarea
+                    className="cl-memo-input"
+                    placeholder="수업 준비/할 일 메모"
+                    value={memo}
+                    onChange={(e) => setMemo(e.target.value)}
+                  />
                 </div>
               </div>
-              <textarea
-                className="cl-memo-textarea"
-                placeholder="수업 준비/할 일 메모"
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-              />
             </div>
           </div>
         </aside>
@@ -516,9 +518,6 @@ export default function ClassroomList({
               <h2 className="cl-section-title">
                 {classrooms.length}개 반 담당
               </h2>
-              {/* <p className="cl-section-subtitle">
-                자료를 관리할 반을 선택해주세요
-              </p> */}
             </div>
 
             <div className="cl-classrooms-grid">
