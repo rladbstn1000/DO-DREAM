@@ -235,7 +235,7 @@
 .msm-avatar-img {
   width: 46px;
   height: 46px;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   flex-shrink: 0;
 }
