@@ -83,8 +83,10 @@ export default function Classroom() {
   const { classroomId = '1' } = useParams<{ classroomId: string }>();
   const navigate = useNavigate();
 
-  /* ===== 샘플 상태 ===== */
-  const [materials, setMaterials] = useState<Material[]>([
+  const STORAGE_KEY = `materials_${classroomId}`;
+
+  // 초기 기본값
+  const defaultMaterials: Material[] = [
     {
       id: '1',
       title: '심화 학습 문제',
@@ -104,7 +106,29 @@ export default function Classroom() {
       label: 'red',
     },
     { id: '4', title: '어휘 프린트', uploadDate: '2024.09.30' },
-  ]);
+  ];
+
+  const [materials, setMaterials] = useState<Material[]>(defaultMaterials);
+
+  // ✅ 마운트 시 저장된 자료 복원
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Material[];
+        setMaterials(parsed);
+        return;
+      } catch {}
+    }
+    // 저장된 게 없다면 기본값을 저장해 둔다
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultMaterials));
+  }, [STORAGE_KEY]);
+
+  // ✅ materials 변경 시 자동 저장
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(materials));
+  }, [STORAGE_KEY, materials]);
+
   const students: Student[] = [
     {
       id: '1',
@@ -196,64 +220,74 @@ export default function Classroom() {
     return list;
   }, [materials, matQuery, matSort, activeLabels]);
 
-  /* ===== 라벨 변경 모달 ===== */
+  // 라벨 변경
   const handleLabelMaterial = (materialId: string, currentLabel?: LabelId) => {
-    let selectedLabel: LabelId | undefined = currentLabel;
+    let picked: LabelId | undefined = currentLabel;
 
     Swal.fire({
       title: '라벨 선택',
       html: `
-        <div class="cl-label-grid">
+        <div class="ae-label-grid" id="labelGrid">
           ${LABEL_OPTIONS.map(
-            (l) => `
-            <button
-              class="cl-label-option ${currentLabel === l.id ? 'active' : ''}"
-              data-label="${l.id}"
-              style="background-color:${l.color};"
-              title="${l.name}"
+            (label) => `
+            <button 
+              class="ae-label-option ${picked === label.id ? 'active' : ''}" 
+              data-label="${label.id}"
+              style="background-color: ${label.color}; ${picked === label.id ? `border: 3px solid  ${label.color};` : ''}" 
+              title="${label.name}"
             >
-              ${currentLabel === l.id ? '✓' : ''}
+              <span>${picked === label.id ? '✓' : ''}</span>
             </button>
           `,
           ).join('')}
         </div>
       `,
-      width: 420,
-      padding: '18px',
       showCancelButton: true,
       confirmButtonText: '저장',
       cancelButtonText: '취소',
-      reverseButtons: true,
       confirmButtonColor: '#192b55',
       cancelButtonColor: '#d1d5db',
-      customClass: { popup: 'cl-label-modal', title: 'cl-label-title' },
+      reverseButtons: true,
+
       didOpen: () => {
-        const buttons =
-          document.querySelectorAll<HTMLButtonElement>('.cl-label-option');
-        buttons.forEach((btn) => {
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            buttons.forEach((b) => b.classList.remove('active'));
-            const target = e.currentTarget as HTMLButtonElement;
-            target.classList.add('active');
-            selectedLabel = target.getAttribute('data-label') as
-              | LabelId
-              | undefined;
-            buttons.forEach((b) => (b.innerHTML = b === target ? '✓' : ''));
+        const grid = document.getElementById('labelGrid');
+        if (!grid) return;
+
+        const buttons = Array.from(
+          grid.querySelectorAll('.ae-label-option'),
+        ) as HTMLElement[];
+
+        const render = () => {
+          buttons.forEach((btn) => {
+            const id = btn.getAttribute('data-label') as LabelId | null;
+            const active = id === picked;
+            btn.classList.toggle('active', active);
+            btn.style.border = active ? '3px solid #000' : '';
+            btn.innerHTML = `<span>${active ? '✓' : ''}</span>`;
           });
+        };
+
+        grid.addEventListener('click', (e) => {
+          const target = (e.target as HTMLElement).closest(
+            '.ae-label-option',
+          ) as HTMLElement | null;
+          if (!target) return;
+          picked = (target.getAttribute('data-label') as LabelId) || undefined;
+          render();
         });
       },
-      preConfirm: () => selectedLabel,
+
+      preConfirm: () => picked,
     }).then((result) => {
-      if (result.isConfirmed) {
-        setMaterials((prev) =>
-          prev.map((m) =>
-            m.id === materialId
-              ? { ...m, label: result.value as LabelId | undefined }
-              : m,
-          ),
-        );
-      }
+      if (!result.isConfirmed) return;
+      const value = result.value as LabelId | undefined;
+
+      setMaterials((prev) =>
+        prev.map((mat) =>
+          mat.id === materialId ? { ...mat, label: value } : mat,
+        ),
+      );
+      // 저장은 위의 useEffect가 자동 수행
     });
   };
 
@@ -338,21 +372,23 @@ export default function Classroom() {
 
           {/* ▼ 메모장 (하단 고정) */}
           <div className="cl-memo">
-            <div className="cl-memo-header">
-              <div className="cl-memo-title">
-                <NotebookPen size={14} />
-                <span>메모장</span>
-              </div>
-              <div className="cl-memo-latest" title="오늘 날짜">
-                <span>오늘은 {formatKST(new Date())}</span>
+            <div className="cl-memo-stage">
+              <div className="cl-memo-zoom">
+                <div className="cl-memo-header">
+                  <div className="cl-memo-latest" title="오늘 날짜">
+                    <span>Today : {formatKST(new Date())}</span>
+                  </div>
+                </div>
+
+                {/* 이미지 안의 ‘종이 영역’에 정확히 겹치는 입력 박스 */}
+                <textarea
+                  className="cl-memo-input"
+                  placeholder="수업 준비/할 일 메모"
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value)}
+                />
               </div>
             </div>
-            <textarea
-              className="cl-memo-textarea"
-              placeholder="수업 준비/할 일 메모"
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-            />
           </div>
         </div>
       </aside>

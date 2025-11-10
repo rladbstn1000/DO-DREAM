@@ -289,7 +289,6 @@ export default function ClassroomList({
     LABEL_OPTIONS.find((l) => l.id === label)?.color || 'transparent';
 
   // 라벨 변경
-  // 라벨 변경
   const handleLabelMaterial = (materialId: string, currentLabel?: string) => {
     let picked: string | undefined = currentLabel; // ← 로컬 변수로 관리
 
@@ -303,7 +302,7 @@ export default function ClassroomList({
             class="ae-label-option ${picked === label.id ? 'active' : ''}" 
             data-label="${label.id}"
             style="background-color: ${label.color}; ${
-              picked === label.id ? `border: 3px solid #000;` : ''
+              picked === label.id ? `border: 3px solid ${label.color};` : ''
             }" 
             title="${label.name}"
           >
