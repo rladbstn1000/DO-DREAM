@@ -10,6 +10,14 @@
 /* -------------------------------------------------- */
 /* 기본 리셋/레이아웃                                  */
 /* -------------------------------------------------- */
+
+@font-face {
+    font-family: 'YeogiOttaeJalnan';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_four@1.2/JalnanOTF00.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -186,6 +194,7 @@ body {
   transition: 1s ease-in-out;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   -webkit-text-stroke: 1px #fff;
+  font-family: 'YeogiOttaeJalnan';
 }
 
 /* -------------------------------------------------- */
