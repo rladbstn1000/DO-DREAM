@@ -242,9 +242,9 @@ body {
   background-image: var(--hero-img-signin);
 
   /* 로그인 추천값 */
-  --hero-size: min(520px, 42vw);
+  --hero-size: min(360px, 42vw);
   --hero-overlap: 28px;                 /* 하단 딱 붙게 약간 내려 꽂기 */
-  --hero-pos-x: calc(100% - 14rem);       /* 좌측 곡면 중심 쪽으로 당김 */
+  --hero-pos-x: calc(100% - 24rem);       /* 좌측 곡면 중심 쪽으로 당김 */
   --hero-pos-y: calc(100% + var(--hero-overlap));
 }
 
