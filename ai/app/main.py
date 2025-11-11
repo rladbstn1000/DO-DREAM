@@ -1,26 +1,34 @@
 import uvicorn
 from fastapi import FastAPI
-from app.user import router as user_router
-# 2. FastAPI 앱 인스턴스 생성
+# (수정) /api 같은 하위 경로에서 실행할 경우를 대비해 root_path를 설정합니다.
+# 서버의 실제 하위 경로에 맞춰 "/api" 부분을 수정하거나, 하위 경로가 없다면 이 줄을 제거하세요.
 app = FastAPI(
     title="dodream 파이썬 서버",
     description="Spring 서버 JWT와 연동된 FastAPI 서버입니다.",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/ai"  # 예: http://<도메인>/ai/docs 로 접속 시
 )
 
-# 3. 라우터 포함
-# /extract로 시작하는 모든 경로는 extraction_router가 처리
-#app.include_router(extraction_router.router) - 예시
-# /rag로 시작하는 모든 경로는 rag_router가 처리
-#app.include_router(rag_router.router) - 예시
-app.include_router(user_router.router)
+# --- 라우터 임포트 ---
+# 각 기능별 라우터 파일을 임포트합니다.
+from app.user import router as user_router
 
-# 4. 루트 엔드포인트 (헬스 체크용)
+
+# --- 라우터 포함 ---
+# 각 라우터에 prefix를 지정하여 URL 경로를 분리합니다.
+app.include_router(user_router.router, prefix="/users", tags=["Users"])
+
+
+# --- 루트 엔드포인트 ---
+# 서버가 살아있는지 확인하는 헬스 체크용 엔드포인트
 @app.get("/")
 def read_root():
     return {"message": "FastAPI RAG 서버가 실행 중입니다."}
 
-# 5. 서버 실행 (uvicorn 사용)
-# 터미널에서: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# --- 서버 실행 (참고용) ---
+# 이 파일(main.py)을 직접 python app/main.py로 실행할 경우 uvicorn을 구동합니다.
+# (운영 환경에서는 'python -m uvicorn app.main:app --host 0.0.0.0 --port 8000' 명령어를 권장합니다)
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    # (수정) reload=True 옵션은 서버(운영) 환경에서는 제거합니다.
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000)
