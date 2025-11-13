@@ -26,13 +26,14 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowedOrigins(List.of(
+			"*",
 			"https://www.dodream.io.kr",
 			"http://localhost:5173",
 			"http://localhost:8080"
 		));
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
-		config.setAllowCredentials(true);
+		config.setAllowCredentials(false);
 		config.setMaxAge(3600L);
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -48,7 +49,7 @@ public class SecurityConfig {
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
-        .requestMatchers("/api/pdf/**").permitAll()
+        .requestMatchers("/api/pdf/**").permitAll().requestMatchers("/api/files/**").permitAll()
         .requestMatchers("/document/parse-pdf-from-cloudfront").permitAll()
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers("/error", "/error/**").permitAll()
