@@ -22,10 +22,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -84,14 +81,24 @@ public class PublishService {
                     RequestBody.fromString(jsonString, StandardCharsets.UTF_8)
             );
 
-            Material material = Material.builder()
-                    .teacher(teacher)
-                    .title(publishRequest.getMaterialTitle())
-                    .label(publishRequest.getLabelColor())
-                    .originalFileName(uploadedFile.getOriginalFileName())
-                    .fileUrl(uploadedFile.getS3Key())
-                    .jsonS3Key(uploadedFile.getJsonS3Key())
-                    .build();
+            Optional<Material> materialOpt = materialRepository.findByJsonS3Key(uploadedFile.getJsonS3Key());
+
+            Material material;
+            if(materialOpt.isPresent()){
+                material = materialOpt.get();
+                material.setTitle(publishRequest.getMaterialTitle());
+                material.setLabel(publishRequest.getLabelColor());
+                material.setUpdatedAt(LocalDateTime.now());
+            } else {
+                material = Material.builder()
+                        .teacher(teacher)
+                        .title(publishRequest.getMaterialTitle())
+                        .label(publishRequest.getLabelColor())
+                        .originalFileName(uploadedFile.getOriginalFileName())
+                        .fileUrl(uploadedFile.getS3Key())
+                        .jsonS3Key(uploadedFile.getJsonS3Key())
+                        .build();
+            }
 
             materialRepository.save(material);
 
@@ -109,7 +116,7 @@ public class PublishService {
                 .message("문서가 성공적으로 발행되었습니다.")
                 .build();
     }
-    
+
     private void addIds(Map<String, Object> jsonData) {
         Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsed_data");
         if(parsedData == null){
