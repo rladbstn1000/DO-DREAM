@@ -848,7 +848,6 @@ export default function AdvancedEditor({
       return;
     }
 
-    // ✅ Access Token 가져오기
     const token = localStorage.getItem('accessToken');
 
     if (!token) {
@@ -870,7 +869,8 @@ export default function AdvancedEditor({
     };
 
     try {
-      await Swal.fire({
+      // ✅ await 제거! void만 사용
+      void Swal.fire({
         title: '발행 중입니다...',
         allowOutsideClick: false,
         showConfirmButton: false,
@@ -882,7 +882,6 @@ export default function AdvancedEditor({
         headers: {
           'Content-Type': 'application/json',
           accept: 'application/json',
-          // ✅ Authorization 헤더 추가
           Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
@@ -896,11 +895,11 @@ export default function AdvancedEditor({
         body: responseText,
       });
 
+      // ✅ fetch 완료 후 로딩 모달 닫기
       await Swal.close();
 
       if (!res.ok) {
         if (res.status === 403 || res.status === 401) {
-          // 토큰 만료 또는 권한 없음
           localStorage.removeItem('accessToken');
           localStorage.removeItem('isLoggedIn');
 

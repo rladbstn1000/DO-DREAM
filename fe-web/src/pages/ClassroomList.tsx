@@ -126,6 +126,29 @@ type ParsedChapter = {
   type?: 'content' | 'quiz';
 };
 
+type PublishedMaterialDto = {
+  materialId: number;
+  uploadedFileId: number;
+  title: string;
+  originalFileName: string;
+  label:
+    | 'RED'
+    | 'ORANGE'
+    | 'YELLOW'
+    | 'GREEN'
+    | 'BLUE'
+    | 'PURPLE'
+    | 'GRAY'
+    | null;
+  createdAt: string; // ISO 문자열
+  updatedAt: string; // ISO 문자열
+};
+
+type PublishedMaterialsResponse = {
+  materials: PublishedMaterialDto[];
+  totalCount: number;
+};
+
 export default function ClassroomList({ onLogout }: ClassroomListProps) {
   const [selectedLabel, setSelectedLabel] = useState<string | undefined>();
   const navigate = useNavigate();
@@ -169,7 +192,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         'Content-Type': 'application/pdf',
       },
       body: file,
-      credentials: 'include'
+      credentials: 'include',
     });
 
     if (!res.ok) {
@@ -342,44 +365,66 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     localStorage.setItem(MEMO_KEY, memo);
   }, [memo]);
 
-  const [materials, setMaterials] = useState<Material[]>([
-    {
-      id: '1',
-      title: '1학기 수업 자료',
-      uploadDate: '2024.10.20',
-      label: 'red',
-      status: 'published',
-    },
-    {
-      id: '2',
-      title: '수학 심화 학습',
-      uploadDate: '2024.10.18',
-      label: 'blue',
-      status: 'published',
-    },
-    {
-      id: '3',
-      title: '영어 문법 정리',
-      uploadDate: '2024.10.15',
-      label: 'green',
-      status: 'published',
-    },
-    {
-      id: '4',
-      title: '과학 실험 보고서',
-      uploadDate: '2024.10.12',
-      label: 'purple',
-      status: 'published',
-    },
-    {
-      id: '5',
-      title: '새로운 자료',
-      uploadDate: '2024.10.10',
-      status: 'draft',
-    },
-  ]);
+  const [materials, setMaterials] = useState<Material[]>([]);
 
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(new Date());
+
+  useEffect(() => {
+    if (!API_BASE) return;
+
+    const fetchPublishedMaterials = async () => {
+      try {
+        // ⭐ localStorage 에서 토큰 꺼내기
+        const accessToken = localStorage.getItem('accessToken');
+
+        if (!accessToken) {
+          console.warn('accessToken 이 없습니다. 로그인 상태를 확인해 주세요.');
+        }
+
+        const res = await fetch(`${API_BASE}/api/documents/published`, {
+          method: 'GET',
+          headers: {
+            accept: '*/*',
+            // ⭐ JWT를 Authorization 헤더로 실어 보내기
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          // 쿠키도 쓰고 있으면 유지, 아니면 빼도 됨
+          credentials: 'include',
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(
+            text ||
+              `발행 자료 목록 조회에 실패했습니다. (status: ${res.status})`,
+          );
+        }
+
+        const data = (await res.json()) as PublishedMaterialsResponse;
+
+        const mapped: Material[] = data.materials.map((m) => ({
+          id: String(m.materialId),
+          title: m.title,
+          uploadDate: formatKST(new Date(m.createdAt)),
+          label: m.label ? m.label.toLowerCase() : undefined,
+          status: 'published',
+        }));
+
+        setMaterials(mapped);
+      } catch (err: any) {
+        console.error('발행 자료 목록 조회 실패', err);
+        Swal.fire({
+          icon: 'error',
+          title: '발행된 자료를 불러오지 못했습니다',
+          text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+          confirmButtonColor: '#192b55',
+        });
+      }
+    };
+
+    void fetchPublishedMaterials();
+  }, [API_BASE]);
+
   useEffect(() => {
     setLastUpdatedAt(new Date());
   }, [materials]);
