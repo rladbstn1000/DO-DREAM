@@ -1,0 +1,7 @@
+spring:
+  cloud:
+    vault:
+      enabled: false
+  config:
+    import: "optional:vault://"
+
