@@ -100,7 +100,7 @@ export default function VoiceCommandButton({
       ]}
       onPress={handlePress}
       accessible={true}
-      accessibilityLabel={label}
+      accessibilityLabel="음성 명령"
       accessibilityRole="button"
       accessibilityHint={
         accessibilityHint ??
