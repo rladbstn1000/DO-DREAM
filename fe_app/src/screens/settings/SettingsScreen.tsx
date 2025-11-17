@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from "react";
+import React, { useState, useEffect, useCallback, useContext, useRef } from "react";
 import {
   View,
   Text,
@@ -440,8 +440,26 @@ export default function SettingsScreen() {
         return;
       }
 
-      // 2) 재생 속도 (빠르게 / 느리게 / 기본 / 두 배 / 최고 / 최저)
-      if (nospace.includes("속도")) {
+      // 2) 재생 속도 (빠르게 / 느리게 / 기본 / 두 배 / 최고 / 최저 / 직접 값 지정)
+      if (nospace.includes("속도") || nospace.includes("배속")) {
+        // 직접 값 지정 패턴: "1.2배", "영점팔배", "0.8배" 등
+        const directValuePatterns = [
+          { pattern: /([0-2])\.?([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`${m[1]}.${m[2]}`) },
+          { pattern: /영?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
+          { pattern: /일?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`1.${m[1]}`) },
+        ];
+
+        for (const { pattern, extractor } of directValuePatterns) {
+          const match = nospace.match(pattern);
+          if (match) {
+            const value = extractor(match);
+            if (value >= 0.5 && value <= 2.0) {
+              handleRateChange(value);
+              return;
+            }
+          }
+        }
+
         // 두 배 / 2배
         if (
           nospace.includes("두배") ||
@@ -516,19 +534,37 @@ export default function SettingsScreen() {
           handleRateChange(1.0);
         } else {
           AccessibilityInfo.announceForAccessibility(
-            "재생 속도는 두 배, 반 배속, 최고 속도, 최저 속도, 빠르게, 느리게, 기본 속도처럼 말해 주세요."
+            "재생 속도는 1.2배처럼 직접 말하거나, 두 배, 반 배속, 빠르게, 느리게, 기본 속도처럼 말해 주세요."
           );
         }
         return;
       }
 
-      // 3) 높낮이 / 톤 / 목소리 높이
+      // 3) 높낮이 / 톤 / 목소리 높이 (직접 값 지정 가능)
       if (
         nospace.includes("높낮이") ||
         nospace.includes("톤") ||
         nospace.includes("음높이") ||
         nospace.includes("목소리높이")
       ) {
+        // 직접 값 지정 패턴 (높낮이는 단위 없이도 인식)
+        const pitchPatterns = [
+          { pattern: /([0-2])\.?([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`${m[1]}.${m[2]}`) },
+          { pattern: /영?점([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
+          { pattern: /일?점([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`1.${m[1]}`) },
+        ];
+
+        for (const { pattern, extractor } of pitchPatterns) {
+          const match = nospace.match(pattern);
+          if (match) {
+            const value = extractor(match);
+            if (value >= 0.5 && value <= 2.0) {
+              handlePitchChange(value);
+              return;
+            }
+          }
+        }
+
         // 최고 톤
         if (
           nospace.includes("최고") ||
@@ -574,18 +610,45 @@ export default function SettingsScreen() {
           handlePitchChange(1.0);
         } else {
           AccessibilityInfo.announceForAccessibility(
-            "목소리 높이는 높게, 낮게, 최고, 최저, 기본처럼 말해 주세요."
+            "목소리 높이는 1.2처럼 직접 말하거나, 높게, 낮게, 최고, 최저, 기본처럼 말해 주세요."
           );
         }
         return;
       }
 
-      // 4) 볼륨 / 소리 크기
+      // 4) 볼륨 / 소리 크기 (퍼센트 또는 0-1 값으로 직접 지정 가능)
       if (
         nospace.includes("볼륨") ||
         nospace.includes("소리") ||
         nospace.includes("음량")
       ) {
+        // 퍼센트로 지정: "70퍼센트", "80%"
+        const percentMatch = nospace.match(/([0-9]{1,3})(%|퍼센트|프로)/);
+        if (percentMatch) {
+          const percent = parseInt(percentMatch[1]);
+          if (percent >= 0 && percent <= 100) {
+            handleVolumeChange(percent / 100);
+            return;
+          }
+        }
+
+        // 0-1 값으로 지정: "0.7", "영점팔"
+        const decimalPatterns = [
+          { pattern: /0\.([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
+          { pattern: /영점([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
+        ];
+
+        for (const { pattern, extractor } of decimalPatterns) {
+          const match = nospace.match(pattern);
+          if (match) {
+            const value = extractor(match);
+            if (value >= 0 && value <= 1.0) {
+              handleVolumeChange(value);
+              return;
+            }
+          }
+        }
+
         // 최대/최고 볼륨
         if (
           nospace.includes("최대") ||
@@ -634,7 +697,7 @@ export default function SettingsScreen() {
           handleVolumeChange(1.0);
         } else {
           AccessibilityInfo.announceForAccessibility(
-            "볼륨은 크게, 작게, 최고, 최저, 기본처럼 말해 주세요."
+            "볼륨은 70퍼센트처럼 직접 말하거나, 크게, 작게, 최고, 최저, 기본처럼 말해 주세요."
           );
         }
         return;
@@ -673,12 +736,40 @@ export default function SettingsScreen() {
         return;
       }
 
-      // 6) 글자 크기
+      // 6) 글자 크기 (퍼센트 또는 배율로 직접 지정 가능)
       if (
         nospace.includes("글자") ||
         nospace.includes("글씨") ||
         nospace.includes("폰트")
       ) {
+        // 퍼센트로 지정: "120퍼센트", "150%"
+        const percentMatch = nospace.match(/([0-9]{2,3})(%|퍼센트|프로)/);
+        if (percentMatch) {
+          const percent = parseInt(percentMatch[1]);
+          if (percent >= 80 && percent <= 200) {
+            handleFontSizeChange(percent / 100);
+            return;
+          }
+        }
+
+        // 배율로 지정: "1.5배", "일점오배"
+        const scalePatterns = [
+          { pattern: /([0-2])\.([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`${m[1]}.${m[2]}`) },
+          { pattern: /영?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
+          { pattern: /일?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`1.${m[1]}`) },
+        ];
+
+        for (const { pattern, extractor } of scalePatterns) {
+          const match = nospace.match(pattern);
+          if (match) {
+            const value = extractor(match);
+            if (value >= 0.8 && value <= 2.0) {
+              handleFontSizeChange(value);
+              return;
+            }
+          }
+        }
+
         if (nospace.includes("크게") || nospace.includes("키워")) {
           const next = Math.min(
             2.0,
@@ -699,7 +790,7 @@ export default function SettingsScreen() {
           handleFontSizeChange(1.0);
         } else {
           AccessibilityInfo.announceForAccessibility(
-            "글자 크기는 크게, 작게, 기본처럼 말해 주세요."
+            "글자 크기는 120퍼센트나 1.5배처럼 직접 말하거나, 크게, 작게, 기본처럼 말해 주세요."
           );
         }
         return;
@@ -728,7 +819,7 @@ export default function SettingsScreen() {
       }
 
       AccessibilityInfo.announceForAccessibility(
-        "이 화면에서는 뒤로 가기, 재생 속도 빠르게 또는 느리게, 높낮이 높게 또는 낮게, 볼륨 크게 또는 작게, 고대비 모드 켜기 또는 끄기, 글자 크기 크게 또는 작게, 테스트 재생, 설정 초기화 같은 음성 명령을 사용할 수 있습니다."
+        "이 화면에서는 뒤로 가기, 재생 속도 1.2배, 높낮이 1.5, 볼륨 70퍼센트, 글자 크기 120퍼센트처럼 직접 값을 말하거나, 빠르게, 느리게, 높게, 낮게, 크게, 작게, 고대비 모드 켜기, 테스트 재생, 설정 초기화 같은 음성 명령을 사용할 수 있습니다."
       );
     },
     [
@@ -748,18 +839,29 @@ export default function SettingsScreen() {
     ]
   );
 
+  // 핸들러를 ref로 저장하여 최신 버전 유지
+  const handleGoBackRef = useRef(handleGoBack);
+  useEffect(() => {
+    handleGoBackRef.current = handleGoBack;
+  }, [handleGoBack]);
+
+  const handleSettingsVoiceCommandRef = useRef(handleSettingsVoiceCommand);
+  useEffect(() => {
+    handleSettingsVoiceCommandRef.current = handleSettingsVoiceCommand;
+  }, [handleSettingsVoiceCommand]);
+
   // 전역 음성 명령 핸들러 등록
   useEffect(() => {
     setCurrentScreenId("Settings");
 
     registerVoiceHandlers("Settings", {
-      goBack: handleGoBack,
-      rawText: handleSettingsVoiceCommand,
+      goBack: () => handleGoBackRef.current(),
+      rawText: (text: string) => handleSettingsVoiceCommandRef.current(text),
     });
 
     const introTimer = setTimeout(() => {
       AccessibilityInfo.announceForAccessibility(
-        "설정 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 뒤, 재생 속도 빠르게, 볼륨 작게, 고대비 모드 켜기, 글자 크기 크게, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다."
+        "설정 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 뒤, 재생 속도 1.2배, 높낮이 1.5, 볼륨 70퍼센트, 글자 크기 120퍼센트처럼 직접 값을 말하거나, 빠르게, 느리게, 크게, 작게, 고대비 모드 켜기, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다."
       );
     }, 600);
 
@@ -767,12 +869,7 @@ export default function SettingsScreen() {
       clearTimeout(introTimer);
       registerVoiceHandlers("Settings", {});
     };
-  }, [
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    handleGoBack,
-    handleSettingsVoiceCommand,
-  ]);
+  }, [setCurrentScreenId, registerVoiceHandlers]);
 
   const HC = settings.highContrastMode;
   const baseSize = 24;
@@ -810,7 +907,7 @@ export default function SettingsScreen() {
 
         <VoiceCommandButton
           style={commonStyles.headerVoiceButton}
-          accessibilityHint="두 번 탭한 후 재생 속도, 높낮이, 볼륨, 고대비 모드, 글자 크기, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다."
+          accessibilityHint="두 번 탭한 후 재생 속도 1.2배, 높낮이 1.5, 볼륨 70퍼센트, 글자 크기 120퍼센트처럼 직접 값을 말하거나, 빠르게, 느리게, 크게, 작게, 고대비 모드 켜기, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다."
         />
       </View>
 

@@ -79,12 +79,9 @@ export default function PlayerScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
-  const playButtonRef =
-    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
-  const prevButtonRef =
-    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
-  const nextButtonRef =
-    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const playButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const prevButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const nextButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
   // Modal 상태
   const [modalVisible, setModalVisible] = useState(false);
@@ -114,13 +111,10 @@ export default function PlayerScreen() {
   // 현재 챕터 인덱스 & 이전/다음 챕터 존재 여부
   const currentChapterIndex = useMemo(() => {
     if (!chapter) return -1;
-    return chaptersFromJson.findIndex(
-      (c) => c.chapterId === chapter.chapterId
-    );
+    return chaptersFromJson.findIndex((c) => c.chapterId === chapter.chapterId);
   }, [chaptersFromJson, chapter]);
 
-  const hasPrevChapter =
-    currentChapterIndex > 0 && currentChapterIndex !== -1;
+  const hasPrevChapter = currentChapterIndex > 0 && currentChapterIndex !== -1;
   const hasNextChapter =
     currentChapterIndex !== -1 &&
     currentChapterIndex < chaptersFromJson.length - 1;
@@ -393,7 +387,9 @@ export default function PlayerScreen() {
       }
 
       const targetIndex =
-        direction === "prev" ? currentChapterIndex - 1 : currentChapterIndex + 1;
+        direction === "prev"
+          ? currentChapterIndex - 1
+          : currentChapterIndex + 1;
 
       if (targetIndex < 0 || targetIndex >= chaptersFromJson.length) {
         AccessibilityInfo.announceForAccessibility(
@@ -556,7 +552,12 @@ export default function PlayerScreen() {
       }
 
       // 4) 질문하기
-      if (t.includes("질문")) {
+      if (
+        t.includes("질문") ||
+        t.includes("질문하기") ||
+        t.includes("이게 뭐야") ||
+        t.includes("알려줘")
+      ) {
         handleQuestionPress();
         return;
       }
@@ -584,6 +585,22 @@ export default function PlayerScreen() {
     ]
   );
 
+  // 핸들러를 ref로 저장하여 최신 버전 유지
+  const handlePlayerVoiceRawRef = useRef(handlePlayerVoiceRaw);
+  useEffect(() => {
+    handlePlayerVoiceRawRef.current = handlePlayerVoiceRaw;
+  }, [handlePlayerVoiceRaw]);
+
+  const handleQuestionPressRef = useRef(handleQuestionPress);
+  useEffect(() => {
+    handleQuestionPressRef.current = handleQuestionPress;
+  }, [handleQuestionPress]);
+
+  const handleBackPressRef = useRef(handleBackPress);
+  useEffect(() => {
+    handleBackPressRef.current = handleBackPress;
+  }, [handleBackPress]);
+
   // 음성 명령 핸들러 등록
   useEffect(() => {
     setCurrentScreenId("Player");
@@ -597,11 +614,11 @@ export default function PlayerScreen() {
       playPause: ttsActions.togglePlayPause,
       next: ttsActions.playNext,
       prev: ttsActions.playPrevious,
-      openQuestion: handleQuestionPress,
-      goBack: handleBackPress,
+      openQuestion: () => handleQuestionPressRef.current(),
+      goBack: () => handleBackPressRef.current(),
       openQuiz: hasQuiz ? handleQuizNavigation : undefined,
       // Player 전용 rawText 명령 (챕터 이동 포함)
-      rawText: handlePlayerVoiceRaw,
+      rawText: (text: string) => handlePlayerVoiceRawRef.current(text),
     });
 
     return () => {
@@ -623,11 +640,8 @@ export default function PlayerScreen() {
     ttsActions.togglePlayPause,
     ttsActions.playNext,
     ttsActions.playPrevious,
-    handleQuestionPress,
-    handleBackPress,
     hasQuiz,
     handleQuizNavigation,
-    handlePlayerVoiceRaw,
   ]);
 
   // 화면 진입 시 음성 안내
@@ -774,9 +788,7 @@ export default function PlayerScreen() {
             accessible
             accessibilityLabel={isLastSection ? "학습 완료" : "다음 섹션"}
             accessibilityRole="button"
-            accessibilityHint={
-              isLastSection ? "챕터 학습을 완료합니다" : ""
-            }
+            accessibilityHint={isLastSection ? "챕터 학습을 완료합니다" : ""}
           >
             <Text style={styles.controlButtonText}>
               {isLastSection ? "완료" : "다음 →"}

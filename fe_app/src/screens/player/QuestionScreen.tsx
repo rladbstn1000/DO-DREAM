@@ -358,7 +358,7 @@ export default function QuestionScreen() {
   const handleBack = useCallback(async () => {
     if (listening) await stopListening(false);
     navigation.goBack();
-  }, [listening, navigation]);
+  }, [listening, navigation, stopListening]);
 
   // Question 화면 전용 음성 명령/질문(rawText) 처리
   const handleQuestionVoiceCommand = useCallback(
@@ -367,39 +367,16 @@ export default function QuestionScreen() {
       if (!raw) return;
       const t = raw.toLowerCase();
 
-      // 1) 말하기 시작 / 종료 / 토글 (로컬 ASR 제어)
-      if (
-        t.includes("말하기") ||
-        t.includes("음성인식") ||
-        t.includes("음성 인식")
-      ) {
-        if (
-          t.includes("시작") ||
-          t.includes("켜") ||
-          t.includes("해줘") ||
-          t.includes("실행")
-        ) {
-          if (!listening) startListening();
-        } else if (
-          t.includes("종료") ||
-          t.includes("끝") ||
-          t.includes("꺼") ||
-          t.includes("멈춰")
-        ) {
-          if (listening) stopListening(true);
-        } else {
-          // "말하기"만 말하면 토글
-          if (!listening) startListening();
-          else stopListening(true);
-        }
-        return;
-      }
+      console.log("[QuestionScreen] rawText 핸들러 호출:", raw);
+
+      // 1) 말하기 시작 / 종료 / 토글 (로컬 ASR 제어) - QuestionScreen에서는 사용 안 함
+      // VoiceCommandButton은 전역 음성 명령용이므로, 로컬 말하기 기능과 분리
 
       // 2) 질문 보내기 / 확인 (입력창 기반 전송)
       if (
-        t.includes("보내") ||
-        t.includes("확인") ||
-        t.includes("질문해") ||
+        t === "보내" ||
+        t === "확인" ||
+        t === "보내기" ||
         t.includes("질문 보내")
       ) {
         handleSend();
@@ -411,7 +388,8 @@ export default function QuestionScreen() {
         t.includes("지워") ||
         t.includes("초기화") ||
         t.includes("다시 시작") ||
-        t.includes("대화 삭제")
+        t.includes("대화 삭제") ||
+        t === "지우기"
       ) {
         setMessages([]);
         setInterim("");
@@ -436,41 +414,45 @@ export default function QuestionScreen() {
         return;
       }
 
-      // 5) 뒤로가기 (전역 파서가 못 잡았을 경우 대비)
-      if (t.includes("뒤로") || t.includes("이전 화면")) {
-        handleBack();
-        return;
-      }
+      // 5) 뒤로가기는 전역 핸들러(TriggerContext)가 처리하므로 여기서는 제외
 
       // 6) 위 명령어에 해당하지 않으면 → 일반 질문으로 처리
       if (isLoadingResponse) {
         AccessibilityInfo.announceForAccessibility("질문을 처리 중입니다. 잠시만 기다려주세요.");
         return;
       }
+
+      console.log("[QuestionScreen] 질문으로 처리:", raw);
       pushUserMessage(raw);
       sendQuestionToRAG(raw);
     },
-    [listening, handleSend, handleBack, isLoadingResponse, sendQuestionToRAG]
+    [handleSend, isLoadingResponse, sendQuestionToRAG]
   );
+
+  // 핸들러를 ref로 저장하여 최신 버전 유지
+  const handleQuestionVoiceCommandRef = useRef(handleQuestionVoiceCommand);
+  useEffect(() => {
+    handleQuestionVoiceCommandRef.current = handleQuestionVoiceCommand;
+  }, [handleQuestionVoiceCommand]);
+
+  const handleBackRef = useRef(handleBack);
+  useEffect(() => {
+    handleBackRef.current = handleBack;
+  }, [handleBack]);
 
   // QuestionScreen용 전역 음성 명령 핸들러 등록
   useEffect(() => {
     setCurrentScreenId("Question");
 
     registerVoiceHandlers("Question", {
-      goBack: handleBack,
-      rawText: handleQuestionVoiceCommand,
+      goBack: () => handleBackRef.current(),
+      rawText: (text: string) => handleQuestionVoiceCommandRef.current(text),
     });
 
     return () => {
       registerVoiceHandlers("Question", {});
     };
-  }, [
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    handleBack,
-    handleQuestionVoiceCommand,
-  ]);
+  }, [setCurrentScreenId, registerVoiceHandlers]);
 
   // 언마운트 정리
   useEffect(() => {

@@ -75,14 +75,21 @@ function parseVoiceCommand(raw: string): VoiceCommandKey | null {
   const t = raw.trim().toLowerCase();
   if (!t) return null;
 
-  if (t.includes("뒤로") || t.includes("이전 화면")) return "goBack";
-  if (t.includes("질문")) return "openQuestion";
-  if (t.includes("퀴즈")) return "openQuiz";
+  // 뒤로가기 관련 명령어
+  if (t.includes("뒤로") || t.includes("이전 화면") || t.includes("돌아가")) return "goBack";
 
-  if (t.includes("다음")) return "next";
-  if (t.includes("이전") || t.includes("앞으로")) return "prev";
+  // 질문하기 관련 명령어 (단, "질문"만 단독으로 있을 때만 - 실제 질문 내용과 구분)
+  if (t === "질문" || t === "질문하기" || t.includes("질문 하기") || t.includes("질문해줘")) return "openQuestion";
 
-  if (t.includes("재생") || t.includes("일시정지") || t.includes("멈춰"))
+  // 퀴즈 관련 명령어
+  if (t === "퀴즈" || t === "퀴즈 풀기" || t.includes("퀴즈 시작")) return "openQuiz";
+
+  // 다음/이전 챕터- 이동 (명확한 네비게이션 명령만)
+  if (t.includes("다음 챕터") || t.includes("다음장") || (t === "다음" && !t.includes("질문"))) return "next";
+  if (t.includes("이전 챕터") || t.includes("앞장") || (t === "이전" && !t.includes("화면"))) return "prev";
+
+  // 재생/일시정지 관련 명령어
+  if (t.includes("재생") || t.includes("일시정지") || t.includes("멈춰") || t.includes("정지"))
     return "playPause";
 
   return null;
@@ -168,22 +175,12 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       const handlers =
         voiceHandlersRef.current[currentScreenId] ||
         ({} as VoiceCommandHandlers);
+
+      // 전역 명령어 파싱 시도
       const key = parseVoiceCommand(text);
 
-      if (!key) {
-        // 전역 파서가 모르는 명령 → 현재 화면의 rawText 핸들러로 넘겨보기
-        if (handlers.rawText) {
-          console.log("[VoiceCommands] rawText 핸들러 호출:", text);
-          handlers.rawText(text);
-        } else {
-          console.log("[VoiceCommands] 알 수 없는 명령:", text);
-        }
-        return;
-      }
-
-      const handler = handlers[key];
-
-      if (handler) {
+      // 1) 전역 명령어가 인식되었고, 해당 핸들러가 등록되어 있으면 실행
+      if (key && handlers[key]) {
         console.log(
           "[VoiceCommands] 명령 실행:",
           key,
@@ -193,20 +190,33 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
           text
         );
         try {
-          handler();
+          handlers[key]!();
         } catch (e) {
           console.warn("[VoiceCommands] 핸들러 실행 중 오류:", e);
         }
-      } else {
-        console.log(
-          "[VoiceCommands] 현재 화면에서 처리할 수 없는 명령:",
-          key,
-          "screen=",
-          currentScreenId,
-          "text=",
-          text
-        );
+        return;
       }
+
+      // 2) 전역 명령어가 아니거나, 핸들러가 없으면 rawText 핸들러로 전달
+      if (handlers.rawText) {
+        console.log("[VoiceCommands] rawText 핸들러 호출:", text);
+        try {
+          handlers.rawText(text);
+        } catch (e) {
+          console.warn("[VoiceCommands] rawText 핸들러 실행 중 오류:", e);
+        }
+        return;
+      }
+
+      // 3) 아무 핸들러도 없으면 로그만 출력
+      console.log(
+        "[VoiceCommands] 처리할 수 없는 명령:",
+        text,
+        "screen=",
+        currentScreenId,
+        "parsedKey=",
+        key
+      );
     });
 
     setIsVoiceCommandListening(true);

@@ -3,6 +3,7 @@ import React, {
   useContext,
   useCallback,
   useState,
+  useRef,
 } from "react";
 import {
   Text,
@@ -231,9 +232,23 @@ export default function LibraryScreen() {
   /**
    * Library 화면 전용 음성 명령 처리
    * - "영어 1", "문학", "생물 1로 이동", "합법과 작문" 등
+   * - "설정" 등 화면 전환 명령어
    */
   const handleLibraryVoiceCommand = useCallback(
     (spoken: string) => {
+      const raw = spoken.trim();
+      const t = raw.toLowerCase();
+
+      console.log("[LibraryScreen] rawText 핸들러 호출:", raw);
+
+      // 1) 설정 화면 이동
+      if (t === "설정" || t.includes("설정 열기") || t.includes("설정 화면")) {
+        AccessibilityInfo.announceForAccessibility("설정 화면으로 이동합니다.");
+        navigation.navigate("Settings");
+        return;
+      }
+
+      // 2) 자료 로딩 중이면 대기 요청
       if (loadingList) {
         AccessibilityInfo.announceForAccessibility(
           "학습 자료를 불러오는 중입니다. 잠시 후 다시 말씀해 주세요."
@@ -241,6 +256,7 @@ export default function LibraryScreen() {
         return;
       }
 
+      // 3) 자료가 없으면 안내
       if (materials.length === 0) {
         AccessibilityInfo.announceForAccessibility(
           "현재 공유된 학습 자료가 없습니다."
@@ -248,7 +264,8 @@ export default function LibraryScreen() {
         return;
       }
 
-      const material = findMaterialByVoice(spoken);
+      // 4) 교재명으로 매칭 시도
+      const material = findMaterialByVoice(raw);
 
       if (!material) {
         AccessibilityInfo.announceForAccessibility(
@@ -262,7 +279,7 @@ export default function LibraryScreen() {
       );
       handleMaterialPress(material);
     },
-    [findMaterialByVoice, loadingList, materials]
+    [findMaterialByVoice, loadingList, materials, navigation]
   );
 
   /**
@@ -390,6 +407,12 @@ export default function LibraryScreen() {
   const HC = settings.highContrastMode;
   const headerFontSize = 36 * settings.fontSizeScale;
 
+  // 핸들러를 ref로 저장하여 최신 버전 유지
+  const handleLibraryVoiceCommandRef = useRef(handleLibraryVoiceCommand);
+  useEffect(() => {
+    handleLibraryVoiceCommandRef.current = handleLibraryVoiceCommand;
+  }, [handleLibraryVoiceCommand]);
+
   // LibraryScreen용 음성 명령 핸들러 등록
   useEffect(() => {
     setCurrentScreenId("Library");
@@ -398,18 +421,13 @@ export default function LibraryScreen() {
       // 전역 명령: "뒤로 가" → 이전 화면
       goBack: () => navigation.goBack(),
       // 나머지 일반 문장(영어 1, 문학, 생물 1 등)은 여기서 처리
-      rawText: handleLibraryVoiceCommand,
+      rawText: (text: string) => handleLibraryVoiceCommandRef.current(text),
     });
 
     return () => {
       registerVoiceHandlers("Library", {});
     };
-  }, [
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    navigation,
-    handleLibraryVoiceCommand,
-  ]);
+  }, [setCurrentScreenId, registerVoiceHandlers, navigation]);
 
   // 화면 진입 안내 (음성 명령 안내 포함)
   useEffect(() => {

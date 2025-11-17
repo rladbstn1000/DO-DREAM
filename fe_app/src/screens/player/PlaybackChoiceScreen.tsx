@@ -148,6 +148,7 @@ export default function PlaybackChoiceScreen() {
 
       // 처음부터 듣기
       if (
+        t.includes("처음") ||
         t.includes("처음부터") ||
         t.includes("처음 부터") ||
         t.includes("맨 처음") ||
