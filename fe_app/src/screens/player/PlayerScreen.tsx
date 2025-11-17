@@ -103,21 +103,72 @@ export default function PlayerScreen() {
 
   // 현재 챕터 찾기 (없으면 첫 챕터라도 사용)
   const chapter: Chapter | null = useMemo(() => {
-    if (chaptersFromJson.length === 0) return null;
-    const found = chaptersFromJson.find((c) => c.chapterId === chapterId);
+    console.log("[PlayerScreen] 챕터 찾기 시작");
+    console.log(
+      "[PlayerScreen] chaptersFromJson.length:",
+      chaptersFromJson.length
+    );
+    console.log(
+      "[PlayerScreen] route.params.chapterId:",
+      chapterId,
+      typeof chapterId
+    );
+
+    if (chaptersFromJson.length === 0) {
+      console.log("[PlayerScreen] ❌ chaptersFromJson이 비어있음");
+      return null;
+    }
+
+    // 모든 챕터의 chapterId 출력
+    console.log(
+      "[PlayerScreen] 사용 가능한 chapterIds:",
+      chaptersFromJson
+        .map((c) => `${c.chapterId}(${typeof c.chapterId})`)
+        .join(", ")
+    );
+
+    // chapterId를 명시적으로 number로 변환
+    const targetChapterId =
+      typeof chapterId === "string" ? Number(chapterId) : chapterId;
+
+    console.log(
+      "[PlayerScreen] targetChapterId:",
+      targetChapterId,
+      typeof targetChapterId
+    );
+
+    const found = chaptersFromJson.find((c) => c.chapterId === targetChapterId);
+
+    if (found) {
+      console.log("[PlayerScreen] ✅ 챕터 찾음:", found.title);
+    } else {
+      console.log("[PlayerScreen] ⚠️ 챕터 못 찾음, 첫 번째 챕터 사용");
+    }
+
     return found ?? chaptersFromJson[0];
   }, [chaptersFromJson, chapterId]);
 
   // 현재 챕터 인덱스 & 이전/다음 챕터 존재 여부
   const currentChapterIndex = useMemo(() => {
     if (!chapter) return -1;
-    return chaptersFromJson.findIndex((c) => c.chapterId === chapter.chapterId);
+    const index = chaptersFromJson.findIndex(
+      (c) => c.chapterId === chapter.chapterId
+    );
+    console.log("[PlayerScreen] currentChapterIndex:", index);
+    return index;
   }, [chaptersFromJson, chapter]);
 
   const hasPrevChapter = currentChapterIndex > 0 && currentChapterIndex !== -1;
   const hasNextChapter =
     currentChapterIndex !== -1 &&
     currentChapterIndex < chaptersFromJson.length - 1;
+
+  console.log(
+    "[PlayerScreen] hasPrevChapter:",
+    hasPrevChapter,
+    "hasNextChapter:",
+    hasNextChapter
+  );
 
   // 서버에서 현재 챕터 북마크 상태 초기 로드
   useEffect(() => {
@@ -327,7 +378,14 @@ export default function PlayerScreen() {
         sectionIndex: currentSectionIndex,
       });
     }, 300);
-  }, [navigation, material, chapterId, currentSectionIndex, ttsActions, updateProgressToBackend]);
+  }, [
+    navigation,
+    material,
+    chapterId,
+    currentSectionIndex,
+    ttsActions,
+    updateProgressToBackend,
+  ]);
 
   // 설정 변경 버튼
   const handleOpenSettings = useCallback(async () => {
