@@ -11,8 +11,9 @@ import {
   Send,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
-import './ClassroomList.css';
+import { useGlobalMemo  } from '@/contexts/MemoContext';
 import teacherAvatar from '../assets/classList/teacher.png';
+import './ClassroomList.css';
 
 import MaterialSendModal2Step from '@/component/MaterialSendModal2step';
 import schoolImg from '../assets/classList/school.png';
@@ -383,15 +384,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     }
   };
 
-  const MEMO_KEY = 'clist_memo_v1';
-  const [memo, setMemo] = useState('');
-  useEffect(() => {
-    const saved = localStorage.getItem(MEMO_KEY);
-    if (saved !== null) setMemo(saved);
-  }, []);
-  useEffect(() => {
-    localStorage.setItem(MEMO_KEY, memo);
-  }, [memo]);
+  const { memo, setMemo } = useGlobalMemo();
 
   const [materials, setMaterials] = useState<Material[]>([]);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(new Date());

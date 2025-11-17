@@ -10,6 +10,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
+import { useGlobalMemo  } from '@/contexts/MemoContext';
 import teacherAvatar from '../assets/classList/teacher.png';
 import maleImg from '../assets/classroom/male.png';
 import femaleImg from '../assets/classroom/female.png';
@@ -167,16 +168,7 @@ export default function Classroom() {
     },
   ];
 
-  /* ===== 메모(반별 로컬 저장) ===== */
-  const MEMO_KEY = `classroom_memo_${classroomId}`;
-  const [memo, setMemo] = useState('');
-  useEffect(() => {
-    const saved = localStorage.getItem(MEMO_KEY);
-    if (saved != null) setMemo(saved);
-  }, [MEMO_KEY]);
-  useEffect(() => {
-    localStorage.setItem(MEMO_KEY, memo);
-  }, [MEMO_KEY, memo]);
+  const { memo, setMemo } = useGlobalMemo();
 
   const latestUpdate = useMemo(() => {
     if (!materials.length) return '-';
