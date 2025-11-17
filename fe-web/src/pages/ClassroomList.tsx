@@ -10,13 +10,7 @@ import {
   Tag,
   Send,
 } from 'lucide-react';
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
-  ChangeEvent,
-} from 'react';
+import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
 import './ClassroomList.css';
 import teacherAvatar from '../assets/classList/teacher.png';
 
@@ -26,9 +20,9 @@ import maleImg from '../assets/classroom/male.png';
 import femaleImg from '../assets/classroom/female.png';
 
 type ClassroomData = {
-  id: string;          // classroomId
-  grade: string;       // "3학년"
-  class: string;       // "1반"
+  id: string; // classroomId
+  grade: string; // "3학년"
+  class: string; // "1반"
   studentCount: number;
   materialCount: number;
 };
@@ -126,9 +120,9 @@ type PublishedMaterialsResponse = {
 };
 
 type StudentLite = {
-  id: string;          // studentId
-  name: string;        // studentName
-  grade: string;       // "3학년 1반"
+  id: string; // studentId
+  name: string; // studentName
+  grade: string; // "3학년 1반"
   gender?: 'male' | 'female';
   avatarUrl?: string;
   avatar?: string;
@@ -573,10 +567,13 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
   const getLabelColor = (label?: string) =>
     LABEL_OPTIONS.find((l) => l.id === label)?.color || 'transparent';
 
-  const handleLabelMaterial = (materialId: string, currentLabel?: string) => {
+  const handleLabelMaterial = async (
+    materialId: string,
+    currentLabel?: string,
+  ) => {
     let picked: string | undefined = currentLabel;
 
-    Swal.fire({
+    const result = await Swal.fire({
       title: '라벨 선택',
       html: `
       <div class="ae-label-grid" id="labelGrid">
@@ -632,16 +629,70 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       },
 
       preConfirm: () => picked,
-    }).then((result) => {
-      if (!result.isConfirmed) return;
-      const value = result.value as string | undefined;
+    });
 
+    if (!result.isConfirmed) return;
+
+    const selectedLabel = result.value as string | undefined;
+
+    // ✅ API 호출
+    try {
+      void Swal.fire({
+        title: '라벨을 저장하는 중입니다',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+
+      const accessToken = localStorage.getItem('accessToken');
+      const headers: HeadersInit = {
+        accept: '*/*',
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      };
+
+      const res = await fetch(`${API_BASE}/api/documents/label`, {
+        method: 'PATCH',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          materialId: Number(materialId),
+          label: selectedLabel ? selectedLabel.toUpperCase() : 'RED', // null 대신 기본값
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(
+          text || `라벨 수정에 실패했습니다. (status: ${res.status})`,
+        );
+      }
+
+      await Swal.close();
+
+      // ✅ 성공 시 로컬 state 업데이트
       setMaterials((prev) =>
         prev.map((mat) =>
-          mat.id === materialId ? { ...mat, label: value } : mat,
+          mat.id === materialId ? { ...mat, label: selectedLabel } : mat,
         ),
       );
-    });
+
+      await Swal.fire({
+        icon: 'success',
+        title: '라벨이 저장되었습니다',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err: any) {
+      console.error('라벨 수정 실패', err);
+      await Swal.close();
+      await Swal.fire({
+        icon: 'error',
+        title: '라벨 저장에 실패했습니다',
+        text: err?.message ?? '잠시 후 다시 시도해 주세요.',
+        confirmButtonColor: '#192b55',
+      });
+    }
   };
 
   const handleSendMaterial = (materialId: string) => {
@@ -712,16 +763,15 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(
-          text ||
-            `자료 공유에 실패했습니다. (status: ${res.status})`,
+          text || `자료 공유에 실패했습니다. (status: ${res.status})`,
         );
       }
 
       await Swal.close();
 
       // 성공 메시지용 정보 구성
-      const allSelectedStudents = classroomIds.flatMap(
-        (cid) => (studentsByClassroom[cid] || []).filter((s) =>
+      const allSelectedStudents = classroomIds.flatMap((cid) =>
+        (studentsByClassroom[cid] || []).filter((s) =>
           studentIds.includes(s.id),
         ),
       );
@@ -935,9 +985,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
                     <div className="cl-stat">
                       <Users size={18} />
                       <div className="cl-stat-info">
-                        <p className="cl-stat-num">
-                          {classroom.studentCount}
-                        </p>
+                        <p className="cl-stat-num">{classroom.studentCount}</p>
                         <p className="cl-stat-text">학생</p>
                       </div>
                     </div>
@@ -945,9 +993,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
                     <div className="cl-stat">
                       <BookOpen size={18} />
                       <div className="cl-stat-info">
-                        <p className="cl-stat-num">
-                          {classroom.materialCount}
-                        </p>
+                        <p className="cl-stat-num">{classroom.materialCount}</p>
                         <p className="cl-stat-text">자료</p>
                       </div>
                     </div>
