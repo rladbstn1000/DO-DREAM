@@ -25,13 +25,11 @@ import ttsService from "../../services/ttsService";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import BackButton from "../../components/BackButton";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 import { commonStyles } from "../../styles/commonStyles";
 import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
 import type { Chapter } from "../../types/chapter";
-import {
-  fetchAllBookmarks,
-  toggleBookmark,
-} from "../../api/bookmarkApi";
+import { fetchAllBookmarks, toggleBookmark } from "../../api/bookmarkApi";
 import type { BookmarkListItem } from "../../types/api/bookmarkApiTypes";
 import { COLORS } from "../../constants/colors";
 
@@ -67,14 +65,10 @@ export default function BookmarkListScreen() {
       : null;
 
   // 전역 음성 명령 컨텍스트
-  const {
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    startVoiceCommandListening,
-    isVoiceCommandListening,
-  } = useContext(TriggerContext);
+  const { setCurrentScreenId, registerVoiceHandlers } =
+    useContext(TriggerContext);
 
-  // 서버에서 북마크 목록 로드 (이 교재 + 이 챕터)
+  // 서버에서 저장 목록 로드 (이 교재 + 이 챕터)
   const loadBookmarks = useCallback(async () => {
     try {
       const all = await fetchAllBookmarks();
@@ -82,19 +76,18 @@ export default function BookmarkListScreen() {
       const chapterIdStr = String(chapterId);
       const filtered: BookmarkViewItem[] = all
         .filter(
-          (b) =>
-            b.materialId === material.id && b.titleId === chapterIdStr
+          (b) => b.materialId === material.id && b.titleId === chapterIdStr
         )
         .map((b) => ({
           ...b,
-          sectionType: "paragraph", // 타이틀 단위 북마크라 일단 본문으로 통일
+          sectionType: "paragraph", // 타이틀 단위 저장이라 일단 본문으로 통일
         }));
 
       setBookmarks(filtered);
     } catch (error) {
-      console.error("[BookmarkListScreen] 북마크 로드 실패:", error);
+      console.error("[BookmarkListScreen] 저장 목록 로드 실패:", error);
       AccessibilityInfo.announceForAccessibility(
-        "서버에서 북마크 목록을 불러오는 데 실패했습니다."
+        "저장된 내용을 불러오지 못했습니다."
       );
     }
   }, [material.id, chapterId]);
@@ -103,13 +96,13 @@ export default function BookmarkListScreen() {
     loadBookmarks();
   }, [loadBookmarks]);
 
-  // 화면 진입 시 안내
+  // 화면 진입 시 안내 (간단 버전)
   useEffect(() => {
     const count = bookmarks.length;
     const announcement =
       count > 0
-        ? `북마크 목록 화면입니다. 저장된 북마크가 ${count}개 있습니다. 각 북마크를 탭하면 해당 챕터로 이동합니다. 화면 상단의 음성 명령 버튼을 두 번 탭한 후 '복습 시작', '복습 중지', '뒤로 가기' 같은 명령을 말씀할 수 있습니다.`
-        : "북마크 목록 화면입니다. 저장된 북마크가 없습니다. 저장된 북마크가 있을 때 복습 모드를 사용할 수 있습니다.";
+        ? `저장된 내용 화면입니다. 지금 저장된 내용이 ${count}개 있습니다. 항목을 탭하면 그 위치로 이동하고, 길게 누르면 내용을 들을 수 있습니다.`
+        : "저장된 내용 화면입니다. 아직 저장한 내용이 없습니다. 학습 중 중요한 부분에서 저장 버튼을 누르면 이곳에 모입니다.";
 
     const timer = setTimeout(() => {
       AccessibilityInfo.announceForAccessibility(announcement);
@@ -131,11 +124,11 @@ export default function BookmarkListScreen() {
     if (isReviewMode) {
       ttsService.stop();
     }
-    AccessibilityInfo.announceForAccessibility("이전 화면으로 돌아갑니다");
+    AccessibilityInfo.announceForAccessibility("이전 화면으로 이동합니다.");
     navigation.goBack();
   }, [navigation, isReviewMode]);
 
-  // 단일 북마크 재생 (서버 contents 사용)
+  // 단일 저장된 내용 재생 (서버 contents 사용)
   const handlePlayBookmark = async (bookmark: BookmarkViewItem) => {
     try {
       await ttsService.initialize(
@@ -155,13 +148,13 @@ export default function BookmarkListScreen() {
           },
           onDone: () => {
             setIsPlaying(false);
-            AccessibilityInfo.announceForAccessibility("북마크 재생 완료");
+            AccessibilityInfo.announceForAccessibility("재생이 끝났습니다.");
           },
           onError: (error) => {
             console.error("TTS Error:", error);
             setIsPlaying(false);
             AccessibilityInfo.announceForAccessibility(
-              "음성 재생 오류가 발생했습니다"
+              "음성 재생 중 오류가 발생했습니다."
             );
           },
         }
@@ -169,19 +162,21 @@ export default function BookmarkListScreen() {
 
       await ttsService.play();
       AccessibilityInfo.announceForAccessibility(
-        `북마크 재생 시작. ${bookmark.title}`
+        `저장된 내용을 재생합니다. 제목: ${bookmark.title}`
       );
       Haptics.selectionAsync();
     } catch (error) {
       console.error("[Bookmark] Play error:", error);
-      AccessibilityInfo.announceForAccessibility("북마크 재생에 실패했습니다");
+      AccessibilityInfo.announceForAccessibility(
+        "저장된 내용을 재생할 수 없습니다."
+      );
     }
   };
 
   // 복습 모드 시작 (서버 contents를 순서대로 재생)
   const handleStartReviewMode = useCallback(async () => {
     if (bookmarks.length === 0) {
-      AccessibilityInfo.announceForAccessibility("북마크가 없습니다");
+      AccessibilityInfo.announceForAccessibility("저장된 내용이 없습니다.");
       return;
     }
 
@@ -212,14 +207,16 @@ export default function BookmarkListScreen() {
         onSectionChange: (index) => {
           setCurrentReviewIndex(index);
           AccessibilityInfo.announceForAccessibility(
-            `${index + 1}번째 북마크. 총 ${bookmarks.length}개 중`
+            `${index + 1}번째 내용입니다. 총 ${bookmarks.length}개 중입니다.`
           );
         },
         onDone: () => {
           setIsPlaying(false);
           setIsReviewMode(false);
           setCurrentReviewIndex(0);
-          AccessibilityInfo.announceForAccessibility("모든 북마크 복습 완료");
+          AccessibilityInfo.announceForAccessibility(
+            "저장된 내용을 모두 들었습니다."
+          );
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         },
         onError: (error) => {
@@ -227,21 +224,21 @@ export default function BookmarkListScreen() {
           setIsPlaying(false);
           setIsReviewMode(false);
           AccessibilityInfo.announceForAccessibility(
-            "음성 재생 오류가 발생했습니다"
+            "음성 재생 중 오류가 발생했습니다."
           );
         },
       });
 
       await ttsService.play();
       AccessibilityInfo.announceForAccessibility(
-        `북마크 복습 모드 시작. 총 ${bookmarks.length}개의 북마크를 각각 2회씩 반복합니다`
+        "복습 모드를 시작합니다. 저장된 내용을 순서대로 두 번씩 재생합니다."
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error("[ReviewMode] Start error:", error);
       setIsReviewMode(false);
       AccessibilityInfo.announceForAccessibility(
-        "복습 모드 시작에 실패했습니다"
+        "복습 모드를 시작할 수 없습니다."
       );
     }
   }, [bookmarks]);
@@ -252,21 +249,21 @@ export default function BookmarkListScreen() {
     setIsPlaying(false);
     setIsReviewMode(false);
     setCurrentReviewIndex(0);
-    AccessibilityInfo.announceForAccessibility("복습 모드를 중지했습니다");
+    AccessibilityInfo.announceForAccessibility("복습 모드를 중지했습니다.");
     Haptics.selectionAsync();
   }, []);
 
-  // 🗑 북마크 삭제 (서버 토글 사용)
+  // 저장 삭제 (서버 토글 사용)
   const handleDeleteBookmark = (bookmark: BookmarkViewItem) => {
     Alert.alert(
-      "북마크 삭제",
-      `${bookmark.title} 북마크를 삭제하시겠습니까?`,
+      "저장 삭제",
+      `${bookmark.title} 항목을 삭제하시겠습니까?`,
       [
         {
           text: "취소",
           style: "cancel",
           onPress: () =>
-            AccessibilityInfo.announceForAccessibility("취소되었습니다"),
+            AccessibilityInfo.announceForAccessibility("취소했습니다."),
         },
         {
           text: "삭제",
@@ -283,7 +280,7 @@ export default function BookmarkListScreen() {
               );
 
               AccessibilityInfo.announceForAccessibility(
-                "북마크가 삭제되었습니다"
+                "저장된 내용을 삭제했습니다."
               );
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Success
@@ -291,7 +288,7 @@ export default function BookmarkListScreen() {
             } catch (error) {
               console.error("[Bookmark] 삭제 실패:", error);
               AccessibilityInfo.announceForAccessibility(
-                "북마크 삭제에 실패했습니다"
+                "삭제에 실패했습니다."
               );
             }
           },
@@ -300,11 +297,11 @@ export default function BookmarkListScreen() {
     );
   };
 
-  // 북마크를 눌러 해당 챕터로 이동 (챕터 맨 앞 섹션으로 이동)
+  // 저장된 항목을 눌러 해당 챕터로 이동 (챕터 맨 앞 섹션으로 이동)
   const handleGoToSection = (bookmark: BookmarkViewItem) => {
     if (isReviewMode) {
       AccessibilityInfo.announceForAccessibility(
-        "복습 모드를 먼저 중지해주세요"
+        "복습 모드를 먼저 중지해 주세요."
       );
       return;
     }
@@ -370,8 +367,8 @@ export default function BookmarkListScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 헤더 */}
-      <View style={commonStyles.headerContainer}>
+      {/* 헤더: 뒤로 / 제목 / 음성 명령 */}
+      <View style={[commonStyles.headerContainer, styles.header]}>
         <BackButton
           onPress={handleGoBack}
           style={commonStyles.headerBackButton}
@@ -383,29 +380,16 @@ export default function BookmarkListScreen() {
             accessible={true}
             accessibilityRole="header"
           >
-            북마크
+            저장된 내용
           </Text>
           <Text style={styles.countText}>{bookmarks.length}개</Text>
         </View>
 
-        {/* 오른쪽: 음성 명령 버튼 */}
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={[
-              commonStyles.headerVoiceButton,
-              styles.voiceCommandButton,
-              isVoiceCommandListening && styles.voiceCommandButtonActive,
-            ]}
-            onPress={startVoiceCommandListening}
-            accessible={true}
-            accessibilityLabel="음성 명령"
-            accessibilityRole="button"
-            accessibilityHint="두 번 탭한 후 복습 시작, 복습 중지, 뒤로 가기와 같은 명령을 말씀하세요"
-          >
-            <Text style={styles.voiceCommandButtonText}>
-              {isVoiceCommandListening ? "듣는 중…" : "음성 명령"}
-            </Text>
-          </TouchableOpacity>
+          <VoiceCommandButton
+            style={[commonStyles.headerVoiceButton]}
+            accessibilityHint="두 번 탭한 뒤 복습 시작, 복습 중지, 뒤로 가기라고 말해 보세요."
+          />
         </View>
       </View>
 
@@ -417,7 +401,7 @@ export default function BookmarkListScreen() {
         </Text>
       </View>
 
-      {/* 북마크 목록 */}
+      {/* 저장 목록 */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.listArea}
@@ -432,14 +416,14 @@ export default function BookmarkListScreen() {
               accessible={true}
               accessibilityRole="text"
             >
-              북마크가 없습니다
+              저장한 내용이 없습니다
             </Text>
             <Text
               style={styles.emptyHint}
               accessible={true}
               accessibilityRole="text"
             >
-              학습 중 중요한 부분을{"\n"}북마크로 저장해보세요
+              학습 중 중요한 부분에서{"\n"}저장 버튼을 눌러 보세요
             </Text>
           </View>
         ) : (
@@ -453,19 +437,19 @@ export default function BookmarkListScreen() {
                   styles.activeBookmarkCard,
               ]}
             >
-              {/* 북마크 내용 (탭: 챕터로 이동, 길게: 재생) */}
+              {/* 저장된 내용 (탭: 챕터로 이동, 길게: 재생) */}
               <TouchableOpacity
                 style={styles.bookmarkContent}
                 onPress={() => handleGoToSection(bookmark)}
                 onLongPress={() => handlePlayBookmark(bookmark)}
                 accessible={true}
-                accessibilityLabel={`${index + 1}번째 북마크. ${
-                  getSectionTypeLabel(bookmark.sectionType)
-                }. ${bookmark.title}. ${
-                  bookmark.contents
-                }. ${formatDate(bookmark.createdAt)}에 저장.`}
+                accessibilityLabel={`${index + 1}번째 저장된 내용. ${getSectionTypeLabel(
+                  bookmark.sectionType
+                )}. 제목 ${bookmark.title}. 저장 시간 ${formatDate(
+                  bookmark.createdAt
+                )}.`}
                 accessibilityRole="button"
-                accessibilityHint="탭하면 해당 챕터로 이동하고, 길게 누르면 북마크 내용을 재생합니다"
+                accessibilityHint="탭하면 그 위치로 이동하고, 길게 누르면 내용을 들을 수 있습니다."
               >
                 <View style={styles.bookmarkHeader}>
                   <Text style={styles.sectionNumber}>#{index + 1}</Text>
@@ -489,9 +473,9 @@ export default function BookmarkListScreen() {
                 style={styles.deleteButton}
                 onPress={() => handleDeleteBookmark(bookmark)}
                 accessible={true}
-                accessibilityLabel="북마크 삭제"
+                accessibilityLabel="저장된 내용 삭제"
                 accessibilityRole="button"
-                accessibilityHint="이 북마크를 삭제합니다"
+                accessibilityHint="이 저장된 내용을 삭제합니다."
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Text style={styles.deleteButtonText}>🗑️</Text>
@@ -513,7 +497,7 @@ export default function BookmarkListScreen() {
                   }`}
                 </Text>
                 <Text style={styles.reviewSubText}>
-                  각 북마크를 2회씩 반복합니다
+                  각 저장된 내용을 2회씩 반복합니다
                 </Text>
               </View>
               <TouchableOpacity
@@ -522,7 +506,7 @@ export default function BookmarkListScreen() {
                 accessible={true}
                 accessibilityLabel="복습 모드 중지"
                 accessibilityRole="button"
-                accessibilityHint="북마크 복습을 중지합니다"
+                accessibilityHint="복습을 멈춥니다."
               >
                 <Text style={styles.stopButtonText}>⏹ 중지</Text>
               </TouchableOpacity>
@@ -532,13 +516,13 @@ export default function BookmarkListScreen() {
               style={styles.reviewButton}
               onPress={handleStartReviewMode}
               accessible={true}
-              accessibilityLabel="북마크 복습 모드 시작"
+              accessibilityLabel="복습 모드 시작"
               accessibilityRole="button"
-              accessibilityHint="저장된 모든 북마크를 연속으로 재생합니다"
+              accessibilityHint="저장된 내용을 순서대로 두 번씩 들을 수 있습니다."
             >
-              <Text style={styles.reviewButtonText}>🔄 북마크 복습 모드</Text>
+              <Text style={styles.reviewButtonText}>🔄 복습 모드</Text>
               <Text style={styles.reviewButtonSubtext}>
-                모든 북마크를 각 2회씩 반복 재생
+                저장된 내용을 각 2회씩 반복 재생
               </Text>
             </TouchableOpacity>
           )}
@@ -553,6 +537,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background.default,
   },
+  header: {
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.border.light,
+  },
   headerTitle: {
     alignItems: "center",
   },
@@ -566,32 +554,11 @@ const styles = StyleSheet.create({
     color: COLORS.text.secondary,
     marginTop: 4,
   },
-  // 🔊 헤더 오른쪽: 음성 명령 버튼 영역
+  // 헤더 오른쪽: 음성 명령 버튼 영역
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
   },
-  voiceCommandButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.secondary.main,
-    backgroundColor: COLORS.secondary.lightest,
-    minHeight: 44,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  voiceCommandButtonActive: {
-    borderColor: COLORS.status.error,
-    backgroundColor: COLORS.status.errorLight,
-  },
-  voiceCommandButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.secondary.dark,
-  },
-
   chapterInfo: {
     paddingHorizontal: 20,
     paddingVertical: 16,
