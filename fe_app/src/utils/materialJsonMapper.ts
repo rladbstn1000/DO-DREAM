@@ -162,10 +162,8 @@ function buildChapterFromJson(
   const materialIdStr = String(materialId);
 
   // JSON의 id가 "1", "2" 처럼 들어오므로 숫자로 파싱, 실패하면 index 기반
-  const chapterNumber =
-    Number(chapterJson.id) && !Number.isNaN(Number(chapterJson.id))
-      ? Number(chapterJson.id)
-      : index + 1;
+  const parsedId = Number(chapterJson.id);
+  const chapterNumber = !isNaN(parsedId) ? parsedId : index + 1;
 
   console.log(`[materialJsonMapper] 챕터 ${chapterNumber} 빌드 시작: ${chapterJson.title}`);
 
