@@ -334,10 +334,18 @@ export default function LibraryScreen() {
 
       const json = await fetchMaterialJson(material.id);
 
+      // 백엔드에서 조회한 진행률 데이터를 사용하여 hasProgress 업데이트
+      const progressData = progressDataMap.get(material.id);
+      const hasActualProgress = progressData != null &&
+        (progressData.completedSections > 0 || progressData.overallProgressPercentage > 0);
+
       const enrichedMaterial: Material = {
         ...material,
         json,
+        hasProgress: hasActualProgress, // 실제 진행률 데이터 기반으로 설정
       };
+
+      console.log(`[LibraryScreen] Material ${material.id} hasProgress:`, hasActualProgress);
 
       AccessibilityInfo.announceForAccessibility(
         `${material.title} 교재 내용을 불러왔습니다. 재생 방법을 선택하는 화면으로 이동합니다.`

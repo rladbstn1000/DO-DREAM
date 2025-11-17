@@ -111,14 +111,35 @@ export default function PlaybackChoiceScreen() {
       return;
     }
 
+    // 진행률 데이터가 있으면 현재 챕터 번호 사용, 없으면 첫 챕터 사용
+    let targetChapterId = firstChapter.chapterId;
+
+    if (progressData && progressData.currentChapterNumber) {
+      // currentChapterNumber를 사용하여 해당 챕터 찾기
+      const currentChapter = chapters.find(
+        (ch) => ch.chapterNumber === progressData.currentChapterNumber
+      );
+
+      if (currentChapter) {
+        targetChapterId = currentChapter.chapterId;
+        console.log(
+          `[PlaybackChoiceScreen] 진행률 기반 챕터 ${targetChapterId} 선택 (챕터 번호: ${progressData.currentChapterNumber})`
+        );
+      } else {
+        console.warn(
+          `[PlaybackChoiceScreen] 챕터 번호 ${progressData.currentChapterNumber}를 찾지 못함, 첫 챕터 사용`
+        );
+      }
+    }
+
     AccessibilityInfo.announceForAccessibility("이어서 듣기 시작합니다.");
 
     navigation.navigate("Player", {
       material,
-      chapterId: firstChapter.chapterId,
+      chapterId: targetChapterId,
       fromStart: false,
     });
-  }, [firstChapter, material, navigation]);
+  }, [firstChapter, material, navigation, progressData, chapters]);
 
   const handleBookmarkPress = useCallback(() => {
     if (!firstChapter) {
