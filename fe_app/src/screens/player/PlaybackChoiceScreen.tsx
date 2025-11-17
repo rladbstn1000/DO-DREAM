@@ -3,6 +3,7 @@ import React, {
   useContext,
   useCallback,
   useMemo,
+  useState,
 } from "react";
 import {
   View,
@@ -25,11 +26,20 @@ import { commonStyles } from "../../styles/commonStyles";
 import ChoiceButton from "../../components/ChoiceButton";
 import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
 import type { Chapter } from "../../types/chapter";
+import { fetchMaterialProgress } from "../../api/progressApi";
+import type { MaterialProgress } from "../../types/api/progressApiTypes";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
   const route = useRoute<PlaybackChoiceScreenRouteProp>();
   const { material } = route.params;
+
+  // 백엔드에서 조회한 진행률 데이터
+  const [progressData, setProgressData] = useState<MaterialProgress | null>(null);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(true);
+
+  // 챕터별 진행률 표시를 위한 현재 인덱스
+  const [currentProgressChapterIndex, setCurrentProgressChapterIndex] = useState(0);
 
   // JSON → Chapter[] 변환
   const chapters: Chapter[] = useMemo(() => {
@@ -50,6 +60,26 @@ export default function PlaybackChoiceScreen() {
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
+
+  // 화면 진입 시 백엔드에서 진행률 조회
+  useEffect(() => {
+    const loadProgress = async () => {
+      try {
+        setIsLoadingProgress(true);
+        const response = await fetchMaterialProgress(material.id);
+        console.log("[PlaybackChoiceScreen] 진행률 조회 성공:", response.data);
+        setProgressData(response.data);
+      } catch (error) {
+        console.error("[PlaybackChoiceScreen] 진행률 조회 실패:", error);
+        // 에러가 발생해도 화면은 정상적으로 표시
+        setProgressData(null);
+      } finally {
+        setIsLoadingProgress(false);
+      }
+    };
+
+    loadProgress();
+  }, [material.id]);
 
   useEffect(() => {
     const announcement = `${material.title}, ${material.currentChapter}챕터. 이어듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 중 선택하세요. 상단의 음성 명령 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 풀기, 뒤로 가기처럼 말할 수 있습니다.`;
@@ -122,6 +152,21 @@ export default function PlaybackChoiceScreen() {
   const handleGoBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+
+  // 챕터 진행률 이전/다음 네비게이션
+  const handlePrevChapterProgress = useCallback(() => {
+    if (!progressData?.chapterProgress) return;
+    setCurrentProgressChapterIndex((prev) =>
+      prev > 0 ? prev - 1 : progressData.chapterProgress.length - 1
+    );
+  }, [progressData]);
+
+  const handleNextChapterProgress = useCallback(() => {
+    if (!progressData?.chapterProgress) return;
+    setCurrentProgressChapterIndex((prev) =>
+      prev < progressData.chapterProgress.length - 1 ? prev + 1 : 0
+    );
+  }, [progressData]);
 
   // 🎙 PlaybackChoice 전용 음성 명령(rawText) 처리
   const handlePlaybackVoiceRaw = useCallback(
@@ -268,6 +313,92 @@ export default function PlaybackChoiceScreen() {
         <Text style={styles.chapterText}>{material.currentChapter}챕터</Text>
       </View>
 
+      {/* 진행률 표시 */}
+      {!isLoadingProgress && progressData && (
+        <View style={styles.progressSection}>
+          {/* 전체 진행률 */}
+          <View style={styles.overallProgressContainer}>
+            <Text style={styles.progressTitle}>전체 진행률</Text>
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBarBackground}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${progressData.overallProgressPercentage}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressPercentage}>
+                {progressData.overallProgressPercentage.toFixed(1)}%
+              </Text>
+            </View>
+            <Text style={styles.sectionCountText}>
+              완료: {progressData.completedSections} / {progressData.totalSections} 섹션
+            </Text>
+          </View>
+
+          {/* 챕터별 진행률 */}
+          {progressData.chapterProgress && progressData.chapterProgress.length > 0 && (
+            <View style={styles.chapterProgressContainer}>
+              <Text style={styles.progressTitle}>챕터별 진행률</Text>
+
+              <View style={styles.chapterNavigationContainer}>
+                <TouchableOpacity
+                  onPress={handlePrevChapterProgress}
+                  style={styles.navButton}
+                  accessibilityLabel="이전 챕터 진행률"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.navButtonText}>◀</Text>
+                </TouchableOpacity>
+
+                <View style={styles.chapterProgressInfo}>
+                  {progressData.chapterProgress[currentProgressChapterIndex] && (
+                    <>
+                      <Text style={styles.chapterTitle}>
+                        {progressData.chapterProgress[currentProgressChapterIndex].chapterTitle}
+                      </Text>
+                      <View style={styles.progressBarContainer}>
+                        <View style={styles.progressBarBackground}>
+                          <View
+                            style={[
+                              styles.progressBarFill,
+                              {
+                                width: `${progressData.chapterProgress[currentProgressChapterIndex].progressPercentage}%`,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.progressPercentage}>
+                          {progressData.chapterProgress[currentProgressChapterIndex].progressPercentage.toFixed(1)}%
+                        </Text>
+                      </View>
+                      <Text style={styles.chapterSectionText}>
+                        {progressData.chapterProgress[currentProgressChapterIndex].completedSections} /{" "}
+                        {progressData.chapterProgress[currentProgressChapterIndex].totalSections} 섹션 완료
+                      </Text>
+                    </>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleNextChapterProgress}
+                  style={styles.navButton}
+                  accessibilityLabel="다음 챕터 진행률"
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.navButtonText}>▶</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.chapterIndexText}>
+                {currentProgressChapterIndex + 1} / {progressData.chapterProgress.length}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* 선택 버튼들 */}
       <View style={styles.buttonSection}>
         {material.hasProgress && (
@@ -324,7 +455,7 @@ const styles = StyleSheet.create({
     marginHorizontal: -24, // 부모의 paddingHorizontal 상쇄
   },
   infoSection: {
-    marginBottom: 40,
+    marginBottom: 24,
     alignItems: "center",
   },
   subjectText: {
@@ -336,6 +467,96 @@ const styles = StyleSheet.create({
   chapterText: {
     fontSize: 20,
     color: "#666666",
+  },
+  progressSection: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  overallProgressContainer: {
+    marginBottom: 20,
+  },
+  progressTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333333",
+    marginBottom: 12,
+  },
+  progressBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  progressBarBackground: {
+    flex: 1,
+    height: 24,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: "#4CAF50",
+    borderRadius: 12,
+  },
+  progressPercentage: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333333",
+    minWidth: 55,
+    textAlign: "right",
+  },
+  sectionCountText: {
+    fontSize: 14,
+    color: "#666666",
+    marginTop: 4,
+  },
+  chapterProgressContainer: {
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  chapterNavigationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  navButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#cccccc",
+  },
+  navButtonText: {
+    fontSize: 18,
+    color: "#333333",
+  },
+  chapterProgressInfo: {
+    flex: 1,
+  },
+  chapterTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333333",
+    marginBottom: 8,
+  },
+  chapterSectionText: {
+    fontSize: 14,
+    color: "#666666",
+    marginTop: 4,
+  },
+  chapterIndexText: {
+    fontSize: 14,
+    color: "#999999",
+    textAlign: "center",
+    marginTop: 8,
   },
   buttonSection: {
     gap: 16,
