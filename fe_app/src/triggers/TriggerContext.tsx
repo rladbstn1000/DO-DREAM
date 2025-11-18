@@ -43,6 +43,7 @@ type Ctx = {
 
   currentScreenId: string;
   setCurrentScreenId: (id: string) => void;
+  getCurrentScreenId: () => string;
 
   registerVoiceHandlers: (
     screenId: string,
@@ -68,6 +69,7 @@ export const TriggerContext = createContext<Ctx>({
 
   currentScreenId: "",
   setCurrentScreenId: () => {},
+  getCurrentScreenId: () => "",
 
   registerVoiceHandlers: () => {},
 
@@ -158,8 +160,13 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
   const getTTSPlayRef = useCallback(() => ttsPlayRef.current, []);
   const getTTSPauseRef = useCallback(() => ttsPauseRef.current, []);
 
-  // (4) 현재 화면 ID
-  const [currentScreenId, setCurrentScreenId] = useState<string>("");
+  // (4) 현재 화면 ID - ref로 변경하여 항상 최신 값 참조
+  const currentScreenIdRef = useRef<string>("");
+  const setCurrentScreenId = useCallback((id: string) => {
+    console.log("[TriggerContext] setCurrentScreenId:", id);
+    currentScreenIdRef.current = id;
+  }, []);
+  const getCurrentScreenId = useCallback(() => currentScreenIdRef.current, []);
 
   // (5) VoiceCommand 핸들러
   const voiceHandlersRef = useRef<Record<string, VoiceCommandHandlers>>({});
@@ -220,8 +227,9 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       asrService.stop().catch(() => {});
       cleanupAsr();
 
+      const screenId = currentScreenIdRef.current;
       const handlers =
-        voiceHandlersRef.current[currentScreenId] ||
+        voiceHandlersRef.current[screenId] ||
         ({} as VoiceCommandHandlers);
 
       const key = parseVoiceCommand(text);
@@ -232,7 +240,7 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
           "[VoiceCommands] 명령 실행:",
           key,
           "screen=",
-          currentScreenId,
+          screenId,
           "text=",
           text
         );
@@ -260,7 +268,7 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
         "[VoiceCommands] 처리 불가:",
         text,
         "screen=",
-        currentScreenId,
+        screenId,
         "parsed=",
         key
       );
@@ -298,7 +306,6 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
     isVoiceCommandListening,
     clearVoiceTimeout,
     cleanupAsr,
-    currentScreenId,
   ]);
 
   // Provider 언마운트 시 정리
@@ -323,8 +330,9 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       getTTSPlayRef,
       getTTSPauseRef,
 
-      currentScreenId,
+      currentScreenId: currentScreenIdRef.current,
       setCurrentScreenId,
+      getCurrentScreenId,
 
       registerVoiceHandlers,
 
@@ -340,7 +348,8 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       registerTTSPause,
       getTTSPlayRef,
       getTTSPauseRef,
-      currentScreenId,
+      setCurrentScreenId,
+      getCurrentScreenId,
       registerVoiceHandlers,
       startVoiceCommandListening,
       stopVoiceCommandListening,

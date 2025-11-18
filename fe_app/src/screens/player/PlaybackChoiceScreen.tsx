@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import {
   PlaybackChoiceScreenNavigationProp,
   PlaybackChoiceScreenRouteProp,
@@ -377,29 +377,33 @@ export default function PlaybackChoiceScreen() {
     ]
   );
 
-  // 🔧 TriggerContext와 음성 명령 핸들러 등록
-  useEffect(() => {
-    setCurrentScreenId("PlaybackChoice");
+  // 🔧 TriggerContext와 음성 명령 핸들러 등록 - useFocusEffect로 변경하여 화면 포커스 시 즉시 등록
+  useFocusEffect(
+    useCallback(() => {
+      console.log("[PlaybackChoiceScreen] 화면 포커스 - 핸들러 등록");
+      setCurrentScreenId("PlaybackChoice");
 
-    registerVoiceHandlers("PlaybackChoice", {
-      goBack: handleGoBack,
-      openSettings: handleSettingsPress,
-      openQuiz: showQuizButton ? handleQuizPress : undefined,
-      rawText: handlePlaybackVoiceRaw,
-    });
+      registerVoiceHandlers("PlaybackChoice", {
+        goBack: handleGoBack,
+        openSettings: handleSettingsPress,
+        openQuiz: showQuizButton ? handleQuizPress : undefined,
+        rawText: handlePlaybackVoiceRaw,
+      });
 
-    return () => {
-      registerVoiceHandlers("PlaybackChoice", {});
-    };
-  }, [
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    handleGoBack,
-    handleSettingsPress,
-    handleQuizPress,
-    handlePlaybackVoiceRaw,
-    showQuizButton,
-  ]);
+      return () => {
+        console.log("[PlaybackChoiceScreen] 화면 블러 - 핸들러 해제");
+        registerVoiceHandlers("PlaybackChoice", {});
+      };
+    }, [
+      setCurrentScreenId,
+      registerVoiceHandlers,
+      handleGoBack,
+      handleSettingsPress,
+      handleQuizPress,
+      handlePlaybackVoiceRaw,
+      showQuizButton,
+    ])
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
