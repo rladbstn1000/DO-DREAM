@@ -197,6 +197,7 @@ type ClassStudentsDto = {
     studentId: number;
     studentName: string;
     studentNumber: string;
+    gender?: 'MALE' | 'FEMALE';
   }[];
 };
 
@@ -782,12 +783,26 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
         const map: Record<string, StudentLite[]> = {};
         studentsJson.forEach((cls) => {
-          map[String(cls.classroomId)] =
-            cls.students?.map((s) => ({
-              id: String(s.studentId),
-              name: s.studentName,
-              grade: `${cls.gradeLevel}학년 ${cls.classNumber}반`,
-            })) ?? [];
+          const students =
+            cls.students?.map((s) => {
+              // ✅ 이 console.log가 실제로 있나요?
+              console.log(
+                `🔍 API 학생 데이터: ${s.studentName} | gender: ${s.gender}`,
+              );
+
+              return {
+                id: String(s.studentId),
+                name: s.studentName,
+                grade: `${cls.gradeLevel}학년 ${cls.classNumber}반`,
+                gender: s.gender
+                  ? (s.gender.toLowerCase() as 'male' | 'female')
+                  : undefined,
+              };
+            }) ?? [];
+
+          console.log(`📚 변환된 학생 데이터:`, students);
+
+          map[String(cls.classroomId)] = students;
         });
 
         setStudentsByClassroom(map);

@@ -6,7 +6,7 @@ type StudentLite = {
   id: string;
   name: string;
   grade: string;
-  gender?: 'male' | 'female';
+  gender?: 'male' | 'female'
   avatarUrl?: string;
   avatar?: string;
 };
@@ -73,8 +73,7 @@ export default function MaterialSendModal2Step({
     if (!q) return students;
     return students.filter(
       (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.grade.toLowerCase().includes(q),
+        s.name.toLowerCase().includes(q) || s.grade.toLowerCase().includes(q),
     );
   }, [students, query]);
 
@@ -91,8 +90,7 @@ export default function MaterialSendModal2Step({
   };
 
   const toggleByKey =
-    (fn: (id: string) => void, id: string) =>
-    (e: React.KeyboardEvent) => {
+    (fn: (id: string) => void, id: string) => (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         fn(id);
@@ -148,11 +146,27 @@ export default function MaterialSendModal2Step({
     }
   };
 
-  // 학생 아바타 이미지 결정
   const getStudentImage = (s: StudentLite): string | undefined => {
-    if (s.avatarUrl) return s.avatarUrl;
-    if (s.gender === 'male') return maleImage;
-    if (s.gender === 'female') return femaleImage;
+    console.log('🔍 getStudentImage 호출:', s.name, {
+      gender: s.gender,
+      avatarUrl: s.avatarUrl,
+      maleImage: maleImage?.substring(0, 50),
+      femaleImage: femaleImage?.substring(0, 50),
+    });
+
+    if (s.avatarUrl) {
+      console.log('  ✅ avatarUrl 반환');
+      return s.avatarUrl;
+    }
+    if (s.gender === 'male') {
+      console.log('  ✅ maleImage 반환');
+      return maleImage;
+    }
+    if (s.gender === 'female') {
+      console.log('  ✅ femaleImage 반환');
+      return femaleImage;
+    }
+    console.log('  ❌ undefined 반환');
     return undefined;
   };
 
@@ -162,11 +176,7 @@ export default function MaterialSendModal2Step({
         {/* Header */}
         <div className="msm-header">
           <h2>{headerTitle}</h2>
-          <button
-            className="msm-close-btn"
-            onClick={onClose}
-            aria-label="닫기"
-          >
+          <button className="msm-close-btn" onClick={onClose} aria-label="닫기">
             <X size={24} />
           </button>
         </div>
@@ -206,16 +216,12 @@ export default function MaterialSendModal2Step({
           {/* Select All */}
           <button
             type="button"
-            className={`msm-select-toggle ${
-              selectAll ? 'is-on' : ''
-            }`}
+            className={`msm-select-toggle ${selectAll ? 'is-on' : ''}`}
             onClick={toggleSelectAll}
             aria-pressed={selectAll}
           >
             {selectToggleText}
-            {selectAll && (
-              <Check className="msm-select-check" size={16} />
-            )}
+            {selectAll && <Check className="msm-select-check" size={16} />}
           </button>
 
           {/* List */}

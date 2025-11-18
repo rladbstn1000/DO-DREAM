@@ -86,6 +86,7 @@ type ClassStudentsDto = {
     studentId: number;
     studentName: string;
     studentNumber: string;
+    gender?: 'MALE' | 'FEMALE';
   }[];
 };
 
