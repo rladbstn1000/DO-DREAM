@@ -628,13 +628,13 @@ export default function QuestionScreen() {
             style={commonStyles.headerBackButton}
           />
 
-          <Text
+          {/* <Text
             style={styles.title}
             accessibilityRole="header"
             accessibilityLabel="두드림 AI 질문 화면"
           >
             두드림 AI
-          </Text>
+          </Text> */}
 
           <View style={styles.headerRight}>
             <TouchableOpacity
@@ -826,9 +826,13 @@ const styles = StyleSheet.create({
     minWidth: 60,
     justifyContent: "center",
     alignItems: "center",
+    borderColor: COLORS.status.error,
+    backgroundColor: COLORS.status.errorLight,
+    borderWidth: 3,
+    borderRadius: 12,
   },
   clearTxt: {
-    fontSize: 16,
+    fontSize: 18,
     color: COLORS.status.error,
     fontWeight: "700",
   },
