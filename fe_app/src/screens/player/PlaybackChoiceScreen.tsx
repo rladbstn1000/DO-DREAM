@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
+import SettingsButton from "../../components/SettingsButton";
 import { commonStyles } from "../../styles/commonStyles";
 import ChoiceButton from "../../components/ChoiceButton";
 import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
@@ -413,17 +414,25 @@ export default function PlaybackChoiceScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      {/* 상단: 뒤로가기 + 음성 명령 버튼 */}
+      {/* 상단: 뒤로가기 + 설정 + 음성 명령 버튼 */}
       <View style={[commonStyles.headerContainer, styles.header]}>
         <BackButton
           onPress={handleGoBack}
           style={commonStyles.headerBackButton}
         />
 
-        <VoiceCommandButton
-          style={commonStyles.headerVoiceButton}
-          accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요"
-        />
+        <View style={styles.headerRight}>
+          <SettingsButton
+            onPress={handleSettingsPress}
+            showLabel={true}
+            accessibilityHint="재생 속도 및 화면 설정을 변경합니다."
+          />
+
+          <VoiceCommandButton
+            style={commonStyles.headerVoiceButton}
+            accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요"
+          />
+        </View>
       </View>
 
       {/* 스크롤 가능한 콘텐츠 영역 */}
@@ -561,13 +570,6 @@ export default function PlaybackChoiceScreen() {
             accessibilityLabel="질문 목록"
           />
 
-          <ChoiceButton
-            onPress={handleSettingsPress}
-            label="설정"
-            subLabel="재생 설정 변경"
-            accessibilityLabel="설정, 재생 설정 변경"
-          />
-
           {showQuizButton && (
             <ChoiceButton
               onPress={handleQuizPress}
@@ -589,6 +591,12 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
+    justifyContent: "space-between",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    // gap: 8,
   },
   scrollView: {
     flex: 1,

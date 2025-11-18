@@ -22,6 +22,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import SettingsButton from "../../components/SettingsButton";
 import { fetchSharedMaterials, fetchMaterialJson } from "../../api/materialApi";
 import { SharedMaterialSummary } from "../../types/api/materialApiTypes";
 import { fetchAllProgress } from "../../api/progressApi";
@@ -536,17 +537,11 @@ export default function LibraryScreen() {
 
         {/* 오른쪽: 음성 명령 + 설정 버튼 */}
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.settingsButton}
+          <SettingsButton
             onPress={handleSettingsPress}
-            accessible={true}
-            accessibilityLabel="사용자 설정"
-            accessibilityRole="button"
-            accessibilityHint="TTS 속도 및 화면 설정을 변경합니다."
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.settingsIcon}>⚙️ 설정</Text>
-          </TouchableOpacity>
+            showLabel={true}
+            accessibilityHint="재생 속도 및 화면 설정을 변경합니다."
+          />
 
           <VoiceCommandButton accessibilityHint="두 번 탭한 후 교재 이름을 말씀하세요. 예: 문학, 사회문화, 생물 1, 영어 1" />
         </View>
@@ -608,24 +603,6 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  settingsButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    minWidth: 44,
-    minHeight: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.primary.lightest,
-    borderColor: COLORS.primary.main,
-    borderRadius: 12,
-    borderWidth: 3,
-    marginHorizontal: 4,
-  },
-  settingsIcon: {
-    fontSize: 18,
-    color: COLORS.primary.main,
-    fontWeight: "bold",
   },
   listContent: {
     paddingHorizontal: 24,
