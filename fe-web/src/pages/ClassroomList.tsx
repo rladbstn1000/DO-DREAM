@@ -52,6 +52,41 @@ const LABEL_OPTIONS = [
   { id: 'gray', color: '#8b8f97ff', name: '회색' },
 ];
 
+// ===== 자료 정렬 함수 추가 (컴포넌트 외부) =====
+const sortMaterialsByLabel = (materials: Material[]): Material[] => {
+  const labelOrder = LABEL_OPTIONS.map((opt) => opt.id);
+
+  return [...materials].sort((a, b) => {
+    // 둘 다 라벨이 없으면 날짜 순
+    if (!a.label && !b.label) {
+      const parseDate = (d: string) => {
+        const [y, m, day] = d.split('.').map((v) => parseInt(v, 10));
+        return new Date(y, m - 1, day).getTime();
+      };
+      return parseDate(b.uploadDate) - parseDate(a.uploadDate);
+    }
+    // a만 라벨이 없으면 b가 앞으로
+    if (!a.label) return 1;
+    // b만 라벨이 없으면 a가 앞으로
+    if (!b.label) return -1;
+
+    // 둘 다 라벨이 있으면 라벨 순서대로
+    const aIndex = labelOrder.indexOf(a.label);
+    const bIndex = labelOrder.indexOf(b.label);
+
+    // 같은 라벨이면 날짜 순
+    if (aIndex === bIndex) {
+      const parseDate = (d: string) => {
+        const [y, m, day] = d.split('.').map((v) => parseInt(v, 10));
+        return new Date(y, m - 1, day).getTime();
+      };
+      return parseDate(b.uploadDate) - parseDate(a.uploadDate);
+    }
+
+    return aIndex - bIndex;
+  });
+};
+
 /** KST 기준 날짜 포맷 유틸 */
 function formatKST(date: Date, withTime = false) {
   const tzDate = new Date(
@@ -626,6 +661,40 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           uploadedFileId: m.uploadedFileId,
         }));
 
+        // 라벨 색상 순서대로 정렬 (정의된 순서: 빨강 > 주황 > 노랑 > 초록 > 파랑 > 보라 > 회색)
+        // 라벨이 없는 자료는 맨 뒤로
+        const labelOrder = LABEL_OPTIONS.map((opt) => opt.id);
+
+        mapped.sort((a, b) => {
+          // 둘 다 라벨이 없으면 날짜 순
+          if (!a.label && !b.label) {
+            const parseDate = (d: string) => {
+              const [y, m, day] = d.split('.').map((v) => parseInt(v, 10));
+              return new Date(y, m - 1, day).getTime();
+            };
+            return parseDate(b.uploadDate) - parseDate(a.uploadDate);
+          }
+          // a만 라벨이 없으면 b가 앞으로
+          if (!a.label) return 1;
+          // b만 라벨이 없으면 a가 앞으로
+          if (!b.label) return -1;
+
+          // 둘 다 라벨이 있으면 라벨 순서대로
+          const aIndex = labelOrder.indexOf(a.label);
+          const bIndex = labelOrder.indexOf(b.label);
+
+          // 같은 라벨이면 날짜 순
+          if (aIndex === bIndex) {
+            const parseDate = (d: string) => {
+              const [y, m, day] = d.split('.').map((v) => parseInt(v, 10));
+              return new Date(y, m - 1, day).getTime();
+            };
+            return parseDate(b.uploadDate) - parseDate(a.uploadDate);
+          }
+
+          return aIndex - bIndex;
+        });
+
         setMaterials(mapped);
       } catch (err: any) {
         console.error('발행 자료 목록 조회 실패', err);
@@ -861,12 +930,12 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
       await Swal.close();
 
-      // ✅ 성공 시 로컬 state 업데이트
-      setMaterials((prev) =>
-        prev.map((mat) =>
+      setMaterials((prev) => {
+        const updated = prev.map((mat) =>
           mat.id === materialId ? { ...mat, label: selectedLabel } : mat,
-        ),
-      );
+        );
+        return sortMaterialsByLabel(updated);
+      });
 
       await Swal.fire({
         icon: 'success',
@@ -957,6 +1026,18 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           text || `자료 공유에 실패했습니다. (status: ${res.status})`,
         );
       }
+
+      setClassrooms((prev) =>
+        prev.map((classroom) => {
+          if (classroomIds.includes(classroom.id)) {
+            return {
+              ...classroom,
+              materialCount: classroom.materialCount + 1,
+            };
+          }
+          return classroom;
+        }),
+      );
 
       await Swal.close();
 
@@ -1055,6 +1136,13 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         title: '자료가 삭제되었습니다',
         confirmButtonColor: '#192b55',
       });
+
+      setClassrooms((prev) =>
+        prev.map((classroom) => ({
+          ...classroom,
+          materialCount: Math.max(0, classroom.materialCount - 1), // ✅ 감소!
+        })),
+      );
     } catch (err: any) {
       console.error('자료 삭제 실패', err);
       await Swal.close();
