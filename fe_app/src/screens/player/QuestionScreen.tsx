@@ -618,7 +618,7 @@ export default function QuestionScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         style={styles.inner}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
         {/* 헤더 */}
@@ -797,7 +797,6 @@ export default function QuestionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: COLORS.primary.lighter,
   },
   inner: {
     flex: 1,
@@ -833,12 +832,13 @@ const styles = StyleSheet.create({
     color: COLORS.status.error,
     fontWeight: "700",
   },
+
   chatArea: {
     flex: 1,
     backgroundColor: COLORS.primary.lightest,
   },
   chatContent: {
-    flexGrow: 1, // ScrollView 전체 높이 채우기
+    flexGrow: 1,
   },
   messagesContainer: {
     flexGrow: 1,
@@ -850,7 +850,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   messagesFilled: {
-    justifyContent: "flex-end", // 마지막 말풍선을 입력창 바로 위로
+    justifyContent: "flex-end",
   },
 
   messageRow: { marginBottom: 12, flexDirection: "row" },
@@ -886,7 +886,6 @@ const styles = StyleSheet.create({
   userTime: { color: COLORS.primary.lighter },
   botTime: { color: COLORS.text.tertiary },
 
-  // 웰컴 버블
   welcomeBubble: {
     backgroundColor: COLORS.secondary.main,
     borderRadius: 12,
@@ -902,7 +901,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // 웨이브
   waveBar: {
     backgroundColor: COLORS.primary.main,
     paddingVertical: 22,
@@ -922,7 +920,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary.main,
   },
 
-  // 입력 + 버튼
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
