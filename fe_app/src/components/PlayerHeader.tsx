@@ -41,6 +41,7 @@ export default function PlayerHeader({
         <BackButton
           onPress={onBackPress}
           style={commonStyles.headerBackButton}
+          accessibilityHint="교재 듣기 화면입니다. 음성 명령 버튼으로 재생, 일시정지, 다음, 이전 등의 명령을 사용할 수 있습니다."
         />
 
         <View style={styles.headerRight}>

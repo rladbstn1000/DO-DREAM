@@ -25,12 +25,18 @@ type BackButtonProps = {
    * 기본 goBack() 외에 다른 동작이 필요할 때 전달하는 함수
    */
   onPress?: () => void;
+
+  /**
+   * 접근성 힌트 (선택 사항)
+   */
+  accessibilityHint?: string;
 };
 
 export default function BackButton({
   style,
   textStyle,
   onPress,
+  accessibilityHint = "이전 화면으로 돌아갑니다.",
 }: BackButtonProps) {
   const navigation = useNavigation();
   const handlePress = onPress || (() => navigation.goBack());
@@ -42,7 +48,7 @@ export default function BackButton({
       accessible={true}
       accessibilityLabel="뒤로가기"
       accessibilityRole="button"
-      accessibilityHint="이전 화면으로 돌아갑니다."
+      accessibilityHint={accessibilityHint}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Text style={[styles.backButtonText, textStyle]}>← 뒤로</Text>

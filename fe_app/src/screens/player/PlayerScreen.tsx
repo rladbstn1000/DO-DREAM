@@ -696,28 +696,6 @@ export default function PlayerScreen() {
     ttsActions.pause,
   ]);
 
-  // 화면 진입 시 음성 안내
-  useEffect(() => {
-    const msg =
-      "교재 듣기 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 다음 챕터, 이전 챕터, 뒤로 가기처럼 말하면 해당 기능이 실행됩니다.";
-    const timer = setTimeout(() => {
-      AccessibilityInfo.announceForAccessibility(msg);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // 초기 포커스: TalkBack 켜져 있으면 "재생 버튼"에 포커스
-  useEffect(() => {
-    if (!screenReaderEnabled) return;
-    const timer = setTimeout(() => {
-      const target = playButtonRef.current || contentRef.current;
-      const reactTag = target ? findNodeHandle(target) : null;
-      if (reactTag) {
-        AccessibilityInfo.setAccessibilityFocus(reactTag);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [screenReaderEnabled]);
 
   // 챕터 검증
   if (!chapter) {
