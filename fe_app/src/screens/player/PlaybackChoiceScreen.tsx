@@ -450,7 +450,19 @@ export default function PlaybackChoiceScreen() {
         {/* 챕터 선택 UI */}
         {chapters.length > 0 && (
           <View style={styles.chapterSelectSection}>
-             <View style={styles.chapterInfoCompact}>
+            <View style={styles.chapterNavigationContainer}>
+              <TouchableOpacity
+                onPress={handlePrevChapter}
+                style={styles.navButton}
+                accessible
+                accessibilityLabel={`이전 챕터로 이동, ${currentChapterIndex > 0 ? chapters[currentChapterIndex - 1]?.title : chapters[chapters.length - 1]?.title}`}
+                accessibilityRole="button"
+                accessibilityHint="두 번 탭하여 이전 챕터 선택"
+              >
+                <Text style={styles.navButtonText} importantForAccessibility="no">◀</Text>
+              </TouchableOpacity>
+
+              <View style={styles.chapterInfoCompact}>
                 {chapters[currentChapterIndex] && (
                   <>
                     <Text
@@ -476,25 +488,16 @@ export default function PlaybackChoiceScreen() {
                   </>
                 )}
               </View>
-            <View style={styles.chapterNavigationContainer}>
-              <TouchableOpacity
-                onPress={handlePrevChapter}
-                style={styles.navButton}
-                accessible
-                accessibilityLabel={`이전 챕터, ${currentChapterIndex > 0 ? chapters[currentChapterIndex - 1]?.title : chapters[chapters.length - 1]?.title}`}
-                accessibilityRole="button"
-              >
-                <Text style={styles.navButtonText}>◀</Text>
-              </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleNextChapter}
                 style={styles.navButton}
                 accessible
-                accessibilityLabel={`다음 챕터, ${currentChapterIndex < chapters.length - 1 ? chapters[currentChapterIndex + 1]?.title : chapters[0]?.title}`}
+                accessibilityLabel={`다음 챕터로 이동, ${currentChapterIndex < chapters.length - 1 ? chapters[currentChapterIndex + 1]?.title : chapters[0]?.title}`}
                 accessibilityRole="button"
+                accessibilityHint="두 번 탭하여 다음 챕터 선택"
               >
-                <Text style={styles.navButtonText}>▶</Text>
+                <Text style={styles.navButtonText} importantForAccessibility="no">▶</Text>
               </TouchableOpacity>
             </View>
 
