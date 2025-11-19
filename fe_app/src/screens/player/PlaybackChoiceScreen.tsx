@@ -76,10 +76,6 @@ export default function PlaybackChoiceScreen() {
   const firstChapter = chapters[0] ?? null;
   const hasStudied = material.hasProgress;
 
-  // 퀴즈는 나중에: 지금은 항상 false
-  const hasQuiz = false;
-  const showQuizButton = hasStudied && hasQuiz;
-
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
 
@@ -120,7 +116,7 @@ export default function PlaybackChoiceScreen() {
   }, [route.params?.lastChapterId, chapters]);
 
   useEffect(() => {
-    const announcement = `${material.title}, 이어듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 중 선택하세요. 상단의 말하기 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기처럼 말할 수 있습니다.`;
+    const announcement = `${material.title}, 이어듣기, 처음부터, 퀴즈 풀기, 저장 목록, 질문 목록 중 선택하세요. 상단의 말하기 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 퀴즈 풀기, 저장 목록, 질문 목록, 설정, 뒤로 가기처럼 말할 수 있습니다.`;
     AccessibilityInfo.announceForAccessibility(announcement);
   }, [material.title, material.currentChapter]);
 
@@ -194,10 +190,14 @@ export default function PlaybackChoiceScreen() {
   }, [material, navigation]);
 
   const handleQuizPress = useCallback(() => {
-    AccessibilityInfo.announceForAccessibility(
-      "이 교재에서는 퀴즈 기능이 아직 준비 중입니다."
-    );
-  }, []);
+    AccessibilityInfo.announceForAccessibility("퀴즈 목록으로 이동합니다.");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    navigation.navigate("QuizList", {
+      material,
+      chapterId: firstChapter?.chapterId || 0, // QuizListScreen은 material.id만 사용하므로 chapterId는 더미값 전달
+    });
+  }, [navigation, material, firstChapter]);
 
   // 선택된 챕터로 이동 (처음부터 시작)
   const handleGoToSelectedChapter = useCallback(() => {
@@ -367,13 +367,7 @@ export default function PlaybackChoiceScreen() {
         t.includes("퀴즈 시작") ||
         t.includes("퀴즈 보기")
       ) {
-        if (showQuizButton) {
-          handleQuizPress();
-        } else {
-          AccessibilityInfo.announceForAccessibility(
-            "이 교재에서는 바로 풀 수 있는 퀴즈가 없습니다."
-          );
-        }
+        handleQuizPress();
         return true;
       }
 
@@ -397,7 +391,6 @@ export default function PlaybackChoiceScreen() {
       handleNextChapter,
       handlePrevChapter,
       handleQuizPress,
-      showQuizButton,
     ]
   );
 
@@ -410,8 +403,8 @@ export default function PlaybackChoiceScreen() {
       registerVoiceHandlers("PlaybackChoice", {
         goBack: handleGoBack,
         openLibrary: handleGoBack,
-        openSettings: handleSettingsPress,
-        openQuiz: showQuizButton ? handleQuizPress : undefined,
+        openSettings: handleSettingsPress, 
+        openQuiz: handleQuizPress,
         rawText: handlePlaybackVoiceRaw,
       });
 
@@ -426,7 +419,6 @@ export default function PlaybackChoiceScreen() {
       handleSettingsPress,
       handleQuizPress,
       handlePlaybackVoiceRaw,
-      showQuizButton,
     ])
   );
 
@@ -617,14 +609,12 @@ export default function PlaybackChoiceScreen() {
             accessibilityLabel="질문 목록"
           />
 
-          {showQuizButton && (
-            <ChoiceButton
-              onPress={handleQuizPress}
-              label="퀴즈 풀기"
-              subLabel="학습 내용 확인"
-              accessibilityLabel="퀴즈 풀기, 학습 내용 확인"
-            />
-          )}
+          <ChoiceButton
+            onPress={handleQuizPress}
+            label="퀴즈 풀기"
+            subLabel="학습 내용 확인"
+            accessibilityLabel="퀴즈 풀기, 학습 내용 확인"
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

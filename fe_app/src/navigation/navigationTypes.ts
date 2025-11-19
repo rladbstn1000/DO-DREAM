@@ -1,7 +1,8 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp } from "@react-navigation/native";
 import { Material } from "../types/material";
-import { Quiz } from "../types/quiz";
+import { QuizQuestion } from "../types/quiz";
+import { QuizAnswerRequest, QuizGradingResultItem } from "../types/api/quizApiTypes";
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -33,17 +34,14 @@ export type RootStackParamList = {
     chapterId: number;
   };
   Quiz: {
-    quiz: Quiz;
+    material: Material;
+    questions: QuizQuestion[];
+    startIndex: number;
   };
   QuizResult: {
-    quiz: Quiz;
-    score: number;
-    totalQuestions: number;
-    answers: {
-      questionId: number;
-      selectedOptionId: number;
-      isCorrect: boolean;
-    }[];
+    material: Material;
+    gradingResults: QuizGradingResultItem[];
+    userAnswers: QuizAnswerRequest[];
   };
   BookmarkList: {
     material: Material;
