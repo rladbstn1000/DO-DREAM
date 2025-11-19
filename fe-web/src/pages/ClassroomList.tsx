@@ -1565,7 +1565,9 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           <div className="cl-materials-section">
             <div className="cl-materials-header">
               <div className="cl-section-header" style={{ flex: 1 }}>
-                <h2 className="cl-section-title">내 자료</h2>
+                <h2 className="cl-section-title">
+                  내 자료 ({materials.length}개)
+                </h2>
               </div>
               <div className="cl-last-updated">
                 최근 업데이트: {formatKST(lastUpdatedAt, true)}
@@ -1654,47 +1656,47 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
                     {/* ✅ 액션 버튼들은 이벤트 전파 방지 */}
                     <div className="cl-material-actions">
-  <button
-    className="cl-material-action-btn download-btn"
-    onClick={(e) => {
-      e.stopPropagation();
-      handleDownloadWord(material.id);
-    }}
-    title="워드 파일 다운로드"
-  >
-    <Download size={16} />
-  </button>
-  <button
-    className="cl-material-action-btn send-btn"
-    onClick={(e) => {
-      e.stopPropagation();
-      handleSendMaterial(material.id);
-    }}
-    title="자료 공유"
-  >
-    <Send size={16} />
-  </button>
-  <button
-    className="cl-material-action-btn label-btn"
-    onClick={(e) => {
-      e.stopPropagation();
-      handleLabelMaterial(material.id, material.label);
-    }}
-    title="라벨 편집"
-  >
-    <Tag size={16} />
-  </button>
-  <button
-    className="cl-material-action-btn delete-btn"
-    onClick={(e) => {
-      e.stopPropagation();
-      handleDeleteMaterial(material.id);
-    }}
-    title="삭제"
-  >
-    <Trash2 size={16} />
-  </button>
-</div>
+                      <button
+                        className="cl-material-action-btn download-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadWord(material.id);
+                        }}
+                        title="워드 파일 다운로드"
+                      >
+                        <Download size={16} />
+                      </button>
+                      <button
+                        className="cl-material-action-btn send-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendMaterial(material.id);
+                        }}
+                        title="자료 공유"
+                      >
+                        <Send size={16} />
+                      </button>
+                      <button
+                        className="cl-material-action-btn label-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLabelMaterial(material.id, material.label);
+                        }}
+                        title="라벨 편집"
+                      >
+                        <Tag size={16} />
+                      </button>
+                      <button
+                        className="cl-material-action-btn delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteMaterial(material.id);
+                        }}
+                        title="삭제"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
