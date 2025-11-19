@@ -20,11 +20,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
   const [, setIsRegistering] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  useEffect(() => {
-    const t = setTimeout(() => setMode('sign-in'), 200);
-    return () => clearTimeout(t);
-  }, []);
-
   const toggle = useCallback(() => {
     setMode((m) => (m === 'sign-in' ? 'sign-up' : 'sign-in'));
     setIsVerifying(false);
