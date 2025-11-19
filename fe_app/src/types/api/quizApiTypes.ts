@@ -16,8 +16,22 @@ export interface QuizAnswerPayload {
 }
 
 /**
- * 퀴즈 채점 결과 항목
+ * API로부터 받는 원시 채점 결과 타입 (snake_case)
+ */
+export interface RawQuizGradingResult {
+  question_id: number;
+  is_correct: boolean;
+  student_answer: string;
+  ai_feedback: string;
+  correct: boolean; // is_correct와 중복될 수 있음
+}
+
+/**
+ * 앱 내부에서 사용할 최종 채점 결과 항목 타입 (camelCase)
  */
 export interface QuizGradingResultItem extends QuizQuestion {
-  is_correct: boolean;
+  question_number: number;
+  userAnswer: string;
+  isCorrect: boolean;
+  feedback?: string;
 }
