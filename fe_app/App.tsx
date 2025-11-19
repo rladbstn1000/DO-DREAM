@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { NavigationContainer } from "@react-navigation/native";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { navigationRef } from "./src/navigation/RootNavigation";
 import GlobalVoiceTriggers from "./src/components/GlobalVoiceTriggers";
@@ -45,15 +46,15 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <TriggerProvider>
-        <AppNavigator />
-        <GlobalVoiceTriggers
-          onVoiceCommand={() => {
-            navigationRef.current?.navigate("Question" as never);
-          }}
-        />
-        <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
-      </TriggerProvider>
+      <NavigationContainer ref={navigationRef}>
+        <TriggerProvider>
+          <AppNavigator />
+          <GlobalVoiceTriggers
+            onVoiceCommand={() => navigationRef.current?.navigate("Question" as never)}
+          />
+        </TriggerProvider>
+      </NavigationContainer>
+      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
     </ThemeProvider>
   );
 }
