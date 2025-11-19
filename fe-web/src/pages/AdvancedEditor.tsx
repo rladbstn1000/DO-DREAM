@@ -424,6 +424,11 @@ export default function AdvancedEditor({
       const currentChapter = prev.find((ch) => ch.id === activeChapterId);
       const originalType = currentChapter?.type || 'content';
 
+      // 현재 활성 챕터의 인덱스 찾기
+      const activeChapterIndex = prev.findIndex(
+        (ch) => ch.id === activeChapterId,
+      );
+
       const updated = prev.map((ch) =>
         ch.id === activeChapterId
           ? {
@@ -457,15 +462,9 @@ export default function AdvancedEditor({
         };
       });
 
-      // ✅ 새 챕터를 퀴즈 앞에 삽입
-      const firstQuizIndex = updated.findIndex((ch) => ch.type === 'quiz');
-      if (firstQuizIndex === -1) {
-        return [...updated, ...newOnes];
-      } else {
-        const result = [...updated];
-        result.splice(firstQuizIndex, 0, ...newOnes);
-        return result;
-      }
+      const result = [...updated];
+      result.splice(activeChapterIndex + 1, 0, ...newOnes);
+      return result;
     });
 
     setIsSplitMode(false);
