@@ -1,6 +1,7 @@
 export type QuestionType = 'TERM_DEFINITION' | 'FILL_BLANK' | 'SHORT_ANSWER' | 'CUSTOM';
 
 export interface QuizQuestion {
+  id: number; // 퀴즈 고유 ID
   question_type: QuestionType;
   question_number: number;
   title: string;
