@@ -522,15 +522,10 @@ export default function PlayerScreen() {
   const handleBackPress = useCallback(async () => {
     saveProgressDataRef.current(false);
     await updateProgressToBackendRef.current(false);
-    // goBack() 대신 navigate를 사용하여 마지막 챕터 ID를 전달
-    navigation.navigate(
-      "PlaybackChoice" as any,
-      {
-        material: material,
-        lastChapterId: chapterId,
-      } as any
-    );
-  }, [navigation, material, chapterId]);
+
+    // goBack을 사용하여 이전 PlaybackChoice 화면으로 돌아감
+    navigation.goBack();
+  }, [navigation]);
 
   // 챕터 완료 처리
   const handleChapterComplete = useCallback(async () => {
