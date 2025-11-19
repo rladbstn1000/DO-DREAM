@@ -72,11 +72,12 @@ public class StudentMaterialProgress {
 	private LocalDateTime completedAt;
 
 	public void updateProgress(int page) {
-		this.currentPage = page;
+		// DB에 있는 값과 전달받은 값 중 최대값을 저장하여 진행률이 줄어들지 않도록 함
+		this.currentPage = Math.max(this.currentPage, page);
 		if (this.totalPages != null && this.totalPages > 0) {
-			this.progressPercentage = (int)((page * 100.0) / totalPages);
+			this.progressPercentage = (int)((this.currentPage * 100.0) / totalPages);
 
-			if (page >= totalPages) {
+			if (this.currentPage >= totalPages) {
 				this.completedAt = LocalDateTime.now();
 			}
 		}
