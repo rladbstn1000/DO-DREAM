@@ -539,11 +539,6 @@
   transition: all var(--transition-fast);
 }
 
-.cl-last-updated:hover {
-  background: rgba(248, 250, 252, 0.8);
-  border-color: rgba(226, 232, 240, 0.5);
-}
-
 @media (max-width: 640px) {
   .cl-materials-header {
     grid-template-columns: 1fr;
