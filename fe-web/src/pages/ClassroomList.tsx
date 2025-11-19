@@ -32,10 +32,11 @@ type ClassroomData = {
 type Material = {
   id: string;
   title: string;
-  uploadDate: string; // 'YYYY.MM.DD'
+  uploadDate: string;
   label?: string;
   status: 'draft' | 'published';
   uploadedFileId?: number;
+  rawUpdatedAt: Date;
 };
 
 type ClassroomListProps = {
@@ -503,8 +504,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           fileName: material.title,
           chapters: chapters,
           pdfId: pdfId,
-          materialId: materialId, 
-          mode: 'edit', 
+          materialId: materialId,
+          mode: 'edit',
           from: 'classroom',
           initialLabel: labelColor,
         },
@@ -843,7 +844,15 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
   const { memo, setMemo } = useGlobalMemo();
 
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(new Date());
+
+  const lastUpdatedAt = useMemo(() => {
+    if (materials.length === 0) return new Date(); // 자료가 없으면 현재 시간
+
+    // 배열을 순회하며 가장 늦은 시간 찾기
+    return materials.reduce((latest, current) => {
+      return current.rawUpdatedAt > latest ? current.rawUpdatedAt : latest;
+    }, materials[0].rawUpdatedAt);
+  }, [materials]);
 
   // 발행 자료 목록 조회
   useEffect(() => {
@@ -876,14 +885,27 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
         const data = (await res.json()) as PublishedMaterialsResponse;
 
-        const mapped: Material[] = data.materials.map((m) => ({
-          id: String(m.materialId),
-          title: m.title,
-          uploadDate: formatKST(new Date(m.createdAt)),
-          label: m.label ? m.label.toLowerCase() : undefined,
-          status: 'published',
-          uploadedFileId: m.uploadedFileId,
-        }));
+        const mapped: Material[] = data.materials.map((m) => {
+          // 1. 수정일(updatedAt)이 있으면 쓰고, 없으면 생성일(createdAt) 사용
+          const dateStr = m.updatedAt || m.createdAt;
+
+          // 2. 날짜 변환 (끝에 Z가 없으면 붙여서 UTC로 인식시킴 -> 브라우저가 KST로 자동 변환)
+          const dateObj = new Date(
+            dateStr.endsWith('Z') ? dateStr : dateStr + 'Z',
+          );
+
+          return {
+            id: String(m.materialId),
+            title: m.title,
+            uploadDate: formatKST(new Date(m.createdAt)),
+            label: m.label ? m.label.toLowerCase() : undefined,
+            status: 'published',
+            uploadedFileId: m.uploadedFileId,
+
+            // ✅ 여기에 실제 날짜 객체를 저장
+            rawUpdatedAt: dateObj,
+          };
+        });
 
         // 라벨 색상 순서대로 정렬 (정의된 순서: 빨강 > 주황 > 노랑 > 초록 > 파랑 > 보라 > 회색)
         // 라벨이 없는 자료는 맨 뒤로
@@ -1042,10 +1064,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
     void fetchClassesAndStudents();
   }, [API_BASE]);
-
-  useEffect(() => {
-    setLastUpdatedAt(new Date());
-  }, [materials]);
 
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(

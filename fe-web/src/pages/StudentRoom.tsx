@@ -309,6 +309,7 @@ export default function StudentRoom() {
           <h1
             className="cl-header-title cl-header-title--clickable"
             onClick={() => navigate('/classrooms')}
+            style={{ cursor: 'pointer' }}
           >
             DO:DREAM
           </h1>
