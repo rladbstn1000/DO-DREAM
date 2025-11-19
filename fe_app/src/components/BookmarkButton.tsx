@@ -29,10 +29,10 @@ export default function BookmarkButton({
       ]}
       onPress={onPress}
       accessible
-      accessibilityLabel={isBookmarked ? "저장 해제하기" : "현재 챕터 저장하기"}
+      accessibilityLabel={isBookmarked ? "현재 챕터 저장 해제하기" : "현재 챕터 저장하기"}
       accessibilityHint={
         isBookmarked
-          ? "현재 챕터의 저장을 해제합니다."
+          ? "현재 학습 위치의 저장을 해제합니다."
           : "현재 학습 위치를 저장합니다."
       }
       accessibilityRole="button"
@@ -61,9 +61,10 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       borderColor: isPrimaryColors ? colors.status.info : colors.status.info,
       backgroundColor: isPrimaryColors ? colors.status.infoLight : colors.background.elevated,
       height: HEADER_BTN_HEIGHT,
-      width: 104,
+      width: 106,
       justifyContent: "center",
       alignItems: "center",
+      marginRight: 4,
     },
     bookmarkButtonActive: {
       borderColor: isPrimaryColors ? "#43A047" : colors.status.success,
@@ -71,7 +72,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     },
     bookmarkButtonText: {
       fontSize: 18,
-      fontWeight: "700",
+      fontWeight: "bold",
       color: colors.text.primary,
       lineHeight: 22,
       textAlignVertical: "center",

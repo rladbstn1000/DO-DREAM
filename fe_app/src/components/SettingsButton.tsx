@@ -41,7 +41,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
 
   return StyleSheet.create({
     settingsButton: {
-      width: 104,
+      width: 106,
       height: HEADER_BTN_HEIGHT,
       alignItems: "center",
       justifyContent: "center",
