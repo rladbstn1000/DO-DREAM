@@ -904,3 +904,78 @@
     align-items: flex-start;
   }
 }
+
+/* ===== 퀴즈 카드 그리드 ===== */
+.sr-quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.sr-quiz-card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sr-quiz-card-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.sr-quiz-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.4px;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+.sr-quiz-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sr-quiz-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.sr-quiz-card-row:last-child {
+  border-bottom: none;
+  padding-top: 20px;
+  border-top: 2px solid #f1f5f9;
+}
+
+.sr-quiz-card-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: -0.2px;
+}
+
+.sr-quiz-card-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.3px;
+}
+
+.sr-quiz-rate {
+  color: #192b55;
+  background: #eff6ff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  border: none
+}

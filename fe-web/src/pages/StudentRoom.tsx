@@ -32,12 +32,18 @@ type ReceivedMaterial = {
 };
 
 type QuizResult = {
-  id: string;
-  title: string;
-  score: number;
-  maxScore: number;
-  completedDate: string;
-  accuracy: number;
+  materialId: number;
+  materialTitle: string;
+  correctCount: number;
+  tryCount: number;
+  totalQuizCount: number;
+  correctRate: number;
+};
+
+type StudentStats = {
+  studentId: number;
+  solvedMaterialCount: number;
+  averageCorrectRate: number;
 };
 
 type StudentQuestion = {
@@ -144,6 +150,8 @@ export default function StudentRoom() {
   const [studentQuestions, setStudentQuestions] = useState<StudentQuestion[]>(
     [],
   );
+
+  const [studentStats, setStudentStats] = useState<StudentStats | null>(null);
 
   // ✅ 특정 학생에게 공유된 학습자료 / 진행률 불러오기
   useEffect(() => {
@@ -252,8 +260,74 @@ export default function StudentRoom() {
           setReceivedMaterials([]);
         }
 
-        // 퀴즈 / 질문은 아직 API 스펙이 없으니 일단 비워둠
-        setQuizResults([]);
+        // 4) 학생 통계 조회 (평균 정답률)
+        const statsRes = await fetch(
+          `${API_BASE}/api/stats/student/${student.id}/overall`,
+          { method: 'GET', headers, credentials: 'include' },
+        );
+
+        if (statsRes.ok) {
+          const raw = await statsRes.json();
+          console.log('📊 학생 통계 raw:', raw);
+
+          const payload =
+            raw && typeof raw === 'object' && 'data' in raw
+              ? (raw as any).data
+              : raw;
+
+          if (payload) {
+            const rawRate = payload.averageCorrectRate || 0;
+            // 0~1 범위면 100 곱하기, 이미 0~100이면 그대로
+            const rate = rawRate <= 1 ? rawRate * 100 : rawRate;
+
+            setStudentStats({
+              studentId: payload.studentId || Number(student.id),
+              solvedMaterialCount: payload.solvedMaterialCount || 0,
+              averageCorrectRate: Math.round(rate),
+            });
+          }
+        } else {
+          console.warn(`학생 통계 조회 실패 (status: ${statsRes.status})`);
+          setStudentStats(null);
+        }
+
+        // 5) 자료별 퀴즈 성적 조회
+        const quizRes = await fetch(
+          `${API_BASE}/api/stats/student/${student.id}/materials`,
+          { method: 'GET', headers, credentials: 'include' },
+        );
+
+        if (quizRes.ok) {
+          const raw = await quizRes.json();
+          console.log('📝 퀴즈 성적 raw:', raw);
+
+          const payload =
+            raw && typeof raw === 'object' && 'data' in raw
+              ? (raw as any).data
+              : raw;
+
+          const items = Array.isArray(payload) ? payload : [];
+
+          const quizResults: QuizResult[] = items.map((item: any) => {
+            const rawRate = item.correctRate || 0;
+            const rate = rawRate <= 1 ? rawRate * 100 : rawRate;
+
+            return {
+              materialId: item.materialId || 0,
+              materialTitle: item.materialTitle || '',
+              correctCount: item.correctCount || 0,
+              tryCount: item.tryCount || 0,
+              totalQuizCount: item.totalQuizCount || 0,
+              correctRate: Math.round(rate),
+            };
+          });
+
+          setQuizResults(quizResults);
+        } else {
+          console.warn(`퀴즈 성적 조회 실패 (status: ${quizRes.status})`);
+          setQuizResults([]);
+        }
+
         const qaRes = await fetch(
           `${RAG_BASE}/rag/chat/sessions?student_id=${student.id}`,
           { method: 'GET', headers, credentials: 'include' },
@@ -291,6 +365,7 @@ export default function StudentRoom() {
         setReceivedMaterials([]);
         setQuizResults([]);
         setStudentQuestions([]);
+        setStudentStats(null);
       } finally {
         setIsLoading(false);
       }
@@ -315,11 +390,8 @@ export default function StudentRoom() {
   }, [receivedMaterials, matQuery, matSort]);
 
   const avgAccuracy = useMemo(() => {
-    if (quizResults.length === 0) return 0;
-    return Math.round(
-      quizResults.reduce((s, q) => s + q.accuracy, 0) / quizResults.length,
-    );
-  }, [quizResults]);
+    return studentStats?.averageCorrectRate || 0;
+  }, [studentStats]);
 
   const completedCount = useMemo(() => {
     return receivedMaterials.filter((m) => m.status === 'completed').length;
@@ -680,18 +752,35 @@ export default function StudentRoom() {
               {quizResults.length === 0 ? (
                 <p className="cl-empty-hint">퀴즈 결과가 없습니다.</p>
               ) : (
-                <div className="sr-quiz-list">
+                <div className="sr-quiz-grid">
                   {quizResults.map((q) => (
-                    <div key={q.id} className="sr-quiz-item">
-                      <div className="sr-quiz-info">
-                        <h4>{q.title}</h4>
-                        <p>{q.completedDate}</p>
+                    <div key={q.materialId} className="sr-quiz-card">
+                      <div className="sr-quiz-card-header">
+                        <h4 className="sr-quiz-card-title">
+                          {q.materialTitle}
+                        </h4>
                       </div>
-                      <div className="sr-quiz-score">
-                        <span className="sr-score-main">
-                          {q.score}/{q.maxScore}
-                        </span>
-                        <span className="sr-accuracy-badge">{q.accuracy}%</span>
+                      <div className="sr-quiz-card-body">
+                        <div className="sr-quiz-card-row">
+                          <span className="sr-quiz-card-label">
+                            전체 문제 수
+                          </span>
+                          <span className="sr-quiz-card-value">
+                            총 {q.totalQuizCount}개의 문제 중에서
+                          </span>
+                        </div>
+                        <div className="sr-quiz-card-row">
+                          <span className="sr-quiz-card-label">정답 개수</span>
+                          <span className="sr-quiz-card-value">
+                            {q.correctCount}개 정답
+                          </span>
+                        </div>
+                        <div className="sr-quiz-card-row">
+                          <span className="sr-quiz-card-label">정답률</span>
+                          <span className="sr-quiz-card-value sr-quiz-rate">
+                            {q.correctRate}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
