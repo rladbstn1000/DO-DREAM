@@ -243,6 +243,39 @@ export default function Classroom() {
           .sort((a, b) => b.date.getTime() - a.date.getTime())
           .map((v) => v.mat);
 
+        // ✅ 라벨 색상 순서대로 정렬 (ClassroomList와 동일한 로직)
+        const labelOrder = LABEL_OPTIONS.map((opt) => opt.id);
+
+        newMaterials.sort((a, b) => {
+          // 둘 다 라벨이 없으면 날짜 순
+          if (!a.label && !b.label) {
+            return (
+              parseDate(b.uploadDate).getTime() -
+              parseDate(a.uploadDate).getTime()
+            );
+          }
+          // a만 라벨이 없으면 b가 앞으로
+          if (!a.label) return 1;
+          // b만 라벨이 없으면 a가 앞으로
+          if (!b.label) return -1;
+
+          // 둘 다 라벨이 있으면 라벨 순서대로
+          const aIndex = labelOrder.indexOf(a.label);
+          const bIndex = labelOrder.indexOf(b.label);
+
+          // 같은 라벨이면 날짜 순
+          if (aIndex === bIndex) {
+            return (
+              parseDate(b.uploadDate).getTime() -
+              parseDate(a.uploadDate).getTime()
+            );
+          }
+
+          return aIndex - bIndex;
+        });
+
+        setMaterials(newMaterials);
+
         // 학생 목록 생성
         const sharedMap = new Map<number, SharedStudentMaterialsDto>();
         for (const s of sharedByStudent) {
@@ -270,7 +303,6 @@ export default function Classroom() {
           };
         });
 
-        setMaterials(newMaterials);
         setStudents(finalStudents);
       } catch (err: any) {
         console.error('데이터 로딩 실패', err);
@@ -314,11 +346,43 @@ export default function Classroom() {
     );
     if (activeLabels.length)
       list = list.filter((m) => m.label && activeLabels.includes(m.label));
-    list.sort((a, b) =>
-      matSort === 'new'
-        ? parseDate(b.uploadDate).getTime() - parseDate(a.uploadDate).getTime()
-        : parseDate(a.uploadDate).getTime() - parseDate(b.uploadDate).getTime(),
-    );
+
+    // ✅ 라벨 순서를 고려한 정렬
+    const labelOrder = LABEL_OPTIONS.map((opt) => opt.id);
+
+    list.sort((a, b) => {
+      // matSort가 'new'나 'old'일 때만 날짜 순으로 정렬
+      // 기본은 라벨 순서
+
+      // 둘 다 라벨이 없으면 날짜 순
+      if (!a.label && !b.label) {
+        return matSort === 'new'
+          ? parseDate(b.uploadDate).getTime() -
+              parseDate(a.uploadDate).getTime()
+          : parseDate(a.uploadDate).getTime() -
+              parseDate(b.uploadDate).getTime();
+      }
+      // a만 라벨이 없으면 b가 앞으로
+      if (!a.label) return 1;
+      // b만 라벨이 없으면 a가 앞으로
+      if (!b.label) return -1;
+
+      // 둘 다 라벨이 있으면 라벨 순서대로
+      const aIndex = labelOrder.indexOf(a.label);
+      const bIndex = labelOrder.indexOf(b.label);
+
+      // 같은 라벨이면 날짜 순
+      if (aIndex === bIndex) {
+        return matSort === 'new'
+          ? parseDate(b.uploadDate).getTime() -
+              parseDate(a.uploadDate).getTime()
+          : parseDate(a.uploadDate).getTime() -
+              parseDate(b.uploadDate).getTime();
+      }
+
+      return aIndex - bIndex;
+    });
+
     return list;
   }, [materials, matQuery, matSort, activeLabels]);
 
