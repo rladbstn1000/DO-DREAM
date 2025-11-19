@@ -12,7 +12,7 @@ type JoinProps = { onLoginSuccess: () => void };
 export default function Join({ onLoginSuccess }: JoinProps) {
   const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 
-  const [mode, setMode] = useState<Mode>('sign-in');
+  const [mode, setMode] = useState<Mode>('sign-up');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [signupName, setSignupName] = useState('');
