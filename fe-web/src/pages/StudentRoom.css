@@ -1,456 +1,604 @@
-/* ===== Design Tokens (ClassroomList와 동일) ===== */
-:root {
-  --primary: #192b55;
-  --primary-light: #eff6ff;
-  --text: #1f2937;
-  --text-muted: #6b7280;
-  --border: #e5e7eb;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --bg-grad-1: #f0f4f8;
-  --bg-grad-2: #e8f1f8;
-  --radius-lg: 20px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
+/* ===== StudentRoom.css ===== */
 
-@font-face {
-    font-family: 'YeogiOttaeJalnan';
-    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_four@1.2/JalnanOTF00.woff') format('woff');
-    font-weight: normal;
-    font-display: swap;
-}
+/* ===== StudentRoom 전용 스타일 ===== */
 
-/* ===== Root ===== */
-.sr-root {
+.student-room-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%);
+  background-image: url('../assets/join/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: scroll;
   overflow-y: auto;
 }
 
 /* ===== Header ===== */
-.sr-header {
+.student-room-page .cl-header {
   position: fixed;
   top: 0;
   width: 100%;
   height: 70px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
   z-index: 100;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 
-.sr-header-wrapper {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 0 40px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.student-room-page .cl-header:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-.sr-header-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--primary);
-  -webkit-text-stroke: 0.8px var(--primary);
-  letter-spacing: -0.5px;
-  margin: 0;
-  font-family: 'YeogiOttaeJalnan';
-}
-
-.sr-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sr-header-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: #475569;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.sr-header-btn:hover {
-  color: #fff;
-  background: var(--primary);
-}
-
-/* ===== Main Content ===== */
-.sr-main-content {
-  padding: 30px 40px 40px;
-  padding-top: 100px;
-  max-width: 1600px;
-  margin: 0 auto;
-}
-
-/* ===== Section ===== */
-.sr-section {
+/* ===== Sidebar - Classroom과 동일 ===== */
+.student-room-page .cl-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  padding: 20px 24px;
+  padding-top: calc(70px + 30px);
+  overflow-y: hidden;
   background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: var(--radius-lg);
-  padding: 32px;
-  margin-bottom: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 50;
+  box-shadow: 2px 0px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 
-.sr-section-header {
+.student-room-page .cl-sidebar-content {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-  color: var(--primary);
-}
-
-.sr-section-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0;
-}
-
-/* ===== Profile Card ===== */
-.sr-profile-card {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 20px;
+  height: 100%;
 }
 
-.sr-avatar-img {
-  width: 80px;
-  height: 80px;
-  border-radius: var(--radius-md);
+/* ===== 프로필 섹션 - Classroom과 동일 ===== */
+.student-room-page .cl-profile-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.student-room-page .cl-profile-avatar-mini {
+  height: 100px;
   object-fit: cover;
-  border: 3px solid var(--border);
+  border: none;
 }
 
-.sr-avatar {
+.sr-avatar-placeholder {
   width: 80px;
   height: 80px;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary-light);
-  font-size: 48px;
+  background: #eff6ff;
+  font-size: 40px;
   flex-shrink: 0;
+  border: 3px solid #e5e7eb;
 }
 
-.sr-profile-info {
-  flex: 1;
-}
-
-.sr-profile-name {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--primary);
-  margin: 0 0 4px 0;
-}
-
-.sr-profile-grade {
-  font-size: 16px;
-  color: var(--text-muted);
-  margin: 0;
-  font-weight: 600;
-}
-
-/* ===== Stats ===== */
-.sr-stats-header {
-  margin-bottom: 16px;
-}
-
-.sr-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-
-.sr-stat-item {
-  background: #f8fafc;
-  border: 3px dotted #cbd5e1;
-  border-radius: var(--radius-md);
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: all 0.2s ease;
-}
-
-.sr-stat-item:hover {
-  background: #fff;
-  border: 3px dotted var(--primary);
-  box-shadow: var(--shadow-md);
-}
-
-.sr-stat-full {
-  grid-column: 1 / -1;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.sr-stat-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.sr-stat-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.sr-stat-label {
-  font-size: 12px;
+.student-room-page .cl-profile-name-mini {
+  font-size: 18px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #192b55;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.student-room-page .cl-profile-email-mini {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+  word-break: break-all;
+}
+
+.student-room-page .cl-profile-label-mini {
+  font-size: 16px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin: 0;
+}
+
+.student-room-page .cl-sidebar-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+/* ===== Sidebar 통계 ===== */
+.sr-sidebar-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sr-sidebar-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 14px;
+  border: 2px solid rgba(226, 232, 240, 1);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.sr-sidebar-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin: 0;
 }
 
-.sr-stat-value {
-  font-size: 24px;
+.sr-sidebar-stat-value {
+  font-size: 20px;
   font-weight: 800;
-  color: var(--primary);
-  margin: 0;
+  color: #192b55;
+  letter-spacing: -1px;
+  line-height: 1;
 }
 
-.sr-stat-main {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.sr-stat-number {
-  font-size: 36px;
-  font-weight: 900;
-  color: var(--primary);
-}
-
-.sr-stat-bar-wrapper {
+.sr-sidebar-progress-bar {
   width: 100%;
-  margin-top: 12px;
-}
-
-.sr-stat-bar {
-  width: 100%;
-  height: 12px;
-  background: var(--border);
+  height: 6px;
+  background: rgba(226, 232, 240, 0.4);
   border-radius: 999px;
   overflow: hidden;
 }
 
-.sr-stat-bar-fill {
+.sr-sidebar-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3b82f6 0%, var(--primary) 100%);
+  background: linear-gradient(90deg, #3b82f6 0%, #192b55 100%);
   border-radius: 999px;
-  transition: width 0.3s ease;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ===== Weak Areas ===== */
-.sr-weak-areas {
+/* ===== Main Content - Classroom과 동일 ===== */
+.student-room-page .cl-main-fixed {
+  position: relative;
+  margin-left: 280px;
+  margin-top: 70px;
+  padding: 30px 32px 32px;
+  height: auto;
+  overflow: visible;
+
+  /* Classroom 공통 스타일에서 내려온 큰 판 배경/그림자 덮어쓰기 */
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* ===== Content Wrapper ===== */
+.sr-content-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
-.sr-weak-item {
+/* ===== 카드 스타일 - Classroom과 동일 ===== */
+.student-room-page .cl-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 16px 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  min-height: 0;
 }
 
-.sr-weak-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.sr-weak-header strong {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.sr-weak-header small {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.sr-weak-bar {
-  width: 100%;
-  height: 8px;
-  background: var(--border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.sr-weak-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #ef4444 0%, var(--warning) 100%);
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
-
-/* ===== List ===== */
-.sr-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.sr-list-item {
+.student-room-page .cl-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: var(--radius-md);
-  border: none;
-  transition: all 0.2s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  gap: 12px;
+  padding: 6px 8px 10px;
 }
 
-.sr-list-item:hover {
+.student-room-page .cl-card-head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+
+.student-room-page .cl-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-room-page .cl-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===== 검색 & 정렬 버튼 - Classroom과 동일 ===== */
+.student-room-page .cl-input-wrap,
+.student-room-page .cl-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.student-room-page .cl-sort-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.student-room-page .cl-input {
+  all: unset;
+  font: inherit;
+  color: inherit;
+  line-height: 1;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.student-room-page .cl-input-wrap > svg,
+.student-room-page .cl-sort-btn > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.student-room-page .cl-input-wrap:hover,
+.student-room-page .cl-sort-btn:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== 스크롤 영역 - Classroom과 동일 ===== */
+.student-room-page .cl-section-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 8px 12px;
+}
+
+/* ===== 2단 컬럼 레이아웃 ===== */
+.sr-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* ===== 자료 리스트 ===== */
+.student-room-page .cl-materials-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.student-room-page .cl-material-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-radius: 12px;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.student-room-page .cl-material-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(226, 232, 240, 0.6);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
 }
 
-.sr-list-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-}
-
-.sr-list-icon {
+.student-room-page .cl-material-icon {
   width: 40px;
   height: 40px;
-  color: var(--primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232, 238, 243, 0.6);
+  backdrop-filter: blur(6px);
+  color: #192b55;
   flex-shrink: 0;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 
-.sr-icon-amber {
-  color: var(--warning);
+.student-room-page .cl-material-item:hover .cl-material-icon {
+  background: rgba(232, 238, 243, 0.9);
+  box-shadow: 0 2px 8px rgba(25, 43, 85, 0.08);
 }
 
-.sr-list-info {
+.student-room-page .cl-material-info {
   flex: 1;
   min-width: 0;
 }
 
-.sr-list-title {
-  font-size: 16px;
+.student-room-page .cl-material-title {
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text);
+  color: #1e293b;
   margin: 0 0 4px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sr-list-meta {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: 0;
+.student-room-page .cl-material-meta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
-.sr-list-right {
+.student-room-page .cl-material-date {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* ===== 자료 진행률 ===== */
+.sr-material-progress {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
 }
 
-.sr-progress-bar {
-  width: 140px;
+.sr-progress-bar-small {
+  width: 100px;
   height: 6px;
-  background: var(--border);
+  background: rgba(226, 232, 240, 0.5);
   border-radius: 999px;
   overflow: hidden;
 }
 
-.sr-progress-bar-fill {
+.sr-progress-fill-small {
   height: 100%;
-  background: linear-gradient(90deg, var(--success) 0%, #34d399 100%);
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
   border-radius: 999px;
   transition: width 0.3s ease;
 }
 
-.sr-badge {
+.sr-status-badge {
   padding: 4px 12px;
   border-radius: 999px;
   color: #fff;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
-.sr-quiz-right {
+/* ===== 빈 상태 ===== */
+.student-room-page .cl-empty-materials {
+  display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #cbd5e1;
+  text-align: center;
+  gap: 10px;
 }
 
-.sr-score {
+.student-room-page .cl-empty-materials svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+  color: #cbd5e1;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.student-room-page .cl-empty-materials:hover svg {
+  opacity: 0.7;
+  transform: scale(1.05);
+}
+
+.student-room-page .cl-empty-materials p {
+  font-size: 14px;
+  margin: 0;
+  color: #64748b;
+}
+
+.student-room-page .cl-empty-hint {
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+}
+
+/* ===== 약점 영역 ===== */
+.sr-weak-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sr-weak-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(248, 250, 252, 0.5);
+  backdrop-filter: blur(6px);
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.sr-weak-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(226, 232, 240, 0.5);
+}
+
+.sr-weak-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.sr-weak-header strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.2px;
+}
+
+.sr-weak-header small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.sr-weak-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(226, 232, 240, 0.5);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sr-weak-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* ===== 퀴즈 리스트 ===== */
+.sr-quiz-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sr-quiz-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-radius: 12px;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.sr-quiz-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(226, 232, 240, 0.6);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.sr-quiz-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-quiz-info h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+}
+
+.sr-quiz-info p {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+.sr-quiz-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sr-score-main {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: #1e293b;
 }
 
-.sr-accuracy {
-  background: var(--primary-light);
-  color: var(--primary);
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+.sr-accuracy-badge {
+  background: rgba(239, 246, 255, 0.8);
+  color: #192b55;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
   font-weight: 700;
-  text-align: center;
+  border: 1px solid rgba(226, 232, 240, 0.3);
 }
 
-/* ===== Q&A ===== */
+/* ===== Q&A 리스트 ===== */
 .sr-qa-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .sr-qa-item {
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: var(--radius-md);
-  border-left: 4px solid var(--primary);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
+  padding: 14px;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-left: 4px solid #192b55;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 
 .sr-qa-item:hover {
-  background: #fff;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 24px rgba(25, 43, 85, 0.1);
   transform: translateY(-2px);
 }
 
@@ -458,24 +606,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   gap: 12px;
 }
 
 .sr-topic-badge {
   display: inline-flex;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(239, 246, 255, 0.8);
+  color: #192b55;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .sr-qa-date {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 11px;
+  color: #64748b;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -489,143 +637,126 @@
 .sr-qa-row {
   display: flex;
   gap: 10px;
+  align-items: flex-start;
 }
 
 .sr-qa-label {
   font-weight: 800;
-  color: var(--primary);
+  color: #192b55;
   min-width: 24px;
-  font-size: 14px;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .sr-qa-text {
   margin: 0;
-  color: var(--text);
+  color: #1e293b;
   line-height: 1.6;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-/* ===== Responsive ===== */
+/* ===== 스크롤바 스타일 ===== */
+.sr-content-wrapper::-webkit-scrollbar,
+.student-room-page .cl-section-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sr-content-wrapper::-webkit-scrollbar-track,
+.student-room-page .cl-section-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sr-content-wrapper::-webkit-scrollbar-thumb,
+.student-room-page .cl-section-scroll::-webkit-scrollbar-thumb {
+  background: rgba(25, 43, 85, 0.2);
+  border-radius: 4px;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.sr-content-wrapper::-webkit-scrollbar-thumb:hover,
+.student-room-page .cl-section-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(25, 43, 85, 0.4);
+}
+
+/* ===== 반응형 ===== */
 @media (max-width: 1200px) {
-  .sr-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .sr-two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .student-room-page .cl-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .student-room-page .cl-main-fixed {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .sr-content-wrapper {
+    padding-right: 0;
+  }
+
+  .sr-two-columns {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 
 @media (max-width: 768px) {
-  .sr-main-content {
+  .student-room-page .cl-main-fixed {
     padding: 20px;
-    padding-top: 100px;
   }
 
-  .sr-section {
-    padding: 20px;
-    margin-bottom: 20px;
-  }
-
-  .sr-header-wrapper {
-    padding: 0 20px;
-  }
-
-  .sr-header-title {
-    font-size: 20px;
-  }
-
-  .sr-header-btn span {
-    display: none;
-  }
-
-  .sr-profile-card {
-    flex-direction: column;
-    text-align: center;
-    align-items: center;
-  }
-
-  .sr-avatar-img,
-  .sr-avatar {
-    width: 60px;
-    height: 60px;
-  }
-
-  .sr-profile-name {
-    font-size: 20px;
-  }
-
-  .sr-stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .sr-stat-item {
+  .student-room-page .cl-card {
     padding: 16px;
   }
 
-  .sr-list-item {
+  .sr-content-wrapper {
+    gap: 16px;
+  }
+
+  .sr-two-columns {
+    gap: 16px;
+  }
+
+  .sr-material-progress {
     flex-direction: column;
     align-items: flex-start;
+    gap: 6px;
   }
 
-  .sr-list-left {
+  .sr-progress-bar-small {
     width: 100%;
-  }
-
-  .sr-list-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .sr-progress-bar {
-    flex: 1;
   }
 }
 
 @media (max-width: 480px) {
-  .sr-main-content {
+  .student-room-page .cl-main-fixed {
     padding: 16px;
-    padding-top: 90px;
   }
 
-  .sr-section {
+  .student-room-page .cl-card {
     padding: 16px;
-    margin-bottom: 16px;
   }
 
-  .sr-header-wrapper {
-    padding: 0 16px;
+  .sr-quiz-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .sr-header-title {
-    font-size: 18px;
+  .sr-quiz-score {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
   }
 
-  .sr-section-title {
-    font-size: 16px;
-  }
-
-  .sr-profile-name {
-    font-size: 18px;
-  }
-
-  .sr-stat-number {
-    font-size: 28px;
-  }
-
-  .sr-stat-value {
-    font-size: 20px;
-  }
-
-  .sr-list-title {
-    font-size: 14px;
-  }
-
-  .sr-list-item {
-    padding: 12px;
-  }
-
-  .sr-qa-item {
-    padding: 12px;
-  }
-
-  .sr-progress-bar {
-    width: 100px;
+  .sr-qa-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

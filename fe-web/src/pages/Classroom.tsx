@@ -97,7 +97,15 @@ type SharedMaterialItemDto = {
   materialTitle: string;
   teacherId: number;
   teacherName: string;
-  labelColor: 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE' | 'GRAY' | null;
+  labelColor:
+    | 'RED'
+    | 'ORANGE'
+    | 'YELLOW'
+    | 'GREEN'
+    | 'BLUE'
+    | 'PURPLE'
+    | 'GRAY'
+    | null;
   sharedAt: string;
   accessedAt: string | null;
   accessed: boolean;
@@ -116,17 +124,19 @@ const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 const getFilledStudents = (students: Student[]) => {
   const minCards = 6; // 최소 6개 카드 표시
   if (students.length >= minCards) return students;
-  
+
   const fillCount = minCards - students.length;
-  const emptyCards = Array(fillCount).fill(null).map((_, i) => ({
-    id: `empty-${i}`,
-    name: '',
-    grade: '',
-    avatarUrl: '',
-    progressRate: 0,
-    isEmpty: true,
-  }));
-  
+  const emptyCards = Array(fillCount)
+    .fill(null)
+    .map((_, i) => ({
+      id: `empty-${i}`,
+      name: '',
+      grade: '',
+      avatarUrl: '',
+      progressRate: 0,
+      isEmpty: true,
+    }));
+
   return [...students, ...emptyCards];
 };
 
@@ -183,7 +193,10 @@ export default function Classroom() {
           if (sharedData && typeof sharedData === 'object') {
             if (Array.isArray(sharedData)) {
               sharedByStudent = sharedData;
-            } else if (sharedData.materials && Array.isArray(sharedData.materials)) {
+            } else if (
+              sharedData.materials &&
+              Array.isArray(sharedData.materials)
+            ) {
               sharedByStudent = [sharedData];
             }
           }
@@ -199,7 +212,9 @@ export default function Classroom() {
           for (const m of entry.materials ?? []) {
             const sharedDate = m.sharedAt ? new Date(m.sharedAt) : new Date(0);
             const existing = matMap.get(m.materialId);
-            const labelLower = m.labelColor ? (m.labelColor.toLowerCase() as LabelId) : undefined;
+            const labelLower = m.labelColor
+              ? (m.labelColor.toLowerCase() as LabelId)
+              : undefined;
 
             if (!existing) {
               matMap.set(m.materialId, {
@@ -239,8 +254,10 @@ export default function Classroom() {
           let progress = 0;
 
           if (shareInfo) {
-            const total = shareInfo.totalCount || shareInfo.materials?.length || 0;
-            const accessed = shareInfo.materials?.filter((m) => m.accessed).length || 0;
+            const total =
+              shareInfo.totalCount || shareInfo.materials?.length || 0;
+            const accessed =
+              shareInfo.materials?.filter((m) => m.accessed).length || 0;
             progress = total > 0 ? Math.round((accessed / total) * 100) : 0;
           }
 
@@ -273,7 +290,10 @@ export default function Classroom() {
 
   const latestUpdate = useMemo(() => {
     if (!materials.length) return '-';
-    return materials.map((m) => m.uploadDate).sort().reverse()[0];
+    return materials
+      .map((m) => m.uploadDate)
+      .sort()
+      .reverse()[0];
   }, [materials]);
 
   const [matQuery, setMatQuery] = useState('');
@@ -289,7 +309,9 @@ export default function Classroom() {
 
   const filteredMaterials = useMemo(() => {
     const q = matQuery.trim().toLowerCase();
-    let list = materials.filter((m) => (q ? m.title.toLowerCase().includes(q) : true));
+    let list = materials.filter((m) =>
+      q ? m.title.toLowerCase().includes(q) : true,
+    );
     if (activeLabels.length)
       list = list.filter((m) => m.label && activeLabels.includes(m.label));
     list.sort((a, b) =>
@@ -300,7 +322,10 @@ export default function Classroom() {
     return list;
   }, [materials, matQuery, matSort, activeLabels]);
 
-  const handleLabelMaterial = async (materialId: string, currentLabel?: LabelId) => {
+  const handleLabelMaterial = async (
+    materialId: string,
+    currentLabel?: LabelId,
+  ) => {
     let picked: LabelId | undefined = currentLabel;
 
     const result = await Swal.fire({
@@ -330,7 +355,9 @@ export default function Classroom() {
       didOpen: () => {
         const grid = document.getElementById('labelGrid');
         if (!grid) return;
-        const buttons = Array.from(grid.querySelectorAll('.ae-label-option')) as HTMLElement[];
+        const buttons = Array.from(
+          grid.querySelectorAll('.ae-label-option'),
+        ) as HTMLElement[];
         const render = () => {
           buttons.forEach((btn) => {
             const id = btn.getAttribute('data-label') as LabelId | null;
@@ -341,7 +368,9 @@ export default function Classroom() {
           });
         };
         grid.addEventListener('click', (e) => {
-          const target = (e.target as HTMLElement).closest('.ae-label-option') as HTMLElement | null;
+          const target = (e.target as HTMLElement).closest(
+            '.ae-label-option',
+          ) as HTMLElement | null;
           if (!target) return;
           picked = (target.getAttribute('data-label') as LabelId) || undefined;
           render();
@@ -391,7 +420,9 @@ export default function Classroom() {
 
       // 로컬 state 업데이트
       setMaterials((prev) =>
-        prev.map((mat) => (mat.id === materialId ? { ...mat, label: selectedLabel } : mat)),
+        prev.map((mat) =>
+          mat.id === materialId ? { ...mat, label: selectedLabel } : mat,
+        ),
       );
 
       await Swal.fire({
@@ -414,7 +445,7 @@ export default function Classroom() {
 
   const [stuQuery, setStuQuery] = useState('');
   const [stuSort, setStuSort] = useState<'progress' | 'name'>('progress');
-  
+
   const filteredStudents = useMemo(() => {
     const q = stuQuery.trim().toLowerCase();
     let list = students.filter((s) =>
@@ -428,13 +459,34 @@ export default function Classroom() {
     return list;
   }, [students, stuQuery, stuSort]);
 
+  const handleStudentClick = (student: Student) => {
+    navigate(`/student/${student.id}`, {
+      state: {
+        student: {
+          id: student.id,
+          name: student.name,
+          grade: student.grade,
+          avatarUrl: student.avatarUrl,
+          progressRate: student.progressRate,
+        },
+        classroomId: classroomId,
+        classLabel: classLabel,
+      },
+    });
+  };
+
   return (
     <div className="cl-root cl-root--no-page-scroll classroom-page">
       <header className="cl-header">
         <div className="cl-header-wrapper">
           <h1 className="cl-header-title">DO:DREAM</h1>
           <div className="cl-header-button">
-            <button type="button" className="cl-logout-button" onClick={() => navigate('/classrooms')} title="목록으로">
+            <button
+              type="button"
+              className="cl-logout-button"
+              onClick={() => navigate('/classrooms')}
+              title="목록으로"
+            >
               <ArrowLeft size={18} />
               <span>목록으로</span>
             </button>
@@ -445,7 +497,11 @@ export default function Classroom() {
       <aside className="cl-sidebar">
         <div className="cl-sidebar-content">
           <div className="cl-profile-mini">
-            <img className="cl-profile-avatar-mini" src={teacherAvatar} alt="담임" />
+            <img
+              className="cl-profile-avatar-mini"
+              src={teacherAvatar}
+              alt="담임"
+            />
             <h2 className="cl-profile-name-mini">김싸피</h2>
             <p className="cl-profile-email-mini">teacher@school.com</p>
             <p className="cl-profile-label-mini">
@@ -483,10 +539,24 @@ export default function Classroom() {
               <div className="cl-head-right">
                 <div className="cl-input-wrap cl-control">
                   <Search size={16} />
-                  <input className="cl-input" placeholder="자료 제목 검색" value={matQuery} onChange={(e) => setMatQuery(e.target.value)} />
+                  <input
+                    className="cl-input"
+                    placeholder="자료 제목 검색"
+                    value={matQuery}
+                    onChange={(e) => setMatQuery(e.target.value)}
+                  />
                 </div>
-                <button className="cl-sort-btn cl-control" onClick={() => setMatSort((s) => (s === 'new' ? 'old' : 'new'))}>
-                  {matSort === 'new' ? <SortDesc size={16} /> : <SortAsc size={16} />}
+                <button
+                  className="cl-sort-btn cl-control"
+                  onClick={() =>
+                    setMatSort((s) => (s === 'new' ? 'old' : 'new'))
+                  }
+                >
+                  {matSort === 'new' ? (
+                    <SortDesc size={16} />
+                  ) : (
+                    <SortAsc size={16} />
+                  )}
                   <span>{matSort === 'new' ? '최신 순' : '오래된 순'}</span>
                 </button>
               </div>
@@ -503,7 +573,9 @@ export default function Classroom() {
                   {l.name}
                 </button>
               ))}
-              <button className="cl-chip reset" onClick={clearLabels}>초기화</button>
+              <button className="cl-chip reset" onClick={clearLabels}>
+                초기화
+              </button>
             </div>
 
             <div className="cl-section-scroll">
@@ -514,29 +586,44 @@ export default function Classroom() {
                   <div className="cl-empty-materials">
                     <FileText size={48} />
                     <p>공유된 자료가 없습니다</p>
-                    <p className="cl-empty-hint">교실 페이지에서 자료를 공유하면 이곳에 표시됩니다.</p>
+                    <p className="cl-empty-hint">
+                      교실 페이지에서 자료를 공유하면 이곳에 표시됩니다.
+                    </p>
                   </div>
                 ) : filteredMaterials.length === 0 ? (
                   <div className="cl-empty-materials">
                     <FileText size={48} />
                     <p>검색 결과가 없습니다</p>
-                    <p className="cl-empty-hint">다른 검색어나 필터를 시도해보세요.</p>
+                    <p className="cl-empty-hint">
+                      다른 검색어나 필터를 시도해보세요.
+                    </p>
                   </div>
                 ) : (
                   filteredMaterials.map((m) => (
                     <div key={m.id} className="cl-material-item">
                       {m.label && (
-                        <div className="cl-material-label-bar" style={{ backgroundColor: getLabelColor(m.label) }} />
+                        <div
+                          className="cl-material-label-bar"
+                          style={{ backgroundColor: getLabelColor(m.label) }}
+                        />
                       )}
-                      <div className="cl-material-icon"><FileText size={18} /></div>
+                      <div className="cl-material-icon">
+                        <FileText size={18} />
+                      </div>
                       <div className="cl-material-info">
                         <h3 className="cl-material-title">{m.title}</h3>
                         <div className="cl-material-meta">
-                          <span className="cl-material-date">{m.uploadDate}</span>
+                          <span className="cl-material-date">
+                            {m.uploadDate}
+                          </span>
                         </div>
                       </div>
                       <div className="cl-material-actions">
-                        <button className="cl-material-action-btn label-btn" title="라벨 편집" onClick={() => handleLabelMaterial(m.id, m.label)}>
+                        <button
+                          className="cl-material-action-btn label-btn"
+                          title="라벨 편집"
+                          onClick={() => handleLabelMaterial(m.id, m.label)}
+                        >
                           <Tag size={16} />
                         </button>
                       </div>
@@ -555,10 +642,24 @@ export default function Classroom() {
               <div className="cl-head-right">
                 <div className="cl-input-wrap cl-control">
                   <Search size={16} />
-                  <input className="cl-input" placeholder="이름 또는 학년/반 검색" value={stuQuery} onChange={(e) => setStuQuery(e.target.value)} />
+                  <input
+                    className="cl-input"
+                    placeholder="이름 또는 학년/반 검색"
+                    value={stuQuery}
+                    onChange={(e) => setStuQuery(e.target.value)}
+                  />
                 </div>
-                <button className="cl-sort-btn cl-control" onClick={() => setStuSort((s) => (s === 'progress' ? 'name' : 'progress'))}>
-                  {stuSort === 'progress' ? <SortDesc size={16} /> : <SortAsc size={16} />}
+                <button
+                  className="cl-sort-btn cl-control"
+                  onClick={() =>
+                    setStuSort((s) => (s === 'progress' ? 'name' : 'progress'))
+                  }
+                >
+                  {stuSort === 'progress' ? (
+                    <SortDesc size={16} />
+                  ) : (
+                    <SortAsc size={16} />
+                  )}
                   <span>{stuSort === 'progress' ? '진행률순' : '이름순'}</span>
                 </button>
               </div>
@@ -568,7 +669,9 @@ export default function Classroom() {
               {isLoading && !students.length ? (
                 <p className="cl-empty-hint">불러오는 중입니다…</p>
               ) : !students.length ? (
-                <p className="cl-empty-hint">아직 등록된 학생이 없거나, 반 정보가 없습니다.</p>
+                <p className="cl-empty-hint">
+                  아직 등록된 학생이 없거나, 반 정보가 없습니다.
+                </p>
               ) : filteredStudents.length === 0 ? (
                 <div className="cl-empty-materials">
                   <FileText size={48} />
@@ -579,18 +682,27 @@ export default function Classroom() {
                 getFilledStudents(filteredStudents).map((s) => {
                   if (s.isEmpty) {
                     return (
-                      <div 
-                        key={s.id} 
+                      <div
+                        key={s.id}
                         className="cl-student-card cl-student-card-empty"
                         style={{ visibility: 'hidden' }}
                       />
                     );
                   }
-                  
+
                   return (
-                    <div key={s.id} className="cl-student-card" style={{ cursor: 'default' }}>
+                    <div
+                      key={s.id}
+                      className="cl-student-card"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleStudentClick(s)}
+                    >
                       <div className="cl-student-top">
-                        <img className="cl-student-avatar" src={s.avatarUrl} alt={s.name} />
+                        <img
+                          className="cl-student-avatar"
+                          src={s.avatarUrl}
+                          alt={s.name}
+                        />
                         <div className="cl-student-info">
                           <h4>{s.name}</h4>
                           <p>{s.grade}</p>
@@ -598,9 +710,14 @@ export default function Classroom() {
                       </div>
                       <div className="cl-progress">
                         <div className="cl-progress-bar">
-                          <div className="cl-progress-fill" style={{ width: `${s.progressRate}%` }} />
+                          <div
+                            className="cl-progress-fill"
+                            style={{ width: `${s.progressRate}%` }}
+                          />
                         </div>
-                        <span className="cl-progress-text">{s.progressRate}%</span>
+                        <span className="cl-progress-text">
+                          {s.progressRate}%
+                        </span>
                       </div>
                     </div>
                   );
