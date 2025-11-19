@@ -34,6 +34,7 @@ import type { BookmarkListItem } from "../../types/api/bookmarkApiTypes";
 import SectionRenderer from "../../components/SectionRenderer";
 import { useTheme } from "../../contexts/ThemeContext";
 import { parseDocument } from "htmlparser2";
+import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 import { Element, Node, DataNode } from "domhandler";
 import { textContent, isTag, findOne } from "domutils";
 import type { Section } from "../../types/chapter";
@@ -673,12 +674,10 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       backgroundColor: colors.background.default,
     },
 
-    /* -------------------------
-     * Header
-     * ------------------------- */
     header: {
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      minHeight: HEADER_MIN_HEIGHT,
     },
   headerTitle: {
     alignItems: "center",
@@ -686,6 +685,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
+    height: HEADER_BTN_HEIGHT,
   },
   titleText: {
     fontSize: fontSize(28),

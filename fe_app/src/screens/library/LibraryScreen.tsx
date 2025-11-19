@@ -27,9 +27,8 @@ import { fetchSharedMaterials, fetchMaterialJson } from "../../api/materialApi";
 import { SharedMaterialSummary } from "../../types/api/materialApiTypes";
 import { fetchAllProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
-import { COLORS } from "../../constants/colors";
-import { createCommonStyles } from "../../styles/commonStyles";
 import { useTheme } from "../../contexts/ThemeContext";
+import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
@@ -574,7 +573,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     container: {
       flex: 1,
       backgroundColor: colors.background.default,
-      
+
     },
     header: {
       display: "flex",
@@ -582,20 +581,23 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       justifyContent: "space-between",
       alignItems: "center",
       paddingHorizontal: 24,
-      paddingTop: 12,
-      paddingBottom: 24,
+      paddingVertical: 16,
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.border.light : colors.text.primary,
+      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      minHeight: HEADER_MIN_HEIGHT,
     },
     studentName: {
       fontSize: 40,
       fontWeight: "bold",
       color: colors.text.primary,
+      lineHeight: HEADER_BTN_HEIGHT,
     },
     // 오른쪽: 음성 명령 + 설정
     headerRight: {
       flexDirection: "row",
       alignItems: "center",
+      // justifyContent: "space-between",
+      height: HEADER_BTN_HEIGHT,
     },
     listContent: {
       paddingHorizontal: 24,
@@ -646,6 +648,8 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingVertical: 6,
       borderRadius: 16,
       marginLeft: 12,
+      justifyContent: "center",
+      alignItems: "center",
     },
     progressText: {
       fontSize: fontSize(14),
@@ -662,7 +666,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       alignItems: "center",
     },
     emptyText: {
-      fontSize: fontSize(20),
+      fontSize: 20,
       color: colors.text.secondary,
     },
   });

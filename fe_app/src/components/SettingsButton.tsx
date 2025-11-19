@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from "react-native";
 import { useTheme } from "../contexts/ThemeContext";
+import { HEADER_BTN_HEIGHT } from "../constants/dimensions";
 
 interface SettingsButtonProps {
   onPress: () => void;
@@ -41,14 +42,14 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
   return StyleSheet.create({
     settingsButton: {
       minWidth: 56,
-      minHeight: 52,
+      height: HEADER_BTN_HEIGHT,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
       borderColor: isPrimaryColors ? colors.primary.main : colors.accent.secondary,
       borderRadius: 12,
       borderWidth: 3,
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 16,
       marginRight: 4,
     },

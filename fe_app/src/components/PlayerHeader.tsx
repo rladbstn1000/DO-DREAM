@@ -6,7 +6,7 @@ import { createCommonStyles } from "../styles/commonStyles";
 import { Material } from "../types/material";
 import { Chapter } from "../types/chapter";
 import { useTheme } from "../contexts/ThemeContext";
-
+import { HEADER_BTN_HEIGHT } from "../constants/dimensions";
 type PlayModeKey = "single" | "continuous" | "repeat";
 
 const UI_MODE_LABELS: Record<PlayModeKey, string> = {
@@ -101,8 +101,6 @@ export default function PlayerHeader({
   );
 }
 
-const HEADER_BTN_MIN_HEIGHT = 52;
-
 const createStyles = (colors: any, fontSize: (size: number) => number) => {
   const isPrimaryColors = 'primary' in colors;
   const isHighContrast = 'button' in colors;
@@ -113,7 +111,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingTop: 12,
       paddingBottom: 12,
       borderBottomWidth: 2,
-      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
       backgroundColor: colors.background.default,
     },
     headerTop: {
@@ -123,21 +121,22 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingHorizontal: 0,
       paddingVertical: 0,
       borderBottomWidth: 0,
-      minHeight: 56,
+      minHeight: HEADER_BTN_HEIGHT,
     },
     headerRight: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      height: HEADER_BTN_HEIGHT,
     },
     bookmarkHeaderButton: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: 12,
       borderWidth: 3,
       borderColor: isPrimaryColors ? colors.status.info : colors.status.info,
       backgroundColor: isPrimaryColors ? colors.status.infoLight : colors.background.elevated,
-      minHeight: HEADER_BTN_MIN_HEIGHT,
+      height: HEADER_BTN_HEIGHT,
       minWidth: 100,
       justifyContent: "center",
       alignItems: "center",

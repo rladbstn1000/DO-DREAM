@@ -21,6 +21,7 @@ import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
 import { COLORS } from "../../constants/colors";
+import { HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 interface Answer {
   questionId: number;
@@ -594,6 +595,9 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "stretch",
     paddingBottom: 20,
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.primary.main, // 명확한 구분선 (시각장애인 접근성)
+    minHeight: HEADER_MIN_HEIGHT,
   },
   headerInfo: {
     marginTop: 16,

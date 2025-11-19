@@ -39,6 +39,7 @@ import {
   QuestionMessage,
 } from "../../services/questionStorage";
 import { useTheme } from "../../contexts/ThemeContext";
+import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -47,8 +48,6 @@ interface Message {
   text: string;
   timestamp: Date;
 }
-
-const BTN_HEIGHT = 56;
 
 export default function QuestionScreen() {
   const navigation = useNavigation<QuestionScreenNavigationProp>();
@@ -811,8 +810,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
 
     header: {
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
       backgroundColor: colors.background.default,
+      minHeight: HEADER_MIN_HEIGHT,
     },
     title: {
       fontSize: fontSize(22),
@@ -820,16 +820,18 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       color: colors.text.secondary,
       flex: 1,
       textAlign: "center",
+      lineHeight: HEADER_BTN_HEIGHT,
     },
     headerRight: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+      height: HEADER_BTN_HEIGHT,
     },
     clearButton: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 12,
-      minHeight: 44,
+      height: HEADER_BTN_HEIGHT,
       minWidth: 60,
       justifyContent: "center",
       alignItems: "center",
@@ -943,7 +945,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     },
     input: {
       flex: 1,
-      minHeight: BTN_HEIGHT,
+      minHeight: HEADER_BTN_HEIGHT,
       maxHeight: 220,
       backgroundColor: isPrimaryColors ? colors.background.elevated : colors.background.elevated,
       borderRadius: 24,
@@ -956,7 +958,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     },
 
     sendBtn: {
-      height: BTN_HEIGHT,
+      height: HEADER_BTN_HEIGHT,
       backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
       borderRadius: 24,
       paddingHorizontal: 20,

@@ -11,6 +11,7 @@ import {
 import { TriggerContext } from "../triggers/TriggerContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
+import { HEADER_BTN_HEIGHT } from "../constants/dimensions";
 
 type VoiceCommandButtonProps = {
   /**
@@ -130,14 +131,14 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
 
   return StyleSheet.create({
     button: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 16,
       marginLeft: 16,
       borderRadius: 12,
       borderWidth: 3,
       borderColor: isPrimaryColors ? COLORS.secondary.dark : colors.accent.primary,
       backgroundColor: isPrimaryColors ? COLORS.secondary.lightest : colors.background.elevated,
-      minHeight: 52,
+      height: HEADER_BTN_HEIGHT,
       minWidth: 120,
       justifyContent: "center",
       alignItems: "center",

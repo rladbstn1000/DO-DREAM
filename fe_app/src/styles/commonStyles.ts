@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
 import { COLORS, HIGH_CONTRAST_COLORS } from "../constants/colors";
+import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../constants/dimensions";
 
 type ThemeColors = typeof COLORS | typeof HIGH_CONTRAST_COLORS;
 
@@ -21,19 +22,19 @@ export const createCommonStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingVertical: 16,
-    backgroundColor: colors.background?.elevated || colors.background.default,
     borderBottomWidth: 3, // 두꺼운 경계선 (접근성)
-    borderBottomColor: 'primary' in colors ? colors.primary.main : colors.accent.primary,
+    borderBottomColor: COLORS.primary.main, // 명확한 구분선 (시각장애인 접근성)
+    minHeight: HEADER_MIN_HEIGHT,
   },
   headerBackButton: {
     padding: 0,
     minWidth: 88, // 충분한 터치 영역
-    minHeight: 44,
+    height: HEADER_BTN_HEIGHT,
   },
   headerVoiceButton: {
     padding: 0,
     minWidth: 88,
-    minHeight: 44,
+    height: HEADER_BTN_HEIGHT,
   },
 
   // 메인 버튼 (Primary)

@@ -19,6 +19,7 @@ import { Quiz } from "../../types/quiz";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import { useTheme } from "../../contexts/ThemeContext";
+import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 export default function QuizListScreen() {
   const { colors, fontSize: themeFont } = useTheme();
@@ -289,15 +290,16 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     },
     header: {
       paddingHorizontal: 24,
-      paddingTop: 12,
-      paddingBottom: 16,
+      paddingVertical: 16,
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderBottomColor: colors.primary.main,
+      minHeight: HEADER_MIN_HEIGHT,
     },
     headerTopRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      height: HEADER_BTN_HEIGHT,
     },
     backButton: {
       paddingVertical: 8,

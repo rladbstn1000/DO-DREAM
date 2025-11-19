@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../contexts/ThemeContext";
+import { HEADER_BTN_HEIGHT } from "../constants/dimensions";
 
 type BackButtonProps = {
   /**
@@ -66,8 +67,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingVertical: 12,
       paddingRight: 16,
       alignSelf: "flex-start",
-      minHeight: 48,
+      height: HEADER_BTN_HEIGHT,
       justifyContent: "center",
+      alignItems: "center",
     },
     backButtonText: {
       fontSize: fontSize(22),

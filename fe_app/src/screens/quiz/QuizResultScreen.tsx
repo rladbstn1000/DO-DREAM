@@ -17,6 +17,7 @@ import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import { COLORS } from "../../constants/colors";
+import { HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 export default function QuizResultScreen() {
   const navigation = useNavigation<QuizResultScreenNavigationProp>();
@@ -498,8 +499,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     alignItems: "center",
     paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingVertical: 16,
+    minHeight: HEADER_MIN_HEIGHT,
   },
   scrollContent: {
     paddingHorizontal: 24,

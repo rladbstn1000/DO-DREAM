@@ -898,11 +898,10 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       flexDirection: "row",
       justifyContent: "center",
       alignItems: "center",
-      paddingVertical: 18,
+      paddingVertical: 12,
       paddingHorizontal: 12,
       borderTopWidth: 3,
       borderTopColor: isPrimaryColors ? colors.border.main : colors.border.default,
-      backgroundColor: colors.background.elevated || colors.background.default,
       gap: 8,
     },
 
@@ -958,6 +957,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       borderWidth: 3,
       borderColor: colors.status.success,
     },
+    
     playButtonText: {
       fontSize: 22,
       fontWeight: "900",

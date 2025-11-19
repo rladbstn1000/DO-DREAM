@@ -25,6 +25,7 @@ import {
   QuestionHistory,
 } from "../../services/questionStorage";
 import { useTheme } from "../../contexts/ThemeContext";
+import { HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 export default function QuestionListScreen() {
   const navigation = useNavigation<QuestionListScreenNavigationProp>();
@@ -323,6 +324,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     },
     header: {
       paddingHorizontal: 16,
+      minHeight: HEADER_MIN_HEIGHT,
     },
     title: {
       fontSize: fontSize(22),
@@ -335,7 +337,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingHorizontal: 24,
       paddingVertical: 20,
       borderBottomWidth: 2,
-      borderBottomColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
       backgroundColor: colors.background.elevated || colors.background.default,
     },
     materialTitle: {

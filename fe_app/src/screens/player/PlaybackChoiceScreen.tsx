@@ -31,6 +31,7 @@ import type { Chapter } from "../../types/chapter";
 import { fetchMaterialProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
 import { useTheme } from "../../contexts/ThemeContext";
+import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
@@ -381,7 +382,7 @@ export default function PlaybackChoiceScreen() {
     ]
   );
 
-  // 🔧 TriggerContext와 음성 명령 핸들러 등록 - useFocusEffect로 변경하여 화면 포커스 시 즉시 등록
+  // TriggerContext와 음성 명령 핸들러 등록
   useFocusEffect(
     useCallback(() => {
       console.log("[PlaybackChoiceScreen] 화면 포커스 - 핸들러 등록");
@@ -590,15 +591,16 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background.default,
     },
     header: {
       paddingHorizontal: 24,
       justifyContent: "space-between",
+      minHeight: HEADER_MIN_HEIGHT,
     },
     headerRight: {
       flexDirection: "row",
       alignItems: "center",
+      height: HEADER_BTN_HEIGHT,
     },
     scrollView: {
       flex: 1,
@@ -623,7 +625,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       color: colors.text.secondary,
     },
     chapterSelectSection: {
-      backgroundColor: colors.background.elevated || colors.background.default,
+      backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
       borderRadius: 16,
       padding: 24,
       marginBottom: 24,

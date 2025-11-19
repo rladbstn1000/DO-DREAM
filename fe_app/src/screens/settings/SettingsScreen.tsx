@@ -22,6 +22,7 @@ import BackButton from "../../components/BackButton";
 import { createCommonStyles } from "../../styles/commonStyles";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
+import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -879,11 +880,11 @@ export default function SettingsScreen() {
         <BackButton
           onPress={handleGoBack}
           style={commonStyles.headerBackButton}
-          textStyle={[
-            // BackButton의 기본 텍스트 스타일을 가져와서 확장
-            { fontSize: 20, color: COLORS.primary.main, fontWeight: "600" },
-            { fontSize: (baseSize + 4) * scale },
-          ]}
+          // textStyle={[
+          //   // BackButton의 기본 텍스트 스타일을 가져와서 확장
+          //   { fontSize: 20, color: COLORS.primary.main, fontWeight: "600" },
+          //   { fontSize: (baseSize + 4) * scale },
+          // ]}
         />
 
         <Text
@@ -1119,13 +1120,18 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background.default },
 
-    header: { borderBottomWidth: 3, borderBottomColor: isPrimaryColors ? colors.border.light : colors.text.primary },
+    header: {
+      borderBottomWidth: 3,
+      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      minHeight: HEADER_MIN_HEIGHT,
+    },
     headerTitle: {
       flex: 1,
       textAlign: "center",
       fontSize: 32,
       fontWeight: "bold",
       color: colors.text.primary,
+      lineHeight: HEADER_BTN_HEIGHT,
     },
 
     scroll: { flex: 1 },
