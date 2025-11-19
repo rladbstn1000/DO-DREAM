@@ -40,6 +40,7 @@ import {
 } from "../../services/questionStorage";
 import { useTheme } from "../../contexts/ThemeContext";
 import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
+import { COLORS } from "../../constants/colors";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -63,8 +64,8 @@ export default function QuestionScreen() {
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
 
-  const { colors, fontSize: themeFont } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont, isHighContrast), [colors, themeFont, isHighContrast]);
   const commonStyles = React.useMemo(() => createCommonStyles(colors), [colors]);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -797,7 +798,7 @@ export default function QuestionScreen() {
   );
 }
 
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
+const createStyles = (colors: any, fontSize: (size: number) => number, isHighContrast: boolean) => {
   const isPrimaryColors = 'primary' in colors;
 
   return StyleSheet.create({
@@ -810,7 +811,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
 
     header: {
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      borderBottomColor: isHighContrast ? COLORS.secondary.main : (isPrimaryColors ? colors.primary.main : colors.border.default),
       backgroundColor: colors.background.default,
       minHeight: HEADER_MIN_HEIGHT,
     },

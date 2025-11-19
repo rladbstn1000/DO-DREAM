@@ -1,18 +1,12 @@
-export interface QuizOption {
-  id: number;
-  quizId: number;
-  optionText: string;
-  optionOrder: number;
-  isCorrect: boolean;
-}
+export type QuestionType = 'TERM_DEFINITION' | 'FILL_BLANK' | 'SHORT_ANSWER' | 'CUSTOM';
 
 export interface QuizQuestion {
-  id: number;
-  quizId: number;
-  questionText: string;
-  questionOrder: number;
-  createdAt: Date;
-  options: QuizOption[];
+  question_type: QuestionType;
+  question_number: number;
+  title: string;
+  content: string;
+  correct_answer: string;
+  chapter_reference: string;
 }
 
 export interface Quiz {

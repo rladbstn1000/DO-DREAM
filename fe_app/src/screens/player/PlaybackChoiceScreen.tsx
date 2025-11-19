@@ -14,7 +14,11 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+} from "@react-navigation/native";
 import {
   PlaybackChoiceScreenNavigationProp,
   PlaybackChoiceScreenRouteProp,
@@ -31,19 +35,27 @@ import type { Chapter } from "../../types/chapter";
 import { fetchMaterialProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
 import { useTheme } from "../../contexts/ThemeContext";
-import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
+import {
+  HEADER_BTN_HEIGHT,
+  HEADER_MIN_HEIGHT,
+} from "../../constants/dimensions";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
   const route = useRoute<PlaybackChoiceScreenRouteProp>();
   const { material } = route.params;
 
-  const { colors, fontSize: themeFont } = useTheme();
-  const styles = useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
+  const styles = useMemo(
+    () => createStyles(colors, themeFont, isHighContrast),
+    [colors, themeFont, isHighContrast]
+  );
   const commonStyles = useMemo(() => createCommonStyles(colors), [colors]);
 
   // 백엔드에서 조회한 진행률 데이터
-  const [progressData, setProgressData] = useState<MaterialProgress | null>(null);
+  const [progressData, setProgressData] = useState<MaterialProgress | null>(
+    null
+  );
   const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
   // 챕터 선택을 위한 현재 인덱스
@@ -76,7 +88,10 @@ export default function PlaybackChoiceScreen() {
         try {
           setIsLoadingProgress(true);
           const response = await fetchMaterialProgress(material.id);
-          console.log("[PlaybackChoiceScreen] 진행률 조회 성공:", response.data);
+          console.log(
+            "[PlaybackChoiceScreen] 진행률 조회 성공:",
+            response.data
+          );
           setProgressData(response.data);
         } catch (error) {
           console.error("[PlaybackChoiceScreen] 진행률 조회 실패:", error);
@@ -148,26 +163,18 @@ export default function PlaybackChoiceScreen() {
   }, [chapters, currentChapterIndex, material, navigation]);
 
   const handleBookmarkPress = useCallback(() => {
-    if (!firstChapter) {
-      AccessibilityInfo.announceForAccessibility(
-        "이 교재의 북마크를 불러오지 못했습니다."
-      );
-      return;
-    }
-
     AccessibilityInfo.announceForAccessibility("저장 목록으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     navigation.navigate("BookmarkList", {
       material,
-      chapterId: firstChapter.chapterId,
     });
-  }, [firstChapter, material, navigation]);
+  }, [material, navigation]);
 
   const handleQuestionPress = useCallback(() => {
     AccessibilityInfo.announceForAccessibility("질문 목록으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
+
     navigation.navigate("QuestionList", {
       material,
     });
@@ -227,11 +234,12 @@ export default function PlaybackChoiceScreen() {
       const chapter = chapters[newIndex];
 
       // 완료 상태 확인
-      const isCompleted = progressData?.chapterProgress?.[newIndex]?.progressPercentage === 100;
+      const isCompleted =
+        progressData?.chapterProgress?.[newIndex]?.progressPercentage === 100;
       const statusText = isCompleted ? "완료" : "미완료";
 
       AccessibilityInfo.announceForAccessibility(
-        `${chapter?.title || '알 수 없음'}, ${statusText}`
+        `${chapter?.title || "알 수 없음"}, ${statusText}`
       );
       return newIndex;
     });
@@ -245,17 +253,18 @@ export default function PlaybackChoiceScreen() {
       const chapter = chapters[newIndex];
 
       // 완료 상태 확인
-      const isCompleted = progressData?.chapterProgress?.[newIndex]?.progressPercentage === 100;
+      const isCompleted =
+        progressData?.chapterProgress?.[newIndex]?.progressPercentage === 100;
       const statusText = isCompleted ? "완료" : "미완료";
 
       AccessibilityInfo.announceForAccessibility(
-        `${chapter?.title || '알 수 없음'}, ${statusText}`
+        `${chapter?.title || "알 수 없음"}, ${statusText}`
       );
       return newIndex;
     });
   }, [chapters, progressData]);
 
-  // 🎙 PlaybackChoice 전용 음성 명령(rawText) 처리
+  // PlaybackChoice 전용 음성 명령(rawText) 처리
   const handlePlaybackVoiceRaw = useCallback(
     (spoken: string) => {
       const t = spoken.trim().toLowerCase();
@@ -327,19 +336,13 @@ export default function PlaybackChoiceScreen() {
       }
 
       // 다음 챕터 보기
-      if (
-        t.includes("다음 챕터") ||
-        t.includes("챕터 다음")
-      ) {
+      if (t.includes("다음 챕터") || t.includes("챕터 다음")) {
         handleNextChapter();
         return;
       }
 
       // 이전 챕터 보기
-      if (
-        t.includes("이전 챕터") ||
-        t.includes("챕터 이전")
-      ) {
+      if (t.includes("이전 챕터") || t.includes("챕터 이전")) {
         handlePrevChapter();
         return;
       }
@@ -430,7 +433,7 @@ export default function PlaybackChoiceScreen() {
 
           <VoiceCommandButton
             style={commonStyles.headerVoiceButton}
-            accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요"
+            accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요"
           />
         </View>
       </View>
@@ -462,11 +465,20 @@ export default function PlaybackChoiceScreen() {
                 onPress={handlePrevChapter}
                 style={styles.navButton}
                 accessible
-                accessibilityLabel={`이전 챕터로 이동, ${currentChapterIndex > 0 ? chapters[currentChapterIndex - 1]?.title : chapters[chapters.length - 1]?.title}`}
+                accessibilityLabel={`이전 챕터로 이동, ${
+                  currentChapterIndex > 0
+                    ? chapters[currentChapterIndex - 1]?.title
+                    : chapters[chapters.length - 1]?.title
+                }`}
                 accessibilityRole="button"
                 accessibilityHint="두 번 탭하여 이전 챕터 선택"
               >
-                <Text style={styles.navButtonText} importantForAccessibility="no">◀</Text>
+                <Text
+                  style={styles.navButtonText}
+                  importantForAccessibility="no"
+                >
+                  ◀
+                </Text>
               </TouchableOpacity>
 
               <View style={styles.chapterInfoCompact}>
@@ -483,12 +495,14 @@ export default function PlaybackChoiceScreen() {
                       style={styles.chapterStatusText}
                       accessible
                       accessibilityLabel={
-                        progressData?.chapterProgress?.[currentChapterIndex]?.progressPercentage === 100
+                        progressData?.chapterProgress?.[currentChapterIndex]
+                          ?.progressPercentage === 100
                           ? "학습 완료"
                           : "미완료"
                       }
                     >
-                      {progressData?.chapterProgress?.[currentChapterIndex]?.progressPercentage === 100
+                      {progressData?.chapterProgress?.[currentChapterIndex]
+                        ?.progressPercentage === 100
                         ? "✓ 완료"
                         : "○ 미완료"}
                     </Text>
@@ -500,18 +514,29 @@ export default function PlaybackChoiceScreen() {
                 onPress={handleNextChapter}
                 style={styles.navButton}
                 accessible
-                accessibilityLabel={`다음 챕터로 이동, ${currentChapterIndex < chapters.length - 1 ? chapters[currentChapterIndex + 1]?.title : chapters[0]?.title}`}
+                accessibilityLabel={`다음 챕터로 이동, ${
+                  currentChapterIndex < chapters.length - 1
+                    ? chapters[currentChapterIndex + 1]?.title
+                    : chapters[0]?.title
+                }`}
                 accessibilityRole="button"
                 accessibilityHint="두 번 탭하여 다음 챕터 선택"
               >
-                <Text style={styles.navButtonText} importantForAccessibility="no">▶</Text>
+                <Text
+                  style={styles.navButtonText}
+                  importantForAccessibility="no"
+                >
+                  ▶
+                </Text>
               </TouchableOpacity>
             </View>
 
             <Text
               style={styles.chapterIndexText}
               accessible
-              accessibilityLabel={`${currentChapterIndex + 1}번째 챕터, 전체 ${chapters.length}개 중`}
+              accessibilityLabel={`${currentChapterIndex + 1}번째 챕터, 전체 ${
+                chapters.length
+              }개 중`}
             >
               {currentChapterIndex + 1} / {chapters.length}
             </Text>
@@ -548,7 +573,9 @@ export default function PlaybackChoiceScreen() {
               onPress={handleContinue}
               label="이어서 듣기"
               subLabel={`마지막 위치부터`}
-              accessibilityLabel={`이어서 듣기, ${chapters[currentChapterIndex]?.title || ''} 챕터, 마지막 위치부터`}
+              accessibilityLabel={`이어서 듣기, ${
+                chapters[currentChapterIndex]?.title || ""
+              } 챕터, 마지막 위치부터`}
             />
           )}
 
@@ -556,13 +583,15 @@ export default function PlaybackChoiceScreen() {
             onPress={handleFromStart}
             label="처음부터 듣기"
             subLabel={`챕터 처음부터`}
-            accessibilityLabel={`처음부터 듣기, ${chapters[currentChapterIndex]?.title || ''} 챕터, 처음부터`}
+            accessibilityLabel={`처음부터 듣기, ${
+              chapters[currentChapterIndex]?.title || ""
+            } 챕터, 처음부터`}
           />
 
           <ChoiceButton
             onPress={handleBookmarkPress}
             label="저장 목록"
-            subLabel="북마크 보기"
+            subLabel="저장한 내용 보기"
             accessibilityLabel="저장 목록"
           />
 
@@ -587,12 +616,19 @@ export default function PlaybackChoiceScreen() {
   );
 }
 
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
-  const isPrimaryColors = 'primary' in colors;
+const createStyles = (
+  colors: any,
+  fontSize: (size: number) => number,
+  isHighContrast: boolean
+) => {
+  const isPrimaryColors = "primary" in colors;
 
   return StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: isPrimaryColors
+        ? colors.background.elevated
+        : colors.background.default,
     },
     header: {
       paddingHorizontal: 24,
@@ -612,6 +648,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingBottom: 24,
     },
     infoSection: {
+      marginTop: 24,
       marginBottom: 24,
       alignItems: "center",
       paddingTop: 8,
@@ -627,12 +664,16 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       color: colors.text.secondary,
     },
     chapterSelectSection: {
-      backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
+      backgroundColor: isPrimaryColors
+        ? colors.primary.lightest
+        : colors.background.elevated,
       borderRadius: 16,
       padding: 24,
       marginBottom: 24,
       borderWidth: 3,
-      borderColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      borderColor: isPrimaryColors
+        ? colors.primary.main
+        : colors.accent.primary,
     },
     progressSection: {
       backgroundColor: colors.background.elevated || colors.background.default,
@@ -655,7 +696,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     progressBarBackground: {
       flex: 1,
       height: 24,
-      backgroundColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      backgroundColor: isPrimaryColors
+        ? colors.border.light
+        : colors.border.default,
       borderRadius: 12,
       overflow: "hidden",
     },
@@ -689,7 +732,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       height: 60,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: isPrimaryColors ? colors.primary.main : colors.accent.primary,
+      backgroundColor: isPrimaryColors
+        ? colors.primary.main
+        : colors.accent.primary,
       borderRadius: 30,
       borderWidth: 3,
       borderColor: isPrimaryColors ? colors.primary.dark : colors.border.focus,

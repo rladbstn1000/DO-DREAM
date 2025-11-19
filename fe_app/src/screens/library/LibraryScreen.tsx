@@ -29,6 +29,8 @@ import { fetchAllProgress } from "../../api/progressApi";
 import type { MaterialProgress } from "../../types/api/progressApiTypes";
 import { useTheme } from "../../contexts/ThemeContext";
 import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../../constants/dimensions";
+import { COLORS } from "../../constants/colors";
+import { commonStyles } from "../../styles/commonStyles";
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
@@ -336,7 +338,7 @@ export default function LibraryScreen() {
     try {
       setLoadingMaterialId(material.id);
       AccessibilityInfo.announceForAccessibility(
-        `${material.title} 교재 내용을 불러오는 중입니다. 잠시만 기다려 주세요.`
+        `${material.title} 교재 내용을 불러오는 중입니다.`
       );
 
       const json = await fetchMaterialJson(material.id);
@@ -540,7 +542,10 @@ export default function LibraryScreen() {
             accessibilityHint="재생 속도 및 화면 설정을 변경합니다."
           />
 
-          <VoiceCommandButton accessibilityHint="두 번 탭한 후 교재 이름을 말씀하세요. 예: 문학, 사회문화, 생물 1, 영어 1" />
+          <VoiceCommandButton
+            style={commonStyles.headerVoiceButton}
+            accessibilityHint="두 번 탭한 후 교재 이름을 말씀하세요. 예: 문학, 사회문화, 생물 1, 영어 1"
+          />
         </View>
       </View>
 
@@ -584,7 +589,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       paddingHorizontal: 24,
       paddingVertical: 16,
       borderBottomWidth: 3,
-      borderBottomColor: isHighContrast ? colors.secondary.main : (isPrimaryColors ? colors.primary.main : colors.border.default),
+      borderBottomColor: isHighContrast ? COLORS.secondary.main : (isPrimaryColors ? colors.primary.main : colors.border.default),
       minHeight: HEADER_MIN_HEIGHT,
     },
     studentName: {
@@ -606,7 +611,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       paddingBottom: 40,
     },
     materialButton: {
-      backgroundColor: isPrimaryColors ? colors.background.elevated : colors.background.elevated,
+      backgroundColor: isPrimaryColors ? colors.primary.lightest : colors.background.elevated,
       borderRadius: 16,
       marginBottom: 20,
       paddingVertical: 20,

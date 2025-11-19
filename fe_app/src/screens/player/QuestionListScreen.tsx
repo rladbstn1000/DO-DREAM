@@ -9,7 +9,11 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+} from "@react-navigation/native";
 import {
   QuestionListScreenNavigationProp,
   QuestionListScreenRouteProp,
@@ -26,14 +30,18 @@ import {
 } from "../../services/questionStorage";
 import { useTheme } from "../../contexts/ThemeContext";
 import { HEADER_MIN_HEIGHT } from "../../constants/dimensions";
+import { COLORS } from "../../constants/colors";
 
 export default function QuestionListScreen() {
   const navigation = useNavigation<QuestionListScreenNavigationProp>();
   const route = useRoute<QuestionListScreenRouteProp>();
   const { material } = route.params;
 
-  const { colors, fontSize: themeFont } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
+  const styles = React.useMemo(
+    () => createStyles(colors, themeFont, isHighContrast),
+    [colors, themeFont, isHighContrast]
+  );
 
   const [questions, setQuestions] = useState<QuestionHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,7 +124,9 @@ export default function QuestionListScreen() {
             text: "취소",
             style: "cancel",
             onPress: () => {
-              AccessibilityInfo.announceForAccessibility("삭제를 취소했습니다.");
+              AccessibilityInfo.announceForAccessibility(
+                "삭제를 취소했습니다."
+              );
             },
           },
           {
@@ -125,10 +135,14 @@ export default function QuestionListScreen() {
             onPress: () => {
               const success = deleteQuestionHistory(question.id);
               if (success) {
-                AccessibilityInfo.announceForAccessibility("질문을 삭제했습니다.");
+                AccessibilityInfo.announceForAccessibility(
+                  "질문을 삭제했습니다."
+                );
                 loadQuestions(); // 목록 새로고침
               } else {
-                AccessibilityInfo.announceForAccessibility("질문 삭제에 실패했습니다.");
+                AccessibilityInfo.announceForAccessibility(
+                  "질문 삭제에 실패했습니다."
+                );
               }
             },
           },
@@ -150,11 +164,7 @@ export default function QuestionListScreen() {
       const t = spoken.trim().toLowerCase();
 
       // 뒤로가기
-      if (
-        t.includes("뒤로") ||
-        t.includes("이전") ||
-        t.includes("돌아가")
-      ) {
+      if (t.includes("뒤로") || t.includes("이전") || t.includes("돌아가")) {
         handleGoBack();
         return;
       }
@@ -166,7 +176,9 @@ export default function QuestionListScreen() {
         t.includes("목록 갱신") ||
         t.includes("다시 불러")
       ) {
-        AccessibilityInfo.announceForAccessibility("질문 목록을 새로고침합니다.");
+        AccessibilityInfo.announceForAccessibility(
+          "질문 목록을 새로고침합니다."
+        );
         loadQuestions();
         return;
       }
@@ -186,16 +198,21 @@ export default function QuestionListScreen() {
       goBack: handleGoBack,
       rawText: handleVoiceCommand,
     });
-  }, [setCurrentScreenId, registerVoiceHandlers, handleGoBack, handleVoiceCommand]);
+  }, [
+    setCurrentScreenId,
+    registerVoiceHandlers,
+    handleGoBack,
+    handleVoiceCommand,
+  ]);
 
   // 첫 질문과 답변 가져오기
   const getFirstQuestion = (question: QuestionHistory): string => {
-    const firstUserMessage = question.messages.find(m => m.type === 'user');
+    const firstUserMessage = question.messages.find((m) => m.type === "user");
     return firstUserMessage?.text || "";
   };
 
   const getFirstAnswer = (question: QuestionHistory): string => {
-    const firstBotMessage = question.messages.find(m => m.type === 'bot');
+    const firstBotMessage = question.messages.find((m) => m.type === "bot");
     return firstBotMessage?.text || "";
   };
 
@@ -208,11 +225,7 @@ export default function QuestionListScreen() {
           style={commonStyles.headerBackButton}
         />
 
-        <Text
-          style={styles.title}
-          accessible={true}
-          accessibilityRole="header"
-        >
+        <Text style={styles.title} accessible={true} accessibilityRole="header">
           질문 목록
         </Text>
 
@@ -227,9 +240,7 @@ export default function QuestionListScreen() {
         <Text style={styles.materialTitle} accessibilityRole="text">
           {material.title}
         </Text>
-        <Text style={styles.questionCount}>
-          총 {questions.length}개의 질문
-        </Text>
+        <Text style={styles.questionCount}>총 {questions.length}개의 질문</Text>
       </View>
 
       {/* 질문 목록 */}
@@ -263,7 +274,12 @@ export default function QuestionListScreen() {
                   onPress={() => handleQuestionPress(question)}
                   accessible={true}
                   accessibilityRole="button"
-                  accessibilityLabel={`질문: ${truncateText(firstQuestion, 50)}. 대화 ${exchangeCount}회. ${formatDate(question.updatedAt)} 작성.`}
+                  accessibilityLabel={`질문: ${truncateText(
+                    firstQuestion,
+                    50
+                  )}. 대화 ${exchangeCount}회. ${formatDate(
+                    question.updatedAt
+                  )} 작성.`}
                   accessibilityHint="두 번 탭하면 이어서 대화할 수 있습니다"
                 >
                   {/* 질문 텍스트 */}
@@ -275,18 +291,16 @@ export default function QuestionListScreen() {
                   </View>
 
                   {/* 답변 텍스트 */}
-                  <View style={styles.answerTextContainer}>
+                  {/* <View style={styles.answerTextContainer}>
                     <Text style={styles.answerLabel}>답변</Text>
                     <Text style={styles.answerText}>
                       {truncateText(firstAnswer, 150)}
                     </Text>
-                  </View>
+                  </View> */}
 
                   {/* 메타 정보 */}
                   <View style={styles.metaContainer}>
-                    <Text style={styles.metaText}>
-                      대화 {exchangeCount}회
-                    </Text>
+                    <Text style={styles.metaText}>대화 {exchangeCount}회</Text>
                     <Text style={styles.metaText}>•</Text>
                     <Text style={styles.metaText}>
                       {formatDate(question.updatedAt)}
@@ -314,8 +328,12 @@ export default function QuestionListScreen() {
   );
 }
 
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
-  const isPrimaryColors = 'primary' in colors;
+const createStyles = (
+  colors: any,
+  fontSize: (size: number) => number,
+  isHighContrast: boolean
+) => {
+  const isPrimaryColors = "primary" in colors;
 
   return StyleSheet.create({
     container: {
@@ -337,7 +355,11 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingHorizontal: 24,
       paddingVertical: 20,
       borderBottomWidth: 2,
-      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      borderBottomColor: isHighContrast
+        ? COLORS.secondary.main
+        : isPrimaryColors
+        ? colors.primary.main
+        : colors.border.default,
       backgroundColor: colors.background.elevated || colors.background.default,
     },
     materialTitle: {
@@ -364,16 +386,20 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingVertical: 60,
     },
     emptyText: {
-      fontSize: fontSize(20),
+      fontSize: fontSize(24),
       color: colors.text.tertiary || colors.text.secondary,
       textAlign: "center",
       lineHeight: 30,
     },
     questionCard: {
-      backgroundColor: colors.background.default,
+      backgroundColor: isPrimaryColors
+        ? colors.primary.default
+        : colors.background.elevated,
       borderRadius: 12,
       borderWidth: 2,
-      borderColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderColor: isPrimaryColors
+        ? colors.primary.main
+        : colors.accent.primary,
       overflow: "hidden",
       marginBottom: 16,
     },
@@ -384,13 +410,13 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       marginBottom: 12,
     },
     questionLabel: {
-      fontSize: fontSize(14),
+      fontSize: fontSize(16),
       fontWeight: "700",
       color: isPrimaryColors ? colors.primary.main : colors.accent.primary,
       marginBottom: 4,
     },
     questionText: {
-      fontSize: fontSize(20),
+      fontSize: fontSize(24),
       lineHeight: 28,
       color: colors.text.primary,
       fontWeight: "600",
@@ -419,7 +445,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       marginTop: 8,
     },
     metaText: {
-      fontSize: fontSize(14),
+      fontSize: fontSize(16),
       color: colors.text.tertiary || colors.text.secondary,
     },
     deleteButton: {
@@ -428,7 +454,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingHorizontal: 16,
       alignItems: "center",
       borderTopWidth: 2,
-      borderTopColor: isPrimaryColors ? colors.border.light : colors.border.default,
+      borderTopColor: isPrimaryColors
+        ? colors.border.light
+        : colors.border.default,
     },
     deleteButtonText: {
       fontSize: fontSize(16),

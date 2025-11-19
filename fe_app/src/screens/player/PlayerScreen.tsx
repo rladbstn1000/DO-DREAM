@@ -44,6 +44,7 @@ import {
 } from "../../api/bookmarkApi";
 import { updateProgress } from "../../api/progressApi";
 import { useTheme } from "../../contexts/ThemeContext";
+import { COLORS } from "../../constants/colors";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -57,8 +58,8 @@ export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
   const route = useRoute<PlayerScreenRouteProp>() as any;
 
-  const { colors, fontSize: themeFont } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont, isHighContrast), [colors, themeFont, isHighContrast]);
 
   const {
     material,
@@ -876,7 +877,7 @@ export default function PlayerScreen() {
 }
 const CONTROL_BTN_MIN_HEIGHT = 80;
 
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
+const createStyles = (colors: any, fontSize: (size: number) => number, isHighContrast: boolean) => {
   const isPrimaryColors = 'primary' in colors;
 
   return StyleSheet.create({
@@ -919,7 +920,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingVertical: 12,
       paddingHorizontal: 12,
       borderTopWidth: 3,
-      borderTopColor: isPrimaryColors ? colors.border.main : colors.border.default,
+      borderTopColor: isHighContrast ? COLORS.secondary.main : (isPrimaryColors ? colors.border.main : colors.border.default),
       gap: 8,
     },
 

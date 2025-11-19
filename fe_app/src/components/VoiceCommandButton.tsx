@@ -150,7 +150,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
     buttonText: {
       fontSize: 18,
       fontWeight: "bold",
-      color: colors.text.primary,
+      color: isPrimaryColors ? colors.text.primary : colors.text.secondary,
     },
     buttonTextActive: {
       color: COLORS.status.error,
