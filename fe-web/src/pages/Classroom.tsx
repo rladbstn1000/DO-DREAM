@@ -40,6 +40,7 @@ type Student = {
   grade: string;
   avatarUrl?: string;
   progressRate: number;
+  isEmpty?: boolean;
 };
 
 /* ===== 라벨 옵션 ===== */
@@ -110,6 +111,24 @@ type SharedStudentMaterialsDto = {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+
+// ✅ 빈 카드 채우기 함수
+const getFilledStudents = (students: Student[]) => {
+  const minCards = 6; // 최소 6개 카드 표시
+  if (students.length >= minCards) return students;
+  
+  const fillCount = minCards - students.length;
+  const emptyCards = Array(fillCount).fill(null).map((_, i) => ({
+    id: `empty-${i}`,
+    name: '',
+    grade: '',
+    avatarUrl: '',
+    progressRate: 0,
+    isEmpty: true,
+  }));
+  
+  return [...students, ...emptyCards];
+};
 
 export default function Classroom() {
   const { classroomId = '1' } = useParams<{ classroomId: string }>();
@@ -393,7 +412,6 @@ export default function Classroom() {
     }
   };
 
-
   const [stuQuery, setStuQuery] = useState('');
   const [stuSort, setStuSort] = useState<'progress' | 'name'>('progress');
   
@@ -431,7 +449,7 @@ export default function Classroom() {
             <h2 className="cl-profile-name-mini">김싸피</h2>
             <p className="cl-profile-email-mini">teacher@school.com</p>
             <p className="cl-profile-label-mini">
-              {classLabel ? `${classLabel} · 국어` : '담당 반 정보 없음'}
+              {classLabel ? `${classLabel}` : '담당 반 정보 없음'}
             </p>
           </div>
           <div className="cl-sidebar-divider" />
@@ -551,24 +569,42 @@ export default function Classroom() {
                 <p className="cl-empty-hint">불러오는 중입니다…</p>
               ) : !students.length ? (
                 <p className="cl-empty-hint">아직 등록된 학생이 없거나, 반 정보가 없습니다.</p>
+              ) : filteredStudents.length === 0 ? (
+                <div className="cl-empty-materials">
+                  <FileText size={48} />
+                  <p>검색 결과가 없습니다</p>
+                  <p className="cl-empty-hint">다른 검색어를 시도해보세요.</p>
+                </div>
               ) : (
-                filteredStudents.map((s) => (
-                  <div key={s.id} className="cl-student-card" style={{ cursor: 'default' }}>
-                    <div className="cl-student-top">
-                      <img className="cl-student-avatar" src={s.avatarUrl} alt={s.name} />
-                      <div className="cl-student-info">
-                        <h4>{s.name}</h4>
-                        <p>{s.grade}</p>
+                getFilledStudents(filteredStudents).map((s) => {
+                  if (s.isEmpty) {
+                    return (
+                      <div 
+                        key={s.id} 
+                        className="cl-student-card cl-student-card-empty"
+                        style={{ visibility: 'hidden' }}
+                      />
+                    );
+                  }
+                  
+                  return (
+                    <div key={s.id} className="cl-student-card" style={{ cursor: 'default' }}>
+                      <div className="cl-student-top">
+                        <img className="cl-student-avatar" src={s.avatarUrl} alt={s.name} />
+                        <div className="cl-student-info">
+                          <h4>{s.name}</h4>
+                          <p>{s.grade}</p>
+                        </div>
+                      </div>
+                      <div className="cl-progress">
+                        <div className="cl-progress-bar">
+                          <div className="cl-progress-fill" style={{ width: `${s.progressRate}%` }} />
+                        </div>
+                        <span className="cl-progress-text">{s.progressRate}%</span>
                       </div>
                     </div>
-                    <div className="cl-progress">
-                      <div className="cl-progress-bar">
-                        <div className="cl-progress-fill" style={{ width: `${s.progressRate}%` }} />
-                      </div>
-                      <span className="cl-progress-text">{s.progressRate}%</span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </section>
