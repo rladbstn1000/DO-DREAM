@@ -282,7 +282,6 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 8px 8px 12px;
 }
 
 /* ===== 2단 컬럼 레이아웃 ===== */

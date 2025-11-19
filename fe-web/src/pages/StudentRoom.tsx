@@ -605,78 +605,38 @@ export default function StudentRoom() {
             </div>
           </section>
 
-          {/* 두 번째 줄 */}
-          <div className="sr-two-columns">
-            {/* 지원 필요 영역 */}
-            <section className="cl-card">
-              <div className="cl-card-head">
-                <div className="cl-head-left">
-                  <AlertTriangle size={20} />
-                  <h3>지원 필요 영역</h3>
-                </div>
+          {/* 퀴즈 성적 */}
+          <section className="cl-card">
+            <div className="cl-card-head">
+              <div className="cl-head-left">
+                <Award size={20} />
+                <h3>퀴즈 성적</h3>
               </div>
+            </div>
 
-              <div className="cl-section-scroll">
-                {weakInsights.length === 0 ? (
-                  <p className="cl-empty-hint">분석 데이터가 없습니다.</p>
-                ) : (
-                  <div className="sr-weak-areas">
-                    {weakInsights.map((w: any) => (
-                      <div key={w.label} className="sr-weak-item">
-                        <div className="sr-weak-header">
-                          <strong>{w.label}</strong>
-                          <small>{w.hint}</small>
-                        </div>
-                        <div className="sr-weak-bar">
-                          <div
-                            className="sr-weak-fill"
-                            style={{
-                              width: `${Math.round(10 + w.weight * 90)}%`,
-                            }}
-                          />
-                        </div>
+            <div className="cl-section-scroll">
+              {quizResults.length === 0 ? (
+                <p className="cl-empty-hint">퀴즈 결과가 없습니다.</p>
+              ) : (
+                <div className="sr-quiz-list">
+                  {quizResults.map((q) => (
+                    <div key={q.id} className="sr-quiz-item">
+                      <div className="sr-quiz-info">
+                        <h4>{q.title}</h4>
+                        <p>{q.completedDate}</p>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* 퀴즈 성적 */}
-            <section className="cl-card">
-              <div className="cl-card-head">
-                <div className="cl-head-left">
-                  <Award size={20} />
-                  <h3>퀴즈 성적</h3>
-                </div>
-              </div>
-
-              <div className="cl-section-scroll">
-                {quizResults.length === 0 ? (
-                  <p className="cl-empty-hint">퀴즈 결과가 없습니다.</p>
-                ) : (
-                  <div className="sr-quiz-list">
-                    {quizResults.map((q) => (
-                      <div key={q.id} className="sr-quiz-item">
-                        <div className="sr-quiz-info">
-                          <h4>{q.title}</h4>
-                          <p>{q.completedDate}</p>
-                        </div>
-                        <div className="sr-quiz-score">
-                          <span className="sr-score-main">
-                            {q.score}/{q.maxScore}
-                          </span>
-                          <span className="sr-accuracy-badge">
-                            {q.accuracy}%
-                          </span>
-                        </div>
+                      <div className="sr-quiz-score">
+                        <span className="sr-score-main">
+                          {q.score}/{q.maxScore}
+                        </span>
+                        <span className="sr-accuracy-badge">{q.accuracy}%</span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Q&A */}
           <section className="cl-card">
