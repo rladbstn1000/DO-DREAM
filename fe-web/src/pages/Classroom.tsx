@@ -403,11 +403,18 @@ export default function Classroom() {
             }
           }
 
+          const avatarUrl =
+            s.gender === 'MALE'
+              ? maleImg
+              : s.gender === 'FEMALE'
+                ? femaleImg
+                : maleImg; // 기본값
+
           return {
             id: String(s.studentId),
             name: s.studentName,
             grade: classLabelText,
-            avatarUrl: idx % 2 === 0 ? maleImg : femaleImg,
+            avatarUrl,
             progressRate: progress,
           };
         });
