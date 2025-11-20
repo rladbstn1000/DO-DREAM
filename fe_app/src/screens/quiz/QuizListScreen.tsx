@@ -205,8 +205,59 @@ export default function QuizListScreen() {
     handleQuizListVoiceRaw,
   ]);
 
+  const getQuizTypeLabel = (questionType: string): string => {
+    switch (questionType) {
+      case 'FILL_BLANK':
+        return '빈칸 채우기';
+      case 'TERM_DEFINITION':
+        return '용어 정의';
+      case 'SHORT_ANSWER':
+        return '단답형';
+      case 'CUSTOM':
+        return '선생님문제';
+      default:
+        return questionType;
+    }
+  };
+
+  const getQuizTypeBadgeStyle = (questionType: string) => {
+    switch (questionType) {
+      case 'FILL_BLANK':
+        return {
+          backgroundColor: COLORS.status.infoLight, // 연한 파랑
+          borderColor: COLORS.status.info, // 파랑
+          textColor: COLORS.status.info, // 진한 파랑
+        };
+      case 'TERM_DEFINITION':
+        return {
+          backgroundColor: COLORS.primary.lightest, // 연한 남색
+          borderColor: COLORS.primary.main, // 남색
+          textColor: COLORS.primary.main, // 진한 남색
+        };
+      case 'SHORT_ANSWER':
+        return {
+          backgroundColor: COLORS.status.successLight, // 연한 초록
+          borderColor: COLORS.status.success, // 초록
+          textColor: COLORS.status.success, // 진한 초록
+        };
+      case 'CUSTOM':
+        return {
+          backgroundColor: COLORS.secondary.main, // 노란색
+          borderColor: COLORS.secondary.dark, // 진한 노란색
+          textColor: COLORS.text.primary, // 검정색 텍스트
+        };
+      default:
+        return {
+          backgroundColor: COLORS.background.elevated, // 회색
+          borderColor: COLORS.border.main, // 회색
+          textColor: COLORS.text.tertiary, // 진한 회색
+        };
+    }
+  };
+
   const renderQuizQuestionItem = ({ item, index }: { item: QuizQuestion; index: number }) => {
-    const quizTypeLabel = item.question_type; // 예: 'TERM_DEFINITION'
+    const quizTypeLabel = getQuizTypeLabel(item.question_type);
+    const badgeStyle = getQuizTypeBadgeStyle(item.question_type);
     const accessibilityLabel = `${index + 1}번. ${
       item.title
     }. 문제 유형: ${quizTypeLabel}.`;
@@ -221,8 +272,17 @@ export default function QuizListScreen() {
       >
         <View style={styles.quizContent}>
           <Text style={styles.quizTitle}>{`${index + 1}. ${item.title}`}</Text>
-          <View style={styles.quizTypeBadge}>
-            <Text style={styles.quizTypeBadgeText}>{quizTypeLabel}</Text>
+          <View style={[
+            styles.quizTypeBadge,
+            {
+              backgroundColor: badgeStyle.backgroundColor,
+              borderColor: badgeStyle.borderColor,
+            }
+          ]}>
+            <Text style={[
+              styles.quizTypeBadgeText,
+              { color: badgeStyle.textColor }
+            ]}>{quizTypeLabel}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -230,27 +290,29 @@ export default function QuizListScreen() {
   };
 
   const Header = (
-    <View style={styles.header}>
-      <View style={styles.headerTopRow}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleGoBack}
-          accessible={true}
-          accessibilityLabel="뒤로가기"
-          accessibilityRole="button"
-          accessibilityHint="이전 화면으로 돌아갑니다"
-        >
-          <Text style={styles.backButtonText}>← 뒤로</Text>
-        </TouchableOpacity>
+    <>
+      <View style={styles.header}>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleGoBack}
+            accessible={true}
+            accessibilityLabel="뒤로가기"
+            accessibilityRole="button"
+            accessibilityHint="이전 화면으로 돌아갑니다"
+          >
+            <Text style={styles.backButtonText}>← 뒤로</Text>
+          </TouchableOpacity>
 
-        <VoiceCommandButton
-          style={commonStyles.headerVoiceButton}
-          accessibilityHint="두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같은 명령을 말씀하세요"
-        />
+          <VoiceCommandButton
+            style={commonStyles.headerVoiceButton}
+            accessibilityHint="두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같은 명령을 말씀하세요"
+          />
+        </View>
       </View>
 
       {!loading && (
-        <View style={styles.headerInfo}>
+        <View style={styles.infoSection}>
           <Text
             style={styles.subjectText}
             accessible={true}
@@ -261,7 +323,7 @@ export default function QuizListScreen() {
           <Text style={styles.chapterTitle}>전체 퀴즈 목록</Text>
         </View>
       )}
-    </View>
+    </>
   );
 
   if (loading || error) {
@@ -310,7 +372,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       paddingHorizontal: 24,
       paddingVertical: 16,
       borderBottomWidth: 3,
-      borderBottomColor: isHighContrast ? COLORS.secondary.main : colors.primary.main,
+      borderBottomColor: isHighContrast ? COLORS.secondary.main : (isPrimaryColors ? colors.primary.main : colors.border.default),
       minHeight: HEADER_MIN_HEIGHT,
     },
     headerTopRow: {
@@ -329,18 +391,21 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       color: isPrimaryColors ? colors.primary.main : colors.accent.primary,
       fontWeight: "600",
     },
-    headerInfo: {
-      marginTop: 16,
+    infoSection: {
+      marginTop: 24,
+      marginBottom: 24,
+      alignItems: "center",
+      paddingTop: 8,
     },
     subjectText: {
-      fontSize: fontSize(22),
-      color: colors.text.secondary,
-      marginBottom: 4,
-    },
-    chapterTitle: {
-      fontSize: fontSize(30),
+      fontSize: fontSize(40),
       fontWeight: "bold",
       color: colors.text.primary,
+      marginBottom: 8,
+    },
+    chapterTitle: {
+      fontSize: fontSize(22),
+      color: colors.text.secondary,
     },
     listContent: {
       paddingHorizontal: 24,

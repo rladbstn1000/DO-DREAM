@@ -44,6 +44,20 @@ export default function QuizResultScreen() {
   const correctAnswers = gradingResults.filter(r => r.isCorrect);
 
   useEffect(() => {
+    console.log('[QuizResultScreen] gradingResults 개수:', gradingResults.length);
+    gradingResults.forEach((item, idx) => {
+      console.log(`[QuizResultScreen] 문제 ${idx + 1}:`, {
+        id: item.id,
+        title: item.title,
+        content: item.content,
+        question_number: item.question_number,
+        hasTitle: !!item.title,
+        hasContent: !!item.content,
+      });
+    });
+  }, []);
+
+  useEffect(() => {
     const announcement = `퀴즈 완료. ${totalQuestions}문제 중 ${correctAnswersCount}문제 정답. 정답률 ${percentage}퍼센트. ${
       wrongAnswers.length > 0
         ? `틀린 문제는 ${wrongAnswers.length}개입니다. 복습이 필요합니다.`
@@ -241,7 +255,14 @@ export default function QuizResultScreen() {
         {/* 문제 내용 */}
         <View style={styles.cardContent}>
           <Text style={styles.cardQuestionLabel}>문제</Text>
-          <Text style={styles.cardQuestionText}>{resultItem.title}</Text>
+          {resultItem.title && (
+            <Text style={styles.cardQuestionText}>{resultItem.title}</Text>
+          )}
+          {resultItem.content && (
+            <Text style={[styles.cardQuestionText, resultItem.title && { marginTop: 8 }]}>
+              {resultItem.content}
+            </Text>
+          )}
         </View>
 
         {/* 답안 정보 */}
@@ -286,7 +307,7 @@ export default function QuizResultScreen() {
           )}
 
           {/* AI 피드백 */}
-          {!resultItem.isCorrect && resultItem.feedback && (
+          {resultItem.feedback && (
             <View style={styles.feedbackSection}>
               <Text style={styles.feedbackLabel}>AI 피드백</Text>
               <View style={styles.feedbackBox}>
@@ -301,8 +322,18 @@ export default function QuizResultScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      {/* 상단 오른쪽 음성 명령 버튼 */}
+      {/* 헤더 - 서재로 버튼과 음성 명령 버튼 */}
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerBackButton}
+          onPress={handleGoToLibrary}
+          accessible={true}
+          accessibilityLabel="서재로 돌아가기"
+          accessibilityRole="button"
+          accessibilityHint="퀴즈를 종료하고 서재 화면으로 이동합니다"
+        >
+          <Text style={styles.headerBackButtonText}>← 서재로</Text>
+        </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <VoiceCommandButton
           style={commonStyles.headerVoiceButton}
@@ -329,7 +360,7 @@ export default function QuizResultScreen() {
             <View
               style={styles.scoreContainer}
               accessible={true}
-              accessibilityLabel={`${correctAnswersCount} out of ${totalQuestions} questions correct`}
+              accessibilityLabel={`${totalQuestions} 개의 문제 중 ${correctAnswersCount} 개 정답입니다. `}
               accessibilityRole="text"
             >
               <Text style={styles.scoreText}>{correctAnswersCount}</Text>
@@ -351,19 +382,21 @@ export default function QuizResultScreen() {
         {/* 틀린 문제 섹션 */}
         {wrongAnswers.length > 0 ? (
           <View style={styles.wrongSection}>
-            <View style={styles.wrongSectionHeader}>
+            <View
+              style={styles.wrongSectionHeader}
+              accessible={true}
+              accessibilityRole="header"
+              accessibilityLabel={`틀린 문제 ${wrongAnswers.length}개 복습이 필요합니다`}
+            >
               <Text
                 style={styles.sectionTitle}
-                accessible={true}
-                accessibilityRole="header"
-                accessibilityLabel="틀린 문제"
+                accessible={false}
               >
                 틀린 문제: {wrongAnswers.length}개
               </Text>
               <Text
                 style={styles.sectionSubtitle}
-                accessible={true}
-                accessibilityRole="text"
+                accessible={false}
               >
                 복습이 필요합니다
               </Text>
@@ -473,26 +506,17 @@ export default function QuizResultScreen() {
         </View>
       </ScrollView>
 
-      {/* 하단 버튼 */}
+      {/* 하단 버튼 - 다시 풀기만 */}
       <View style={styles.bottomButtons}>
         <TouchableOpacity
-          style={[styles.actionButton, styles.retryButton]}
+          style={styles.retryButtonFull}
           onPress={handleRetry}
           accessible={true}
           accessibilityLabel="다시 풀기"
           accessibilityRole="button"
           accessibilityHint="이 퀴즈를 처음부터 다시 풉니다"
         >
-          <Text style={styles.actionButtonText}>다시 풀기</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.libraryButton]}
-          onPress={handleGoToLibrary}
-          accessible={true}
-          accessibilityLabel="서재로 돌아가기"
-          accessibilityRole="button"
-        >
-          <Text style={styles.libraryButtonText}>서재로</Text>
+          <Text style={styles.retryButtonFullText}>다시 풀기</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -504,14 +528,29 @@ const createStyles = (isHighContrast: boolean) => StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background.default,
   },
-  // 상단 음성 명령 버튼 영역
+  // 헤더 영역
   header: {
+    display: "flex",
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 24,
     paddingVertical: 16,
+    borderBottomWidth: 3,
+    borderBottomColor: isHighContrast ? COLORS.secondary.main : COLORS.primary.main,
     minHeight: HEADER_MIN_HEIGHT,
+  },
+  headerBackButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    minWidth: 100,
+    minHeight: 48,
+    justifyContent: "center",
+  },
+  headerBackButtonText: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: COLORS.primary.main,
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -523,7 +562,7 @@ const createStyles = (isHighContrast: boolean) => StyleSheet.create({
     marginBottom: 32,
     paddingBottom: 32,
     borderBottomWidth: 3,
-    borderBottomColor: isHighContrast ? '#FEC73D' : COLORS.border.light,
+    borderBottomColor: isHighContrast ? COLORS.secondary.main : COLORS.primary.main,
   },
   summaryTitle: {
     fontSize: 40,
@@ -781,35 +820,22 @@ const createStyles = (isHighContrast: boolean) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
     paddingTop: 16,
-    gap: 12,
     borderTopWidth: 3,
-    borderTopColor: COLORS.border.light,
-    backgroundColor: COLORS.background.elevated,
+    borderTopColor: isHighContrast ? COLORS.secondary.main : COLORS.primary.main,
   },
-  actionButton: {
+  retryButtonFull: {
     borderRadius: 16,
     padding: 20,
     alignItems: "center",
-    minHeight: 88,
+    minHeight: 72,
     justifyContent: "center",
     borderWidth: 4,
-  },
-  retryButton: {
     backgroundColor: COLORS.secondary.main,
     borderColor: COLORS.secondary.dark,
   },
-  libraryButton: {
-    backgroundColor: COLORS.primary.main,
-    borderColor: COLORS.primary.dark,
-  },
-  actionButtonText: {
+  retryButtonFullText: {
     fontSize: 26,
     fontWeight: "bold",
-    color: COLORS.text.primary, // 노란 배경(retryButton)에는 검은색, 남색 배경(libraryButton)에는 검은색
-  },
-  libraryButtonText: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: COLORS.text.inverse, // 남색 배경에는 흰색
+    color: COLORS.text.primary,
   },
 });

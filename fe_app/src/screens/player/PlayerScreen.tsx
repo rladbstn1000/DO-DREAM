@@ -217,6 +217,54 @@ export default function PlayerScreen() {
     saveProgressDataRef.current = saveProgressData;
   }, [saveProgressData]);
 
+  // 뒤로 가기
+  const handleBackPress = useCallback(async () => {
+    // PlayerScreen을 떠나기 전에 현재 진행률을 저장합니다.
+    saveProgressDataRef.current(false);
+    await updateProgressToBackendRef.current(false);
+
+    // PlaybackChoiceScreen으로 돌아갈 때, 현재 챕터 ID를 전달합니다.
+    navigation.navigate("PlaybackChoice", { material, lastChapterId: chapterId });
+  }, [navigation, material, chapterId]);
+
+  // 챕터 완료 처리
+  const handleChapterComplete = useCallback(async () => {
+    saveProgressDataRef.current(true); // 로컬에 완료 상태 저장
+    await updateProgressToBackendRef.current(true); // 백엔드에 완료 상태 전송
+
+    if (hasNextChapter) {
+      const nextChapterData = chaptersFromJson[currentChapterIndex + 1];
+      AccessibilityInfo.announceForAccessibility(
+        `챕터 학습을 완료했습니다. 다음 챕터로 이동합니다. ${nextChapterData.title}`
+      );
+
+      navigation.replace("Player", {
+        material,
+        chapterId: nextChapterData.chapterId,
+        fromStart: true,
+        initialSectionIndex: 0,
+      });
+    } else {
+      AccessibilityInfo.announceForAccessibility(
+        "모든 챕터 학습을 완료했습니다. 교재 목록으로 돌아갑니다."
+      );
+      handleBackPress(); // 모든 챕터 완료 시 뒤로가기 로직 재사용
+    }
+  }, [
+    hasNextChapter,
+    chaptersFromJson,
+    currentChapterIndex,
+    material,
+    navigation,
+    handleBackPress,
+  ]);
+
+  // 핸들러를 ref로 저장하여 최신 버전 유지
+  const handleChapterCompleteRef = useRef(handleChapterComplete);
+  useEffect(() => {
+    handleChapterCompleteRef.current = handleChapterComplete;
+  }, [handleChapterComplete]);
+
   // 저장된 시청 위치 로드 + BookmarkListScreen 초기 인덱스 처리
   const savedPosition = getPlayerPosition(material.id.toString(), chapterId);
 
@@ -253,12 +301,9 @@ export default function PlayerScreen() {
     initialPlayMode,
     appSettings,
     onCompletion: useCallback(() => {
-      // 로컬에 완료 상태 저장
-      saveProgressDataRef.current(true);
-      // 백엔드에 완료 상태 전송
-      updateProgressToBackendRef.current(true);
-      AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
-    }, [material.id, chapter]),
+      // 마지막 섹션 재생이 끝나면 자동으로 완료 처리
+      handleChapterCompleteRef.current();
+    }, []),
     onSectionChange: useCallback(
       (newIndex: number) => {
         setTimeout(
@@ -518,46 +563,6 @@ export default function PlayerScreen() {
     [handleMoveChapter]
   );
 
-  // 뒤로 가기
-  const handleBackPress = useCallback(async () => {
-    saveProgressDataRef.current(false);
-    await updateProgressToBackendRef.current(false);
-
-    // goBack을 사용하여 이전 PlaybackChoice 화면으로 돌아감
-    navigation.goBack();
-  }, [navigation]);
-
-  // 챕터 완료 처리
-  const handleChapterComplete = useCallback(async () => {
-    saveProgressDataRef.current(true); // 로컬에 완료 상태 저장
-    await updateProgressToBackendRef.current(true); // 백엔드에 완료 상태 전송
-
-    if (hasNextChapter) {
-      const nextChapterData = chaptersFromJson[currentChapterIndex + 1];
-      AccessibilityInfo.announceForAccessibility(
-        `챕터 학습을 완료했습니다. 다음 챕터로 이동합니다. ${nextChapterData.title}`
-      );
-
-      navigation.replace("Player", {
-        material,
-        chapterId: nextChapterData.chapterId,
-        fromStart: true,
-        initialSectionIndex: 0,
-      });
-    } else {
-      AccessibilityInfo.announceForAccessibility(
-        "모든 챕터 학습을 완료했습니다. 교재 목록으로 돌아갑니다."
-      );
-      navigation.goBack();
-    }
-  }, [
-    hasNextChapter,
-    chaptersFromJson,
-    currentChapterIndex,
-    material,
-    navigation,
-  ]);
-
   // 재생 모드 음성 명령 파싱
   const parseModeVoice = (spoken: string): PlayMode | null => {
     const t = spoken.trim().toLowerCase();
@@ -691,11 +696,6 @@ export default function PlayerScreen() {
     handleQuestionPressRef.current = handleQuestionPress;
   }, [handleQuestionPress]);
 
-  const handleBackPressRef = useRef(handleBackPress);
-  useEffect(() => {
-    handleBackPressRef.current = handleBackPress;
-  }, [handleBackPress]);
-
   // 음성 명령 핸들러 등록 + 볼륨키/재생 연결
   useEffect(() => {
     setCurrentScreenId("Player");
@@ -715,8 +715,8 @@ export default function PlayerScreen() {
       next: ttsActions.playNext,
       prev: ttsActions.playPrevious,
       openQuestion: () => handleQuestionPressRef.current(),
-      goBack: () => handleBackPressRef.current(),
-      openLibrary: () => handleBackPressRef.current(),
+      goBack: handleBackPress, // ref 대신 직접 사용
+      openLibrary: handleBackPress, // ref 대신 직접 사용
       // Player 전용 rawText 명령 (챕터 이동 포함)
       rawText: (text: string) => handlePlayerVoiceRawRef.current(text),
     });
@@ -746,6 +746,7 @@ export default function PlayerScreen() {
     ttsActions.playPrevious,
     ttsActions.play,
     ttsActions.pause,
+    handleBackPress, // 의존성 배열에 추가
   ]);
 
   // 챕터 검증

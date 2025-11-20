@@ -281,13 +281,21 @@ export default function QuizScreen() {
       const mergedGradingResults: QuizGradingResultItem[] = questions.map((question, index) => {
         // 'results'가 이미 QuizGradingResultItem[] 타입이므로, id로 직접 비교합니다.
         const result = results.find(r => r.id === question.id);
-        return {
+        const merged = {
           ...question, // id, title, content, correct_answer 등 QuizQuestion의 모든 속성 포함
-          ...(result || {}), // isCorrect, userAnswer, feedback 등 채점 결과 덮어쓰기
           question_number: index + 1, // 질문 번호 추가
           userAnswer: result?.userAnswer || userAnswers.get(question.id) || "",
           isCorrect: result?.isCorrect ?? false, // isCorrect가 undefined일 경우 false를 기본값으로 설정
+          feedback: result?.feedback, // AI 피드백 추가
         };
+        console.log(`[QuizScreen] 병합된 문제 ${index + 1}:`, {
+          id: merged.id,
+          hasTitle: !!merged.title,
+          hasContent: !!merged.content,
+          title: merged.title,
+          content: merged.content?.substring(0, 50),
+        });
+        return merged;
       });
 
       setShowGradingModal(false);
@@ -627,10 +635,10 @@ export default function QuizScreen() {
               style={[
                 styles.actionButton,
                 isLastQuestion ? styles.submitButton : styles.nextButton,
-                !userInput.trim() && styles.submitButtonDisabled,
+                isLastQuestion && !userInput.trim() && styles.submitButtonDisabled,
               ]}
               onPress={isLastQuestion ? handleSubmit : handleNext}
-              disabled={!userInput.trim() || isSubmitting}
+              disabled={isLastQuestion && (!userInput.trim() || isSubmitting)}
               accessible={true}
               accessibilityLabel={isLastQuestion ? "채점하기" : "다음 문제"}
               accessibilityRole="button"
@@ -703,12 +711,13 @@ const createStyles = (isHighContrast: boolean) =>
       backgroundColor: COLORS.background.default,
     },
     header: {
+      display: "flex",
       flexDirection: "column",
       alignItems: "stretch",
-      paddingBottom: 20,
       paddingHorizontal: 24,
+      paddingVertical: 16,
       borderBottomWidth: 3,
-      borderBottomColor: isHighContrast ? "#FEC73D" : COLORS.primary.main,
+      borderBottomColor: isHighContrast ? COLORS.secondary.main : COLORS.primary.main,
       minHeight: HEADER_MIN_HEIGHT,
     },
     headerTopRow: {
@@ -803,8 +812,8 @@ const createStyles = (isHighContrast: boolean) =>
       marginBottom: 12,
     },
     nextButton: {
-      backgroundColor: isHighContrast ? COLORS.primary.main : COLORS.primary.main,
-      borderColor: isHighContrast ? COLORS.primary.dark : COLORS.primary.dark,
+      backgroundColor: COLORS.primary.main,
+      borderColor: COLORS.primary.dark,
     },
     nextButtonText: {
       color: COLORS.common.white, // 색상만 정의
@@ -833,11 +842,11 @@ const createStyles = (isHighContrast: boolean) =>
       color: COLORS.text.inverse,
     },
     prevButton: {
-      backgroundColor: isHighContrast ? COLORS.background.elevated : COLORS.gray[200],
-      borderColor: isHighContrast ? COLORS.border.main : COLORS.gray[400],
+      backgroundColor: COLORS.primary.main,
+      borderColor: COLORS.primary.dark,
     },
     prevButtonText: {
-      color: COLORS.text.primary, // 색상만 정의
+      color: COLORS.common.white, // 색상만 정의
     },
     dictationButton: {
       backgroundColor: isHighContrast ? COLORS.secondary.lightest : COLORS.secondary.main,

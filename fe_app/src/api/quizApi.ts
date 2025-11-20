@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 import type { QuizQuestion } from '../types/quiz';
-import { QuizAnswerPayload, QuizGradingResultItem } from '../types/api/quizApiTypes';
+import { QuizAnswerPayload, QuizGradingResultItem, RawQuizGradingResult } from '../types/api/quizApiTypes';
 
 /**
  * 특정 학습자료의 퀴즈 목록을 조회합니다.
@@ -25,8 +25,18 @@ export const fetchQuizzes = async (materialId: number | string): Promise<QuizQue
  */
 export const submitQuizAnswers = async (materialId: number | string, payload: QuizAnswerPayload): Promise<QuizGradingResultItem[]> => {
   try {
-    const response = await apiClient.post<QuizGradingResultItem[]>(`/api/materials/${materialId}/quizzes/submit`, payload);
-    return response.data;
+    // API는 snake_case로 응답하므로 RawQuizGradingResult 타입으로 받음
+    const response = await apiClient.post<RawQuizGradingResult[]>(`/api/materials/${materialId}/quizzes/submit`, payload);
+
+    // snake_case를 camelCase로 변환
+    const transformedResults: QuizGradingResultItem[] = response.data.map((raw) => ({
+      id: raw.question_id,
+      userAnswer: raw.student_answer,
+      isCorrect: raw.is_correct,
+      feedback: raw.ai_feedback, // ai_feedback을 feedback으로 매핑
+    } as QuizGradingResultItem));
+
+    return transformedResults;
   } catch (error) {
     console.error('[API] submitQuizAnswers 에러:', error);
     throw error;

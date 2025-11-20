@@ -42,9 +42,7 @@ import {
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
-  const route = useRoute<
-    PlaybackChoiceScreenRouteProp & { params: { lastChapterId?: number | string } }
-  >();
+  const route = useRoute<PlaybackChoiceScreenRouteProp>();
   const { material } = route.params;
 
   const { colors, fontSize: themeFont, isHighContrast } = useTheme();
@@ -491,31 +489,41 @@ export default function PlaybackChoiceScreen() {
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.chapterInfoCompact}>
+              <View
+                style={styles.chapterInfoCompact}
+                accessible
+                accessibilityLabel={`현재 선택된 챕터는 ${
+                  chapters[currentChapterIndex]?.title || "알 수 없음"
+                }이며, ${
+                  progressData?.chapterProgress?.[currentChapterIndex]
+                    ?.progressPercentage === 100
+                    ? "학습을 완료했습니다."
+                    : "아직 미완료 상태입니다."
+                } 전체 ${chapters.length}개 중 ${
+                  currentChapterIndex + 1
+                }번째 챕터입니다.`}
+              >
                 {chapters[currentChapterIndex] && (
                   <>
                     <Text
                       style={styles.chapterTitleCompact}
-                      accessible
-                      accessibilityLabel={`현재 선택: ${chapters[currentChapterIndex].title}`}
+                      importantForAccessibility="no-hide-descendants"
                     >
                       {chapters[currentChapterIndex].title}
                     </Text>
                     <Text
                       style={styles.chapterStatusText}
-                      accessible
-                      accessibilityLabel={
-                        progressData?.chapterProgress?.[currentChapterIndex]
-                          ?.progressPercentage === 100
-                          ? "학습 완료"
-                          : "미완료"
-                      }
+                      importantForAccessibility="no-hide-descendants"
                     >
                       {progressData?.chapterProgress?.[currentChapterIndex]
                         ?.progressPercentage === 100
                         ? "✓ 완료"
                         : "○ 미완료"}
                     </Text>
+                    <Text
+                      style={styles.chapterIndexText}
+                      importantForAccessibility="no-hide-descendants"
+                    >{`${currentChapterIndex + 1} / ${chapters.length}`}</Text>
                   </>
                 )}
               </View>
@@ -540,16 +548,6 @@ export default function PlaybackChoiceScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-
-            <Text
-              style={styles.chapterIndexText}
-              accessible
-              accessibilityLabel={`${currentChapterIndex + 1}번째 챕터, 전체 ${
-                chapters.length
-              }개 중`}
-            >
-              {currentChapterIndex + 1} / {chapters.length}
-            </Text>
           </View>
         )}
 
@@ -597,19 +595,19 @@ export default function PlaybackChoiceScreen() {
               chapters[currentChapterIndex]?.title || ""
             } 챕터, 처음부터`}
           />
+          
+          <ChoiceButton
+            onPress={handleQuestionPress}
+            label="질문 목록"
+            subLabel="이전 질문 보기"
+            accessibilityLabel="질문 목록"
+          />
 
           <ChoiceButton
             onPress={handleBookmarkPress}
             label="저장 목록"
             subLabel="저장한 내용 보기"
             accessibilityLabel="저장 목록"
-          />
-
-          <ChoiceButton
-            onPress={handleQuestionPress}
-            label="질문 목록"
-            subLabel="이전 질문 보기"
-            accessibilityLabel="질문 목록"
           />
 
           <ChoiceButton
@@ -778,6 +776,7 @@ const createStyles = (
       fontWeight: "700",
       color: isPrimaryColors ? colors.primary.main : colors.accent.primary,
       textAlign: "center",
+      marginTop: 8,
     },
     goToChapterButton: {
       backgroundColor: colors.status.success,

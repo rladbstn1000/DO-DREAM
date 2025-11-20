@@ -12,6 +12,7 @@ export type RootStackParamList = {
   Library: undefined;
   PlaybackChoice: {
     material: Material;
+    lastChapterId?: number;
   };
   Player: {
     material: Material;
