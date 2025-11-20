@@ -1,6 +1,24 @@
+/**
+ * 공통 스타일 시트
+ * WCAG 2.2 AA/AAA 기준 준수
+ *
+ * WCAG 2.2 준수 사항:
+ * - SC 1.4.3: 텍스트 대비율 최소 4.5:1
+ * - SC 1.4.11: UI 컴포넌트 대비율 최소 3:1
+ * - SC 1.4.12: 텍스트 간격 조정 (행간 1.5배)
+ * - SC 2.4.11: 포커스 외관 (최소 2px 테두리, 3:1 대비율)
+ * - SC 2.5.8: 터치 타겟 크기 최소 24×24 CSS 픽셀
+ */
+
 import { StyleSheet } from "react-native";
 import { COLORS, HIGH_CONTRAST_COLORS } from "../constants/colors";
-import { HEADER_BTN_HEIGHT, HEADER_MIN_HEIGHT } from "../constants/dimensions";
+import {
+  HEADER_BTN_HEIGHT,
+  HEADER_MIN_HEIGHT,
+  FOCUS_BORDER_WIDTH,
+  BUTTON_SPACING,
+  TEXT_SPACING,
+} from "../constants/dimensions";
 
 type ThemeColors = typeof COLORS | typeof HIGH_CONTRAST_COLORS;
 
@@ -71,30 +89,33 @@ export const createCommonStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // 텍스트 스타일
+  // 텍스트 스타일 (WCAG 2.2 SC 1.4.12: 텍스트 간격)
   title: {
     fontSize: 52,
     fontWeight: "bold",
     color: 'primary' in colors ? colors.primary.main : colors.accent.primary,
     marginBottom: 16,
+    lineHeight: 52 * TEXT_SPACING.lineHeight, // 행간 1.5배
   },
   subtitle: {
     fontSize: 32,
     fontWeight: "600",
     color: colors.text.secondary,
     marginBottom: 12,
+    lineHeight: 32 * TEXT_SPACING.lineHeight, // 행간 1.5배
   },
   body: {
     fontSize: 20,
     color: colors.text.primary,
-    lineHeight: 30,
+    lineHeight: 20 * TEXT_SPACING.lineHeight, // 행간 1.5배 (30px)
   },
   smallText: {
     fontSize: 18,
     color: colors.text.tertiary || colors.text.secondary,
+    lineHeight: 18 * TEXT_SPACING.lineHeight, // 행간 1.5배
   },
 
-  // 입력 필드
+  // 입력 필드 (WCAG 2.2 SC 2.5.8: 터치 타겟 크기)
   input: {
     fontSize: 26,
     padding: 18,
@@ -103,11 +124,12 @@ export const createCommonStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.background.default,
     color: colors.text.primary,
-    minHeight: 60,
+    minHeight: 60, // 터치 타겟 크기 기준 초과
   },
+  // WCAG 2.2 SC 2.4.11: Focus Appearance (포커스 외관)
   inputFocused: {
     borderColor: 'primary' in colors ? colors.primary.main : colors.border.focus,
-    borderWidth: 4,
+    borderWidth: FOCUS_BORDER_WIDTH, // 최소 2px 이상의 포커스 테두리
   },
 
   // 카드/박스
