@@ -11,6 +11,8 @@
     "test:browser-auth": "node tests/browser-auth.mjs",
     "test:authorization": "node --experimental-strip-types --test tests/authorization-contract.test.ts",
     "test:browser-authorization": "node tests/browser-authorization.mjs",
+    "test:grading": "node --experimental-strip-types --test tests/grading-submission.test.ts",
+    "test:browser-grading": "node tests/browser-grading.mjs",
     "build": "tsc -b && vite build --config vite.config.ts",
     "lint": "eslint .",
     "preview": "vite preview --config vite.config.ts"

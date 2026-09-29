@@ -5,6 +5,7 @@ import type { QuizQuestion } from "../quiz";
  */
 export interface QuizAnswerRequest {
   quizId: number; // 질문 ID (백엔드에서는 quizId로 명명)
+  version: number;
   answer: string; // 학생의 답변
 }
 
@@ -24,6 +25,9 @@ export interface RawQuizGradingResult {
   student_answer: string;
   ai_feedback: string;
   correct_answer: string; // 정상 제출 이후에만 서버 DB 기준으로 공개
+  version?: number;
+  snapshotAvailable?: boolean;
+  questionContent?: string;
 }
 
 /**

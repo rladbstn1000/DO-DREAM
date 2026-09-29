@@ -3,6 +3,7 @@
 import json
 import sys
 import time
+import uuid
 import urllib.error
 import urllib.request
 from verify import req, check, CHECKS, ENV, BASE, OPENER, payload, sql, docker_exec
@@ -12,7 +13,9 @@ TOKENS={}
 
 def request(service,path,who=None,body=None,method=None):
     token=TOKENS.get(who) if who else None
-    if method is None:return req(service,path,token,body)
+    if method is None:
+        headers={'Idempotency-Key':str(uuid.uuid4())} if path.endswith('/quizzes/submit') else None
+        return req(service,path,token,body,headers)
     headers={'Content-Type':'application/json'}
     if token:headers['Authorization']='Bearer '+token
     r=urllib.request.Request(BASE[service]+path,headers=headers,method=method,
@@ -46,7 +49,7 @@ def no_answers(value):
 
 def db_counts():
     # Content/credentials never leave the service; these are only row totals.
-    mysql=sql('CHECKSUM TABLE material_shares,student_quiz_logs,quizzes,materials,uploaded_files,bookmarks; SELECT COUNT(*) FROM material_shares; SELECT COUNT(*) FROM student_quiz_logs; SELECT COUNT(*) FROM quizzes; SELECT COUNT(*) FROM materials; SELECT COUNT(*) FROM uploaded_files;')
+    mysql=sql('CHECKSUM TABLE material_shares,student_quiz_logs,quizzes,materials,uploaded_files,bookmarks,grading_attempts,grading_attempt_items,grading_attempt_results; SELECT COUNT(*) FROM material_shares; SELECT COUNT(*) FROM student_quiz_logs; SELECT COUNT(*) FROM quizzes; SELECT COUNT(*) FROM materials; SELECT COUNT(*) FROM uploaded_files;')
     rag=docker_exec('ai',['python','-c',"import sqlite3,json; c=sqlite3.connect('/app/db_data/rag.db'); import hashlib; from pathlib import Path; rows=[c.execute('SELECT * FROM '+t+' ORDER BY id').fetchall() for t in ('chat_sessions','chat_messages','embedding_tasks')]; objects=[(p.name,hashlib.sha256(p.read_bytes()).hexdigest()) for p in sorted(Path('/app/be-local-data/objects').glob('*.json'))]; print(hashlib.sha256(json.dumps([rows,objects],default=str).encode()).hexdigest())"])
     return mysql,rag
 
@@ -65,10 +68,10 @@ def embed(who,doc,url,initial=False):
 
 def run():
     ids={who:login(who) for who in ('owner','other','remote','shared','unshared','class','other-student','remote-student')}
-    rows=sql("SELECT m.id,m.title,m.uploaded_file_id,f.jsons3key FROM materials m JOIN uploaded_files f ON f.id=m.uploaded_file_id WHERE m.title LIKE '[AUTHZ LOCAL] %' AND m.deleted_at IS NULL;")
+    rows=sql("SELECT m.id,m.title,m.uploaded_file_id,f.jsons3key FROM materials m JOIN uploaded_files f ON f.id=m.uploaded_file_id WHERE m.title LIKE '[AUTHZ 3A] %' AND m.deleted_at IS NULL;")
     docs={}
     for line in rows.splitlines():
-        mid,title,fid,key=line.split('\t');docs[title.replace('[AUTHZ LOCAL] ','')]={'id':int(mid),'file':int(fid),'url':'https://local-fixture.invalid/'+key}
+        mid,title,fid,key=line.split('\t');docs[title.replace('[AUTHZ 3A] ','')]={'id':int(mid),'file':int(fid),'url':'https://local-fixture.invalid/'+key}
     required={'editable','second-shared','class-shared','private','draft','other-owned','remote-owned'}
     if not required<=docs.keys():raise RuntimeError('Synthetic authorization fixtures missing')
     m=docs['editable'];mid=m['id'];fid=m['file'];second=docs['second-shared'];private=docs['private']
@@ -81,12 +84,12 @@ def run():
         expect('valid_at_ai_'+who,'ai','/users/users/me',who,200)
     for who in ('owner','other','remote'):
         data=expect('published_list_owner_only_'+who,'be','/api/documents/published',who,200)
-        allowed={v['id'] for key,v in docs.items() if (who=='owner' and key not in ('other-owned','remote-owned')) or key==who+'-owned'}
+        allowed={int(v) for v in sql(f"SELECT id FROM materials WHERE teacher_id={ids[who]} AND deleted_at IS NULL;").splitlines()}
         check('published_list_membership_'+who,bool(data) and {r['materialId'] for r in data['materials']}==allowed)
     teacher_quizzes=expect('teacher_quiz_answers_retained','be',f'/api/materials/{mid}/quizzes','owner',200)
     check('teacher_quiz_has_answer',bool(teacher_quizzes) and 'correct_answer' in teacher_quizzes[0])
     quizzes=expect('shared_student_quiz_positive','be',f'/api/materials/{mid}/quizzes','shared',200)
-    check('student_quiz_allowlist',bool(quizzes) and all(set(q)<= {'id','question_number','question_type','title','content','chapter_reference'} for q in quizzes) and no_answers(quizzes))
+    check('student_quiz_allowlist',bool(quizzes) and all(set(q)<= {'id','question_number','question_type','title','content','chapter_reference','version'} for q in quizzes) and no_answers(quizzes))
     content=expect('shared_student_json_positive','be',f'/api/materials/shared/{mid}/json','shared',200)
     check('student_json_nested_answer_exclusion',bool(content) and no_answers(content) and 'AUTHZ_TEACHER_ONLY' not in json.dumps(content))
     expect('owner_raw_json_positive','be',f'/api/pdf/{fid}/json','owner',200)
@@ -172,14 +175,15 @@ def run():
     expect('initial_url_mismatch','ai','/rag/embeddings/create-initial','owner',400,{'pdf_id':fid,'s3_url':second['url']})
     expect('mixed_share_targets','be','/api/materials/share','owner',404,{'materialId':private['id'],'shares':{str(cid):{'type':'INDIVIDUAL','studentIds':[ids['shared'],ids['other-student']]}}})
     qid=quizzes[0]['id']
-    q2=expect('second_quiz_positive','be',f"/api/materials/{second['id']}/quizzes",'shared',200)[0]['id']
-    expect('quiz_cross_material_be','be',f'/api/materials/{mid}/quizzes/submit','shared',400,{'answers':[{'quizId':q2,'answer':'얼음'}]})
-    expect('quiz_unshared_submit','be',f'/api/materials/{mid}/quizzes/submit','unshared',404,{'answers':[{'quizId':qid,'answer':'얼음'}]})
-    expect('quiz_cross_material_ai','ai','/rag/quiz/grade-batch','shared',400,{'material_id':mid,'student_answers':[{'question_id':q2,'student_answer':'얼음'}]})
+    q2_record=expect('second_quiz_positive','be',f"/api/materials/{second['id']}/quizzes",'shared',200)[0]
+    q2=q2_record['id']
+    expect('quiz_cross_material_be','be',f'/api/materials/{mid}/quizzes/submit','shared',400,{'answers':[{'quizId':q2,'version':q2_record['version'],'answer':'얼음'}]})
+    expect('quiz_unshared_submit','be',f'/api/materials/{mid}/quizzes/submit','unshared',404,{'answers':[{'quizId':qid,'version':quizzes[0]['version'],'answer':'얼음'}]})
+    expect('quiz_cross_material_ai','ai','/rag/quiz/grade-batch','shared',422,{'material_id':mid,'student_answers':[{'question_id':q2,'student_answer':'얼음'}]})
     expect('quiz_client_authority_fields','ai','/rag/quiz/grade-batch','shared',422,{'material_id':mid,'student_answers':[{'question_id':qid,'student_answer':'얼음'}],'questions':[{'correct_answer':'forged'}],'studentId':ids['other-student'],'score':100})
     check('denial_group_no_mysql_or_rag_rows_changed',db_counts()==before,'real MySQL checksums/counts, SQLite row digest, synthetic object file digests; provider call counts verified separately in unit tests')
     submitted=expect('submit_server_quiz_positive','be',f"/api/materials/{second['id']}/quizzes/submit",'shared',200,{
-        'answers':[{'quizId':q2,'answer':'얼음','correct_answer':'forged','score':100}],
+        'answers':[{'quizId':q2,'version':q2_record['version'],'answer':'얼음','correct_answer':'forged','score':100}],
         'studentId':ids['other-student'],'score':100,'correct_answer':'forged'})
     check('submit_feedback_uses_server_answer',bool(submitted) and all(r.get('correct_answer')=='얼음' for r in submitted))
     owned_log=sql(f"SELECT COUNT(*) FROM student_quiz_logs WHERE quiz_id={int(q2)} AND student_id={ids['shared']}; SELECT COUNT(*) FROM student_quiz_logs WHERE quiz_id={int(q2)} AND student_id={ids['other-student']};").splitlines()

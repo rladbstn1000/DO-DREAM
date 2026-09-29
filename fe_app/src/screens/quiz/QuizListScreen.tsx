@@ -8,7 +8,7 @@ import {
   AccessibilityInfo,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import {
   QuizListScreenNavigationProp,
   QuizListScreenRouteProp,
@@ -37,28 +37,32 @@ export default function QuizListScreen() {
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    let active = true;
     const loadQuizzes = async () => {
       try {
         setLoading(true);
         setError(null);
         const quizData = await fetchQuizzes(material.id);
+        if (!active) return;
         setQuizzes(quizData);
 
         const announcement = `${material.title} 퀴즈 목록. 총 ${quizData.length}개의 문제가 있습니다. 상단의 말하기 버튼을 두 번 탭한 후, '1번 문제', '마지막 문제', '뒤로 가기'와 같이 말할 수 있습니다.`;
         AccessibilityInfo.announceForAccessibility(announcement);
 
       } catch (e) {
+        if (!active) return;
         console.error("[QuizListScreen] 퀴즈 로딩 실패:", e);
         setError("퀴즈를 불러오는 중 오류가 발생했습니다.");
         AccessibilityInfo.announceForAccessibility("퀴즈 목록을 불러오는 데 실패했습니다. 네트워크 상태를 확인해 주세요.");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     loadQuizzes();
-  }, [material.id, material.title]);
+    return () => { active = false; };
+  }, [material.id, material.title]));
 
   const handleGoBack = useCallback(() => {
     navigation.goBack();
@@ -69,7 +73,7 @@ export default function QuizListScreen() {
       AccessibilityInfo.announceForAccessibility(
         `${index + 1}번 문제. 퀴즈 풀이 화면으로 이동합니다.`
       );
-      navigation.navigate("Quiz", {
+      navigation.push("Quiz", {
         material: material,
         questions: quizzes,
         startIndex: index,

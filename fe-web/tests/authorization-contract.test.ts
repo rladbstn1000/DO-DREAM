@@ -24,7 +24,7 @@ test('identifiers are rejected rather than normalized into a different resource'
   }
 });
 
-const question = (id: number): QuizQuestion => ({ id, question_type: 'SHORT_ANSWER',
+const question = (id: number): QuizQuestion => ({ id, version: 0, question_type: 'SHORT_ANSWER',
   question_number: id, title: '합성 문제', content: '합성 질문', chapter_reference: '합성 단원' });
 const result = (id: number) => ({ question_id: id, student_answer: '학생 제출 답변',
   is_correct: false, ai_feedback: '제출 이후 피드백', correct_answer: '서버 DB 정답 ' + id });

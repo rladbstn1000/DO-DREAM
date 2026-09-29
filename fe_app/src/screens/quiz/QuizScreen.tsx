@@ -18,9 +18,10 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useIsFocused } from "@react-navigation/native";
 import {
   QuizScreenNavigationProp,
   QuizScreenRouteProp,
@@ -37,8 +38,8 @@ import {
   HEADER_MIN_HEIGHT,
 } from "../../constants/dimensions";
 import { useTheme } from "../../contexts/ThemeContext";
-import { submitQuizAnswers } from "../../api/quizApi";
-import { mergeSubmittedQuizResults } from "../../api/submittedQuizResults";
+import { createNativeQuizSubmission } from "../../api/quizApi";
+import type { SubmissionView } from "../../api/quizSubmission";
 import type { QuizAnswerRequest } from "../../types/api/quizApiTypes";
 import { asrService } from "../../services/asrService";
 
@@ -56,6 +57,21 @@ export default function QuizScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
   const [showGradingModal, setShowGradingModal] = useState(false);
+  const [submissionView, setSubmissionView] = useState<SubmissionView>({ state: 'IDLE', retryable: false });
+  const submission = useRef<ReturnType<typeof createNativeQuizSubmission> | null>(null);
+  const submitting = useRef(false);
+  const mounted = useRef(true);
+  const focused = useIsFocused();
+  const focusedRef = useRef(focused);
+  focusedRef.current = focused;
+
+  useEffect(() => {
+    mounted.current = true;
+    submission.current = createNativeQuizSubmission(material.id, questions, next => {
+      if (mounted.current) setSubmissionView(next);
+    });
+    return () => { mounted.current = false; submission.current?.dispose(); };
+  }, [material.id, questions]);
 
   const userInput = userAnswers.get(questions[currentQuestionIndex]?.id) || "";
   const [isTalkBackEnabled, setIsTalkBackEnabled] = useState<boolean>(false);
@@ -222,6 +238,7 @@ export default function QuizScreen() {
   };
 
   const handleUserInput = (text: string) => {
+    if (submission.current?.hasSubmission()) return;
     setUserAnswers((prev) => new Map(prev).set(currentQuestion.id, text));
   };
 
@@ -232,8 +249,52 @@ export default function QuizScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const gradingMessage = (view: SubmissionView) => {
+    switch (view.state) {
+      case 'READY': case 'PROCESSING': return '채점이 처리 중입니다. 잠시 뒤 결과 확인을 눌러주세요.';
+      case 'FAILED': return '채점 실패가 확인되었습니다. 가능한 경우 같은 제출로 다시 채점할 수 있습니다.';
+      case 'UNKNOWN': return '채점 결과를 확인하지 못했습니다. 먼저 결과 확인을 눌러주세요. 자동으로 다시 채점하지 않습니다.';
+      case 'VERSION_CONFLICT': return '문제가 수정되었습니다. 문제 목록에서 최신 문제를 불러와 새로 풀어주세요.';
+      case 'CONFLICT': return '제출 정보가 일치하지 않습니다. 문제 목록에서 새 풀이를 시작해주세요.';
+      case 'REVOKED': return '현재 이 자료에 접근할 수 없습니다. 공유 상태를 확인해주세요.';
+      case 'REJECTED': return '답안이나 문제 버전을 확인하지 못했습니다. 최신 문제를 다시 불러와주세요.';
+      case 'SESSION_CHANGED': return '로그인 상태가 변경되었습니다. 다시 로그인한 뒤 문제를 열어주세요.';
+      default: return '답안을 채점하고 있습니다. 잠시만 기다려주세요.';
+    }
+  };
+
+  const runGrading = async (action: 'submit' | 'check' | 'retry', confirmUnknown = false) => {
+    const controller = submission.current;
+    if (submitting.current || !controller) return;
+    submitting.current = true; // Covers repeated events before React renders disabled state.
+    setIsSubmitting(true);
+    setShowGradingModal(true);
+    const answersPayload: QuizAnswerRequest[] = questions.map(q => ({
+      quizId: q.id, version: q.version, answer: userAnswers.get(q.id) || '',
+    }));
+    try {
+      const outcome = action === 'submit' ? await controller.submit({ answers: answersPayload })
+        : action === 'retry' ? await controller.retry(confirmUnknown) : await controller.check();
+      if (!mounted.current || !focusedRef.current || !controller.current()) return;
+      if (outcome.state === 'SUCCEEDED' && outcome.results) {
+        setShowGradingModal(false);
+        AccessibilityInfo.announceForAccessibility('채점이 완료되었습니다. 결과를 확인하세요.');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        navigation.replace('QuizResult', { material, gradingResults: outcome.results, userAnswers: answersPayload });
+      } else {
+        AccessibilityInfo.announceForAccessibility(gradingMessage(outcome));
+      }
+    } finally {
+      if (submission.current === controller) {
+        submitting.current = false;
+        if (mounted.current) setIsSubmitting(false);
+      }
+    }
+  };
+
   const handleSubmit = async () => {
-    if (isSubmitting) return;
+    if (submitting.current) return;
+    if (submission.current?.hasSubmission()) { await runGrading('check'); return; }
 
     if (!userInput.trim()) {
       const announcement = "답을 먼저 입력해주세요";
@@ -251,10 +312,6 @@ export default function QuizScreen() {
       return;
     }
 
-    setIsSubmitting(true);
-    setShowGradingModal(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
     const announcement = "모든 문제를 완료했습니다. AI가 답안을 채점하고 있습니다. 잠시만 기다려주세요.";
     if (isTalkBackEnabled) {
       AccessibilityInfo.announceForAccessibility(announcement);
@@ -262,49 +319,21 @@ export default function QuizScreen() {
       Speech.speak(announcement, { language: "ko-KR", rate: 1.2 });
     }
 
-    const answersPayload: QuizAnswerRequest[] = questions.map((q) => ({
-      quizId: q.id,
-      answer: userAnswers.get(q.id) || "",
-    }));
-
-    try {
-      const results = await submitQuizAnswers(material.id, {
-        answers: answersPayload,
-      });
-      const mergedGradingResults = mergeSubmittedQuizResults(questions, results);
-
-      setShowGradingModal(false);
-
-      const successAnnouncement = "채점이 완료되었습니다. 결과를 확인하세요.";
-      if (isTalkBackEnabled) {
-        AccessibilityInfo.announceForAccessibility(successAnnouncement);
-      } else {
-        Speech.speak(successAnnouncement, { language: "ko-KR", rate: 1.2 });
-      }
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      navigation.navigate("QuizResult", {
-        material: material,
-        gradingResults: mergedGradingResults,
-        userAnswers: answersPayload, // 이 prop은 더 이상 필요 없을 수 있지만 호환성을 위해 유지합니다.
-      });
-    } catch (error) {
-      console.error("[QuizScreen] 채점 실패:", error);
-      setShowGradingModal(false);
-
-      const errorAnnouncement = "채점에 실패했습니다. 네트워크 연결을 확인하고 다시 시도해주세요.";
-      if (isTalkBackEnabled) {
-        AccessibilityInfo.announceForAccessibility(errorAnnouncement);
-      } else {
-        Speech.speak(errorAnnouncement, { language: "ko-KR", rate: 1.2 });
-      }
-
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    await runGrading('submit');
   };
+
+  const retryGrading = () => {
+    if (submissionView.state === 'UNKNOWN') {
+      Alert.alert('결과가 불명확한 제출입니다', '이전 채점이 외부에서 실행되었을 수 있습니다. 같은 제출을 다시 채점하시겠습니까?', [
+        { text: '취소', style: 'cancel' }, { text: '다시 채점', onPress: () => { void runGrading('retry', true); } },
+      ]);
+    } else void runGrading('retry');
+  };
+  const startNewQuiz = () => Alert.alert('새 풀이 시작', '이전 제출은 별도로 남습니다. 최신 문제를 불러와 새로 풀겠습니까?', [
+    { text: '취소', style: 'cancel' }, { text: '새로 풀기', onPress: () => {
+      setShowGradingModal(false); navigation.replace('QuizList', { material, chapterId: 0 });
+    } },
+  ]);
 
   // 음성 받아쓰기 중지
   const stopDictation = useCallback(async () => {
@@ -568,6 +597,8 @@ export default function QuizScreen() {
               ref={inputRef}
               style={styles.answerInput}
               value={userInput}
+              editable={!submission.current?.hasSubmission()}
+              maxLength={4000}
               onChangeText={handleUserInput}
               placeholder="답을 입력하세요"
               placeholderTextColor={COLORS.text.tertiary}
@@ -587,6 +618,7 @@ export default function QuizScreen() {
                 isDictating && styles.dictationButtonActive,
               ]}
               onPress={handleDictateAnswer}
+              disabled={submission.current?.hasSubmission()}
               accessible={true}
               accessibilityLabel={
                 isDictating ? "음성 입력 중지" : "음성으로 답하기"
@@ -607,11 +639,11 @@ export default function QuizScreen() {
               onPress={isLastQuestion ? handleSubmit : handleNext}
               disabled={isLastQuestion && (!userInput.trim() || isSubmitting)}
               accessible={true}
-              accessibilityLabel={isLastQuestion ? "채점하기" : "다음 문제"}
+              accessibilityLabel={isLastQuestion ? (submission.current?.hasSubmission() ? '결과 확인' : '채점하기') : "다음 문제"}
               accessibilityRole="button"
             >
               <Text style={[styles.actionButtonText, isLastQuestion ? styles.submitButtonText : styles.nextButtonText]}>
-                {isLastQuestion ? "채점하기" : "다음 문제"}
+                {isLastQuestion ? (submission.current?.hasSubmission() ? '결과 확인' : '채점하기') : "다음 문제"}
               </Text>
             </TouchableOpacity>
 
@@ -637,33 +669,48 @@ export default function QuizScreen() {
         visible={showGradingModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => {}}
+        onRequestClose={() => { if (!isSubmitting) setShowGradingModal(false); }}
         accessibilityViewIsModal={true}
       >
         <View style={styles.modalOverlay}>
           <View
             style={styles.modalContent}
-            accessible={true}
-            accessibilityRole="alert"
           >
-            <ActivityIndicator
+            <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+            {isSubmitting && <ActivityIndicator
               size="large"
               color={COLORS.primary.main}
               accessible={false}
-            />
+            />}
             <Text
               style={styles.modalTitle}
               accessible={true}
               accessibilityRole="header"
             >
-              채점 중
+              {isSubmitting ? '채점 상태 확인 중' : '채점 상태'}
             </Text>
             <Text
               style={styles.modalMessage}
               accessible={true}
             >
-              AI가 답안을 채점하고 있습니다.{"\n"}잠시만 기다려주세요...
+              {gradingMessage(submissionView)}
             </Text>
+            {!isSubmitting && <>
+              {['READY', 'PROCESSING', 'UNKNOWN', 'FAILED'].includes(submissionView.state) &&
+                <TouchableOpacity accessibilityRole="button" onPress={() => { void runGrading('check'); }} style={styles.actionButton}>
+                  <Text style={styles.actionButtonText}>결과 확인</Text>
+                </TouchableOpacity>}
+              {submissionView.retryable && <TouchableOpacity accessibilityRole="button" onPress={retryGrading} style={styles.actionButton}>
+                <Text style={styles.actionButtonText}>같은 제출 다시 채점</Text>
+              </TouchableOpacity>}
+              <TouchableOpacity accessibilityRole="button" onPress={startNewQuiz} style={styles.actionButton}>
+                <Text style={styles.actionButtonText}>최신 문제로 새 풀이 시작</Text>
+              </TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={() => setShowGradingModal(false)} style={styles.actionButton}>
+                <Text style={styles.actionButtonText}>닫기</Text>
+              </TouchableOpacity>
+            </>}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -833,6 +880,7 @@ const createStyles = (isHighContrast: boolean) =>
       alignItems: "center",
       minWidth: 300,
       maxWidth: "80%",
+      maxHeight: '90%',
       borderWidth: 4,
       borderColor: COLORS.primary.main,
       shadowColor: "#000",

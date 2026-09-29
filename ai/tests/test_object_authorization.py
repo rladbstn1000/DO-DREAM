@@ -13,7 +13,8 @@ from app.config import SECRET_KEY_BYTES, LOCAL_OBJECT_STORAGE_DIR
 from app.main import app
 from app.common.db_session import Base, engine, SessionLocal
 from app.common.models import (User, RoleEnum, TeacherProfile, StudentProfile, ClassroomTeacher,
-    UploadedFile, Material, MaterialShare, Quiz)
+    UploadedFile, Material, MaterialShare, Quiz, GradingAttempt, GradingAttemptItem)
+from grading_fixture import make_attempt
 from app.rag.database import SessionLocal as RagSession
 from app.rag.models import ChatSession, ChatMessage, EmbeddingTask
 from app.rag.service import extract_data_from_json, create_and_store_embeddings, _get_collection_name
@@ -40,6 +41,10 @@ class ObjectAuthorizationTests(unittest.TestCase):
             db.query(EmbeddingTask).filter(EmbeddingTask.user_id.in_([OWNER, OTHER, OUTSIDE, STUDENT])).delete(synchronize_session=False)
             db.commit()
         with SessionLocal() as db:
+            attempts = [row.id for row in db.query(GradingAttempt).filter(
+                GradingAttempt.student_id.in_([OWNER, OTHER, OUTSIDE, STUDENT, PEER, OTHER_CLASS, SECOND])).all()]
+            db.query(GradingAttemptItem).filter(GradingAttemptItem.attempt_id.in_(attempts)).delete(synchronize_session=False)
+            db.query(GradingAttempt).filter(GradingAttempt.id.in_(attempts)).delete(synchronize_session=False)
             owned = [(Quiz, [7101,7102]), (MaterialShare, list(range(6101,6106))),
                      (Material, list(range(5101,5106))), (UploadedFile, list(range(4101,4106))),
                      (ClassroomTeacher, [51,52,53]), (StudentProfile, [501,502,503,504]),
@@ -248,10 +253,11 @@ class ObjectAuthorizationTests(unittest.TestCase):
         self.assertEqual(response.status_code,200);self.assertIn('correct_answer',response.json()['questions'][0])
 
     def test_grading_uses_database_answer_and_rejects_forged_fields(self):
-        body={'material_id':DOC,'student_answers':[{'question_id':7101,'student_answer':'trusted database answer'}]}
+        # 3-A accepts only a persisted server snapshot and private execution capability.
+        body=make_attempt(DOC,STUDENT,[(7101,'trusted database answer')])
         response=self.client.post('/rag/quiz/grade-batch',headers=self.headers(),json=body)
         self.assertEqual(response.status_code,200);self.assertTrue(response.json()[0]['is_correct'])
-        body['student_answers'][0]['student_answer']='forged answer'
+        body=make_attempt(DOC,STUDENT,[(7101,'forged answer')])
         response=self.client.post('/rag/quiz/grade-batch',headers=self.headers(),json=body)
         self.assertFalse(response.json()[0]['is_correct'])
         with patch('app.rag.router.grade_quiz_answers') as provider:
@@ -260,9 +266,18 @@ class ObjectAuthorizationTests(unittest.TestCase):
             provider.assert_not_called()
 
     def test_grading_mismatched_unknown_duplicate_and_unshared_denied_before_provider(self):
+        from fastapi import HTTPException
+        from app.security.authorization import require_quizzes
+        from app.security.models import User as Principal
+        # Invalid quiz sets are rejected before Spring can persist an accepted snapshot.
+        # Preserve the original 400 assertions at the common SQL membership boundary.
         with patch('app.rag.router.grade_quiz_answers') as provider:
-            for user,ids,status in [(STUDENT,[7102],400),(STUDENT,[7999],400),(STUDENT,[7101,7101],400),(PEER,[7101],404),(OWNER,[7101],403)]:
-                body={'material_id':DOC,'student_answers':[{'question_id':value,'student_answer':'x'} for value in ids]}
+            for ids in ([7102],[7999],[7101,7101]):
+                with SessionLocal() as db, self.assertRaises(HTTPException) as failure:
+                    require_quizzes(db,Principal(id=STUDENT,name='Synthetic',role='STUDENT'),DOC,ids)
+                self.assertEqual(failure.exception.status_code,400)
+            for user,status in [(PEER,404),(OWNER,403)]:
+                body=make_attempt(DOC,user,[(7101,'x')])
                 self.assertEqual(self.client.post('/rag/quiz/grade-batch',headers=self.headers(user),json=body).status_code,status)
             provider.assert_not_called()
 

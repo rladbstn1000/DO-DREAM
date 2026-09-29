@@ -14,6 +14,7 @@ const AUTH_ENDPOINTS = {
 };
 
 export const authApi = {
+  invalidateLocalSession: () => nativeAuth.invalidate(),
   /**
    * 학생 사전 인증 (1단계)
    * 학번과 이름이 더미레지스트리에 있는지 확인

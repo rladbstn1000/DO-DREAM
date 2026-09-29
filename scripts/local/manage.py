@@ -16,7 +16,7 @@ import scope_guard
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / '.local'
-RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase2b' / 'results')))
+RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase3a' / 'results')))
 RESULTS.mkdir(parents=True, exist_ok=True)
 PROJECT = 'dodream-phase1'
 ENV_FILE = LOCAL / 'env'
@@ -61,7 +61,7 @@ def compose_args(*args):
     while at<len(args) and args[at] in ('--profile','--progress'):at+=2
     if at<len(args) and args[at]=='run':
         at+=1
-        if '--name' not in args:args[at:at]=['--name','dodream-phase2b-test-'+secrets.token_hex(6)]
+        if '--name' not in args:args[at:at]=['--name','dodream-phase3a-test-'+secrets.token_hex(6)]
         args[at:at]=['--label',scope_guard.RUN_LABEL]
     base=compose_base()
     operation,_=scope_guard.command_scope(args)
@@ -75,7 +75,7 @@ def stop_owned_test(name):
     rows=scope_guard.read_metadata(clean_env())
     row=next((r for r in rows if r['name']==name),None)
     scope_guard.require(row and row['project']==PROJECT and row['service'] in scope_guard.SERVICES
-                        and row['task']=='phase2b' and name.startswith('dodream-phase2b-'),
+                        and row['task']=='phase3a' and name.startswith('dodream-phase3a-'),
                         'One-off cleanup target is not owned by this task')
     # Use the inspected immutable ID; never target an unverified name.
     return subprocess.run(['docker','stop','--time','5',row['id']],capture_output=True,text=True,
@@ -173,7 +173,7 @@ def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0
     if command == 'help':
-        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | authorization | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
+        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | authorization | grading | grading-migrate | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
         return 0
     settings()
     if command == 'scope-test':return run('scope-unit',[sys.executable,'-m','unittest','discover','-s','scripts/local/tests','-v']).returncode
@@ -202,6 +202,10 @@ def main():
         return int(any(r.returncode for r in results))
     if command == 'auth':
         return run('auth-regression', [sys.executable, str(ROOT / 'scripts/local/verify_auth.py')]).returncode
+    if command == 'grading':
+        return run('grading', [sys.executable, str(ROOT / 'scripts/local/verify_grading.py')]).returncode
+    if command == 'grading-migrate':
+        return run('grading-migrate', [sys.executable, str(ROOT / 'scripts/local/grading_migration.py'), 'forward']).returncode
     if command == 'authorization':
         return run('authorization', [sys.executable, str(ROOT / 'scripts/local/verify_authorization.py')]).returncode
     if command == 'startup':

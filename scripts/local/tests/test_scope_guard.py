@@ -32,13 +32,22 @@ class CommandScopeTests(unittest.TestCase):
     def test_anonymous_one_off_refused(self):
         with self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','be-test'])
     def test_labelled_one_off_allowed(self):
-        self.assertEqual(command_scope(['--profile','test','run','--rm','--no-deps','--name','dodream-phase2b-test-123','--label',RUN_LABEL,'be-test']),('run',['be-test']))
+        self.assertEqual(command_scope(['--profile','test','run','--rm','--no-deps','--name','dodream-phase3a-test-123','--label',RUN_LABEL,'be-test']),('run',['be-test']))
     def test_foreign_one_off_name_refused(self):
         with self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','--name','etch-test','--label',RUN_LABEL,'be-test'])
     def test_other_env_override_refused(self):
-        with self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','--name','dodream-phase2b-test-123','--label',RUN_LABEL,'-e','DATABASE_URL=foreign','be-test'])
+        with self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','--name','dodream-phase3a-test-123','--label',RUN_LABEL,'-e','DATABASE_URL=foreign','be-test'])
     def test_invalid_profile_refused(self):
         with self.assertRaises(ScopeError):command_scope(['--profile','production','up'])
+    def test_named_fresh_schema_probe_allowed(self):
+        self.assertEqual(command_scope(['run','--rm','--no-deps','--name','dodream-phase3a-fresh-schema','--label',RUN_LABEL,'-e','MYSQL_DATABASE=dodream_phase3a_fresh_v2','be']),('run',['be']))
+    def test_fresh_schema_cannot_target_another_database(self):
+        with self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','--name','dodream-phase3a-fresh-schema','--label',RUN_LABEL,'-e','MYSQL_DATABASE=foreign','be'])
+    def test_fresh_schema_cannot_target_another_service_or_name(self):
+        for name,service in [('dodream-phase3a-fresh-schema','ai'),('dodream-phase3a-test-123','be')]:
+            with self.subTest(name=name,service=service),self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','--name',name,'--label',RUN_LABEL,'-e','MYSQL_DATABASE=dodream_phase3a_fresh_v2',service])
+    def test_fresh_schema_override_cannot_be_used_by_exec(self):
+        with self.assertRaises(ScopeError):command_scope(['exec','-e','MYSQL_DATABASE=dodream_phase3a_fresh_v2','be','true'])
 
 class MetadataScopeTests(unittest.TestCase):
     def test_valid_owned_inventory(self):self.assertEqual(validate_inventory([row()],{PROJECT+'-be'},ROOT),[row()])

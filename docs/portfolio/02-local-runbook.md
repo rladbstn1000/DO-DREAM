@@ -140,3 +140,40 @@ python3 scripts/local/manage.py authorization
 2-B local 저장소는 `local/synthetic/authz/<uuid>.json`만 쓰기/읽기를 허용한다. 원래 합성 fixture는 읽기 전용이다. 실제 AWS 업로드/서명/삭제는 실행하지 않는다. `be-data:/app/be-local-data:ro`를 ai/worker에 연결하고 `LOCAL_OBJECT_STORAGE_DIR`를 주입해 같은 합성 JSON을 읽는다. 외부 FCM은 계속 disabled이며 공유 성공과 실제 알림 전송 성공은 다르다.
 
 추가 fixture는 idempotent하게 별도 계정/자료만 만든다. 원래 fixture의 암호·내용을 덮어쓰지 않는다. SQL의 파일 컬럼 `s3key/jsons3key`는 기존 Java 물리명에 Python을 맞춘다. 새 SQLite `embedding_tasks`는 additive하게 생성하고 과거 작업에 추측한 소유자를 넣지 않는다. 일반 운영에서는 AI의 `OBJECT_STORAGE_HOST`를 실제 허용 객체 호스트로 설정해야 한다. 미설정은 실패하며 운영 설정·SSRF 전체 검증은 수행하지 않았다.
+
+## 3-A 추가형 채점 스키마와 전용 검사
+
+현재 기본 증거 디렉터리는 `.local/phase3a/results`다. 앞선 1차/2-A/2-B 결과와 snapshot은 덮어쓰지 않는다. 실행 대상은 계속 `dodream-phase1`, 기존 네 볼륨, loopback 포트, 내부 네트워크다. 기존 범위 gate를 모든 변경 명령에 그대로 적용한다.
+
+보존된 자체 MySQL이 실행 중인 상태에서 새 Spring 이미지의 최초 기동 **전에** 다음 명령으로 버전 관리 SQL을 적용한다. 기존 Spring은 이 작업 동안 중지한다. SQL은 테이블을 삭제하거나 기존 풀이의 정답을 역채움하지 않는다.
+
+```bash
+python3 scripts/local/manage.py grading-migrate
+python3 scripts/local/manage.py build
+python3 scripts/local/manage.py up
+python3 scripts/local/manage.py grading
+```
+
+`grading-migrate`는 `V003__grading_attempts.sql`을 자체 MySQL에 적용하고 재실행 후 구조가 같은지, 실제 NOT NULL·binary collation·unique 제약이 있는지 확인한다. 새 DB 검증은 같은 자체 MySQL 안의 **새** `dodream_phase3a_fresh_v2` 스키마에서 migration→JPA 최초 기동→migration 재실행 순서로 별도 수행한다. 기존 DB를 신규 검증용으로 재생성하지 않는다.
+
+최초 3-A 검증 때 `grading_data.py before`로 원래 MySQL/RAG 행들의 해시 기준선을 만든다. 파일이 있으면 덮어쓰지 않는다. `grading_fixtures.py`는 `[AUTHZ LOCAL]` 합성 자료에서 `[AUTHZ 3A]` 새 행·객체를 만들며 기존 행에 쓰지 않는다. 따라서 기존 2-B 회귀의 수정·공유 회수·복구도 이번에 만든 전용 사례에서 수행한다. 기준선 증거 재현용 `grading_baseline.py`는 **2-B 이미지에서만 한 번** 실행하는 도구이며 새 구현의 일상 회귀 명령이 아니다.
+
+```bash
+python3 scripts/local/manage.py scope-test
+python3 scripts/local/manage.py test
+python3 scripts/local/manage.py auth
+python3 scripts/local/manage.py startup
+python3 scripts/local/manage.py smoke
+python3 scripts/local/manage.py security
+python3 scripts/local/manage.py authorization
+python3 scripts/local/manage.py persistence
+python3 scripts/local/manage.py isolation
+```
+
+학생 제출은 이제 UUID `Idempotency-Key`와 조회한 `answers[].version`이 필수다. FastAPI 직접 채점은 클라이언트 문제/정답이 아닌 서버가 접수한 attempt 실행 capability만 받는다. `verify_authorization.py`의 기존 공격 식별자는 유지하고 새 입력 계약을 반영했다. 이전 직접 AI 자료/문항 대입 본문은 스키마 단계 422로 거부되며, 문제 소속 검사 자체의 400 단위 테스트도 보존한다. 정상 제출의 서버 정답·학생 본인 판정 양성 대조군은 유지한다.
+
+웹 helper 추가 회귀는 `npm run test:grading`, 실제 Chrome API 계약 검사는 `npm run test:browser-grading`이다. 기존 `test:auth`, `test:authorization`, `typecheck`, `build -- --mode phase1`, 두 Chrome 인증·권한 검사를 함께 유지한다. 이는 모바일 전체 빌드·실기기 결과가 아니다.
+
+오류 주입 파일과 호출 카운터는 전용 로컬 볼륨에만 둔다. 공개 조작 API는 없다. `grading`은 자체 Spring의 실제 중지·재기동을 포함하므로 인증 장애 검사/브라우저 검사와 동시에 실행하지 않는다. 끝나면 이번에 시작한 서비스만 시작 전 상태로 돌리고 볼륨과 DB는 유지한다. 과거 ETCH 보존 FAIL/원인 UNVERIFIED는 그대로 남긴다.
+
+실행 순서는 채점/서버 회귀 → `auth-test-up`과 Chrome → `persistence` → 시작 상태 복구 → `isolation`으로 잡는다. main 서비스만 재기동하는 영속성 검사 동안 auth-short는 계속 실행될 수 있다. 3-A에서는 그 순서를 거꾸로 실행한 뒤 short BE의 Redis 타임아웃/로그인503을 관측했고, 기존 범위 gate의 `restart be-auth-short`로 해당 테스트 프로세스만 재기동한 뒤 브라우저 검사를 재검증했다. 실패를 인증 허용이나 기대값 변경으로 우회하지 않는다.

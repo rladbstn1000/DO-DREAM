@@ -14,6 +14,7 @@ public class QuizSubmissionDto {
 	@NoArgsConstructor
 	public static class SingleAnswer {
 		private Long quizId;
+        private Long version;
 		private String answer;
 	}
 }

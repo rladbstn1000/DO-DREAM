@@ -14,7 +14,7 @@ VOLUMES = frozenset(PROJECT+'_'+v for v in ('mysql-data','redis-data','be-data',
 NETWORKS = frozenset((PROJECT+'_default',PROJECT+'_gateway'))
 MUTATIONS = frozenset(('build','up','start','stop','restart','run','exec'))
 READS = frozenset(('config','ps','logs'))
-RUN_LABEL = 'com.dodream.task=phase2b'
+RUN_LABEL = 'com.dodream.task=phase3a'
 BUILD_CONTEXTS = {'be':'be','be-test':'be','ai':'ai','worker':'ai','web':'fe-web','python-service':'python-service'}
 
 class ScopeError(RuntimeError):
@@ -57,7 +57,7 @@ def command_scope(args):
         index+=2
     require(index<len(args),'Missing Compose operation')
     operation=args[index];require(operation in MUTATIONS|READS,'Docker operation is not authorized')
-    rest=args[index+1:]; targets=[]; i=0
+    rest=args[index+1:]; targets=[]; i=0; fresh_schema=False
     no_value={'-d','--wait','--no-deps','--rm','-T','--all','--quiet','--no-color','--no-cache'}
     with_value={'--wait-timeout','--name','-e','--label','--format'}
     while i<len(rest):
@@ -67,8 +67,10 @@ def command_scope(args):
             if value in with_value:
                 require(i+1<len(rest),'Missing service option value')
                 parameter=rest[i+1]
-                if value=='--name': require(bool(re.fullmatch(r'dodream-phase2b-[a-z0-9-]+',parameter)),'One-off name is outside this task')
-                if value=='-e': require(parameter.split('=',1)[0] in ('JWT_SECRET','JWT_SECRET_BASE64'),'Unreviewed environment override')
+                if value=='--name': require(bool(re.fullmatch(r'dodream-phase3a-[a-z0-9-]+',parameter)),'One-off name is outside this task')
+                if value=='-e':
+                    if parameter=='MYSQL_DATABASE=dodream_phase3a_fresh_v2':fresh_schema=True
+                    else:require(parameter.split('=',1)[0] in ('JWT_SECRET','JWT_SECRET_BASE64'),'Unreviewed environment override')
                 if value=='--label':require(parameter==RUN_LABEL,'Unknown one-off owner label')
                 i+=2
             else:i+=1
@@ -81,6 +83,10 @@ def command_scope(args):
             break
     if operation in ('exec','run'): require(len(targets)==1,'Exactly one service required')
     if operation=='run':require('--rm' in rest and '--no-deps' in rest and '--name' in rest and '--label' in rest,'One-off run must be named, labelled and disposable')
+    if fresh_schema:
+        require(operation=='run' and targets==['be'] and '--name' in rest
+                and rest[rest.index('--name')+1]=='dodream-phase3a-fresh-schema',
+                'Fresh schema override is restricted to its dedicated disposable Spring process')
     if not targets:
         targets=list(MAIN)
         if 'auth-test' in profiles:targets+=['be-auth-short','web-auth-test']

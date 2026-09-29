@@ -24,7 +24,7 @@ class StudentProjectionTests {
         Quiz quiz = Quiz.builder().id(71L).questionNumber(1).questionType("SHORT_ANSWER")
             .title("Question").content("Synthetic question").correctAnswer("PRIVATE_ANSWER").build();
         Map<?, ?> result = mapper.readValue(mapper.writeValueAsString(StudentQuizDto.from(quiz)), Map.class);
-        assertEquals(java.util.Set.of("id", "question_number", "question_type", "title", "content", "chapter_reference"), result.keySet());
+        assertEquals(java.util.Set.of("id", "version", "question_number", "question_type", "title", "content", "chapter_reference"), result.keySet());
         assertFalse(result.containsValue("PRIVATE_ANSWER"));
     }
     @Test void unknownNestedMetadataIsNotPassedThrough() throws Exception {

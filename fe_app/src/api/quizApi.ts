@@ -1,6 +1,10 @@
 import apiClient from './apiClient';
 import type { QuizQuestion } from '../types/quiz';
-import type { QuizAnswerPayload, RawQuizGradingResult } from '../types/api/quizApiTypes';
+import { createQuizSubmission } from './quizSubmission';
+import type { SubmissionView } from './quizSubmission';
+import { nativeAuth } from './interceptors';
+import { getAccessToken } from '../services/authStorage';
+import { mergeSubmittedQuizResults } from './submittedQuizResults';
 
 /**
  * 특정 학습자료의 퀴즈 목록을 조회합니다.
@@ -17,18 +21,20 @@ export const fetchQuizzes = async (materialId: number | string): Promise<QuizQue
   }
 };
 
-/**
- * 퀴즈 답안을 제출하고 채점 결과를 받습니다.
- * @param materialId 학습자료 ID
- * @param payload 제출할 답안 데이터
- * @returns Promise<RawQuizGradingResult[]> 서버가 제출 후 공개한 결과
- */
-export const submitQuizAnswers = async (materialId: number | string, payload: QuizAnswerPayload): Promise<RawQuizGradingResult[]> => {
-  try {
-    const response = await apiClient.post<RawQuizGradingResult[]>(`/api/materials/${materialId}/quizzes/submit`, payload);
-    return response.data;
-  } catch (error) {
-    console.error('[API] submitQuizAnswers 에러:', error);
-    throw error;
-  }
-};
+/** A logical submission owns its key, immutable request and explicit recovery state. */
+export function createNativeQuizSubmission(
+  materialId: number | string, questions: QuizQuestion[], changed: (view: SubmissionView) => void,
+) {
+  return createQuizSubmission({ materialId, questions, changed, mergeResults: mergeSubmittedQuizResults,
+    session: () => getAccessToken() ? nativeAuth.getEpoch() : null,
+    request: async request => {
+      // The existing interceptor reuses this header and body after its one AT refresh.
+      // Non-auth responses are interpreted here without propagating Axios request/token data.
+      const response = await apiClient.request({ method: request.method, url: request.path, data: request.body,
+        headers: { 'Idempotency-Key': request.key }, timeout: 20000,
+        validateStatus: status => status !== 401 });
+      return { status: response.status, data: response.data,
+        attemptId: response.headers['x-grading-attempt-id'], state: response.headers['x-grading-state'] };
+    },
+  });
+}

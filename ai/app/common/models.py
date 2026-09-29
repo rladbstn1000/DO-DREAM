@@ -71,3 +71,31 @@ class Quiz(Base):
     material_id = Column(BigInteger, nullable=False)
     content = Column(Text, nullable=False)
     correct_answer = Column(String, nullable=False)
+
+
+class GradingAttempt(Base):
+    """Spring owns writes/migrations; AI only reads committed execution snapshots."""
+    __tablename__ = "grading_attempts"
+    id = Column(BigInteger, primary_key=True)
+    attempt_id = Column(String(36), nullable=False, unique=True)
+    student_id = Column(BigInteger, nullable=False)
+    material_id = Column(BigInteger, nullable=False)
+    idempotency_key = Column(String(36), nullable=False)
+    state = Column(String(20), nullable=False)
+    execution_generation = Column(Integer, nullable=False)
+    execution_token_hash = Column(String(64))
+    deadline_at = Column(DateTime)
+
+
+class GradingAttemptItem(Base):
+    __tablename__ = "grading_attempt_items"
+    attempt_id = Column(BigInteger, primary_key=True)
+    quiz_id = Column(BigInteger, primary_key=True)
+    quiz_version = Column(BigInteger, nullable=False)
+    question_number = Column(Integer, nullable=False)
+    question_type = Column(String(50), nullable=False)
+    title = Column(String(255), nullable=False)
+    question_content = Column(Text, nullable=False)
+    correct_answer = Column(Text, nullable=False)
+    student_answer = Column(Text, nullable=False)
+    grading_version = Column(String(32), nullable=False)

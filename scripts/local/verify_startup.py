@@ -47,7 +47,7 @@ def main():
     rows = []
     for service, variable in [('ai', 'JWT_SECRET_BASE64'), ('be', 'JWT_SECRET')]:
         for case, value in [('missing', ''), ('malformed', 'deliberately-not-base64'), ('too_short', 'c2hvcnQ=')]:
-            name = 'dodream-phase2b-keycheck-' + service + '-' + secrets.token_hex(4)
+            name = 'dodream-phase3a-keycheck-' + service + '-' + secrets.token_hex(4)
             args = compose_args('run', '--rm', '--no-deps', '--name', name, '-e', variable + '=' + value, service)
             if service == 'ai':
                 args += ['python', '-c', 'import app.main']

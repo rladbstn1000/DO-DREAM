@@ -191,7 +191,7 @@ def docker_exec(service, command, stdin=None):
     return result.stdout.strip()
 
 def sql(statement):
-    return docker_exec('mysql',['sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"'],statement)
+    return docker_exec('mysql',['sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" mysql --default-character-set=utf8mb4 -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"'],statement)
 
 def persistence():
     marker=secrets.token_hex(16)

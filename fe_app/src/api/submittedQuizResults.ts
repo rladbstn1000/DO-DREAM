@@ -13,15 +13,17 @@ export function mergeSubmittedQuizResults(
     const result = byId.get(question.id);
     if (!result || typeof result.correct_answer !== 'string' ||
         typeof result.student_answer !== 'string' || typeof result.is_correct !== 'boolean' ||
-        typeof result.ai_feedback !== 'string') {
+        typeof result.ai_feedback !== 'string' ||
+        (result.snapshotAvailable === true && (result.version !== question.version || typeof result.questionContent !== 'string'))) {
       throw new Error('채점 결과를 확인하지 못했습니다. 다시 시도해주세요.');
     }
     return {
       id: question.id,
+      version: question.version,
       question_type: question.question_type,
       question_number: question.question_number,
       title: question.title,
-      content: question.content,
+      content: result.snapshotAvailable === true ? result.questionContent! : question.content,
       chapter_reference: question.chapter_reference,
       correct_answer: result.correct_answer,
       userAnswer: result.student_answer,

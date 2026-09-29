@@ -39,8 +39,7 @@ public class QuizService {
 	private final QuizRepository quizRepository;
 	private final StudentQuizLogRepository studentQuizLogRepository;
 	private final MaterialRepository materialRepository;
-	private final UserRepository userRepository;
-	private final WebClient webClient;
+	private final org.springframework.jdbc.core.JdbcTemplate gradingDb;
 
 	@Value("${fastapi.url}")
 	private String fastApiUrl;
@@ -79,11 +78,14 @@ public class QuizService {
         for (QuizSaveDto quiz : quizzes) {
             if (quiz == null || quiz.getQuestionNumber() == null || quiz.getQuestionNumber() <= 0
                 || !numbers.add(quiz.getQuestionNumber()) || quiz.getTitle() == null || quiz.getContent() == null
-                || quiz.getCorrectAnswer() == null) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+                || quiz.getCorrectAnswer() == null || quiz.getTitle().length() > 255
+                || quiz.getContent().codePointCount(0, quiz.getContent().length()) > 20000
+                || quiz.getCorrectAnswer().codePointCount(0, quiz.getCorrectAnswer().length()) > 2000) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
         }
         if (materialId != null) {
+            gradingDb.queryForList("SELECT id FROM quizzes WHERE material_id=? ORDER BY id FOR UPDATE", Long.class, materialId);
             for (Quiz quiz : quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId)) {
-                if (!numbers.contains(quiz.getQuestionNumber()) && studentQuizLogRepository.existsByQuizId(quiz.getId()))
+                if (!numbers.contains(quiz.getQuestionNumber()) && (studentQuizLogRepository.existsByQuizId(quiz.getId()) || Boolean.TRUE.equals(gradingDb.queryForObject("SELECT EXISTS(SELECT 1 FROM grading_attempt_items WHERE quiz_id=?)", Boolean.class, quiz.getId()))))
                     throw new A704.DODREAM.authorization.AuthorizationFailure(org.springframework.http.HttpStatus.CONFLICT);
             }
         }
@@ -101,53 +103,19 @@ public class QuizService {
     }
 
 	/**
-	 * 학생 답안 일괄 채점 및 로그 저장
-	 */
-	@Transactional
-    public List<GradingResultDto> gradeAndLog(Long materialId, Long studentId, QuizSubmissionDto submission, String token) {
-        policy.studentMaterial(studentId, materialId);
-        User student = policy.role(studentId, A704.DODREAM.user.entity.Role.STUDENT);
-        if (submission.getAnswers() == null || submission.getAnswers().isEmpty()) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
-        Map<Long, Quiz> quizMap = quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId).stream()
-            .collect(Collectors.toMap(Quiz::getId, q -> q));
-        Map<Long, String> submitted = new java.util.LinkedHashMap<>();
-        for (var answer : submission.getAnswers()) {
-            if (answer == null || answer.getQuizId() == null || answer.getAnswer() == null
-                || !quizMap.containsKey(answer.getQuizId()) || submitted.putIfAbsent(answer.getQuizId(), answer.getAnswer()) != null)
-                throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
-        }
-        List<Map<String, Object>> answers = submitted.entrySet().stream().map(entry -> Map.<String, Object>of(
-            "question_id", entry.getKey(), "student_answer", entry.getValue())).toList();
-        List<GradingResultDto> results = webClient.post().uri(fastApiUrl + "/rag/quiz/grade-batch")
-            .header("Authorization", token).bodyValue(Map.of("material_id", materialId, "student_answers", answers))
-            .retrieve().bodyToMono(new ParameterizedTypeReference<List<GradingResultDto>>() {}).block();
-        if (results == null || results.size() != submitted.size()) throw new IllegalStateException("Invalid grading response");
-        java.util.Set<Long> seen = new java.util.HashSet<>();
-        List<StudentQuizLog> logs = new ArrayList<>();
-        List<GradingResultDto> safeResults = new ArrayList<>();
-        for (var result : results) {
-            if (result == null || !submitted.containsKey(result.getQuizId()) || !seen.add(result.getQuizId()))
-                throw new IllegalStateException("Invalid grading response");
-            Quiz quiz = quizMap.get(result.getQuizId());
-            String feedback = result.getAiFeedback() == null ? "" : result.getAiFeedback();
-            logs.add(StudentQuizLog.builder().quiz(quiz).student(student).studentAnswer(submitted.get(quiz.getId()))
-                .isCorrect(result.isCorrect()).aiFeedback(feedback).build());
-            safeResults.add(GradingResultDto.builder().quizId(quiz.getId()).studentAnswer(submitted.get(quiz.getId()))
-                .isCorrect(result.isCorrect()).aiFeedback(feedback).correctAnswer(quiz.getCorrectAnswer()).build());
-        }
-        studentQuizLogRepository.saveAll(logs);
-        return safeResults;
-    }
-
-	/**
 	 * 학생 퀴즈 풀이 기록 조회
 	 */
 	@Transactional(readOnly = true)
 	public List<GradingResultDto> getStudentLogs(Long materialId, Long studentId) {
         policy.studentMaterial(studentId, materialId);
+        Map<Long,String> attempts = new java.util.HashMap<>();
+        gradingDb.query("SELECT id,attempt_id FROM grading_attempts WHERE student_id=? AND material_id=?",
+            (org.springframework.jdbc.core.RowCallbackHandler) row -> attempts.put(row.getLong("id"),row.getString("attempt_id")),studentId,materialId);
 		return studentQuizLogRepository.findByStudentIdAndQuizMaterialId(studentId, materialId).stream()
 			.map(log -> GradingResultDto.builder()
-				.quizId(log.getQuiz().getId()).correctAnswer(log.getQuiz().getCorrectAnswer())
+				.attemptId(attempts.get(log.getAttemptId())).quizId(log.getQuiz().getId()).correctAnswer(log.getSnapshotCorrectAnswer())
+                .snapshotAvailable(log.getAttemptId() != null).version(log.getSnapshotQuizVersion())
+                .questionContent(log.getSnapshotQuestionContent()).gradingVersion(log.getGradingVersion())
 				.studentAnswer(log.getStudentAnswer())
 				.isCorrect(log.isCorrect())
 				.aiFeedback(log.getAiFeedback() == null ? "" : log.getAiFeedback())
@@ -186,7 +154,7 @@ public class QuizService {
 						log -> log.getQuiz().getId(), // Key: Quiz ID
 						log -> log,                   // Value: Log 객체
 						// Merge Function: 기존값과 새로운값 중 solvedAt이 더 늦은(큰) 것을 선택
-						(existing, replacement) -> existing.getSolvedAt().isAfter(replacement.getSolvedAt()) ? existing : replacement
+						(existing, replacement) -> latest(existing, replacement)
 					));
 
 				// 필터링된 최신 로그들 중에서 정답 개수 카운트
@@ -200,7 +168,9 @@ public class QuizService {
 					.materialId(materialId)
 					.materialTitle(material.getTitle())
 					.correctCount((int) correctCount)
-					.tryCount(materialLogs.size()) // 시도 횟수는 전체 로그 수 그대로 유지 (노력 지표)
+					.submissionCount((int) materialLogs.stream().map(StudentQuizLog::getAttemptId).filter(java.util.Objects::nonNull).distinct().count())
+                    .legacyLogCount((int) materialLogs.stream().filter(l -> l.getAttemptId() == null).count())
+                    .tryCount(materialLogs.size()) // 시도 횟수는 전체 로그 수 그대로 유지 (노력 지표)
 					.totalQuizCount(totalQuizCount)
 					.correctRate(Math.round(correctRate * 10) / 10.0)
 					.build());
@@ -245,7 +215,7 @@ public class QuizService {
 					.collect(Collectors.toMap(
 						log -> log.getQuiz().getId(),
 						log -> log,
-						(existing, replacement) -> existing.getSolvedAt().isAfter(replacement.getSolvedAt()) ? existing : replacement
+						(existing, replacement) -> latest(existing, replacement)
 					))
 					.values().stream()
 					.filter(StudentQuizLog::isCorrect)
@@ -265,4 +235,14 @@ public class QuizService {
 			.averageCorrectRate(Math.round(averageRate * 10) / 10.0)
 			.build();
 	}
+    static StudentQuizLog latest(StudentQuizLog a, StudentQuizLog b) {
+        java.time.LocalDateTime at = a.getSubmittedAt() == null ? a.getSolvedAt() : a.getSubmittedAt();
+        java.time.LocalDateTime bt = b.getSubmittedAt() == null ? b.getSolvedAt() : b.getSubmittedAt();
+        if (at == null) at = java.time.LocalDateTime.MIN;
+        if (bt == null) bt = java.time.LocalDateTime.MIN;
+        int compare = at.compareTo(bt);
+        if (compare == 0) compare = Long.compare(a.getAttemptId() == null ? 0 : a.getAttemptId(), b.getAttemptId() == null ? 0 : b.getAttemptId());
+        if (compare == 0) compare = Long.compare(a.getId(), b.getId());
+        return compare >= 0 ? a : b;
+    }
 }

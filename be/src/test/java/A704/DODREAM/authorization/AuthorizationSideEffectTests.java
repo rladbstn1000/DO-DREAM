@@ -46,29 +46,35 @@ class AuthorizationSideEffectTests {
         assertEquals(HttpStatus.NOT_FOUND, error.getStatus());
         verifyNoInteractions(files, storage, signer);
     }
-    @Test void deniedGradingDoesNotReadQuestionsOrScheduleWork() {
+    @Test void deniedGradingDoesNotReadQuestionsOrScheduleWork() throws Exception {
         var policy = mock(AuthorizationPolicy.class);
-        var quizzes = mock(QuizRepository.class);
-        var logs = mock(StudentQuizLogRepository.class);
-        var material = mock(MaterialRepository.class);
-        var users = mock(UserRepository.class);
-        var client = mock(WebClient.class);
-        when(policy.studentMaterial(21L, 73L)).thenThrow(AuthorizationPolicy.hidden());
-        var service = new QuizService(policy, quizzes, logs, material, users, client);
-        assertThrows(AuthorizationFailure.class, () -> service.gradeAndLog(73L, 21L, new QuizSubmissionDto(), "synthetic"));
-        verifyNoInteractions(quizzes, logs, material, users, client);
+        var db = mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var hooks = mock(A704.DODREAM.quiz.grading.GradingLocalHooks.class);
+        var em = mock(jakarta.persistence.EntityManager.class);
+        when(policy.studentMaterial(21L,73L)).thenThrow(AuthorizationPolicy.hidden());
+        var tx = mock(org.springframework.transaction.PlatformTransactionManager.class);
+        when(tx.getTransaction(any())).thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
+        var store = new A704.DODREAM.quiz.grading.GradingStore(db, policy, tx, hooks, em, mock(jakarta.persistence.EntityManagerFactory.class));
+        var input = A704.DODREAM.quiz.grading.GradingContract.parse("00000000-0000-0000-0000-000000000001",73L,
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree("{\"answers\":[{\"quizId\":999,\"version\":0,\"answer\":\"x\"}]}"));
+        assertThrows(AuthorizationFailure.class, () -> store.accept(21,73,input));
+        verifyNoInteractions(db,hooks);
     }
     @Test void mismatchedQuizIdIsRejectedBeforeGradingOrLogWrite() throws Exception {
         var policy = mock(AuthorizationPolicy.class);
-        var quizzes = mock(QuizRepository.class);
-        var logs = mock(StudentQuizLogRepository.class);
-        var client = mock(WebClient.class);
-        var service = new QuizService(policy, quizzes, logs, mock(MaterialRepository.class), mock(UserRepository.class), client);
-        when(policy.role(21L, Role.STUDENT)).thenReturn(User.create("s", Role.STUDENT));
-        when(quizzes.findAllByMaterialIdOrderByQuestionNumber(73L)).thenReturn(List.of());
-        var submission = new com.fasterxml.jackson.databind.ObjectMapper().readValue("{\"answers\":[{\"quizId\":999,\"answer\":\"x\"}]}", QuizSubmissionDto.class);
-        var error = assertThrows(AuthorizationFailure.class, () -> service.gradeAndLog(73L, 21L, submission, "synthetic"));
-        assertEquals(HttpStatus.BAD_REQUEST, error.getStatus());
-        verifyNoInteractions(logs, client);
+        var db = mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var hooks = mock(A704.DODREAM.quiz.grading.GradingLocalHooks.class);
+        var tx = mock(org.springframework.transaction.PlatformTransactionManager.class);
+        when(tx.getTransaction(any())).thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
+        var store = new A704.DODREAM.quiz.grading.GradingStore(db,policy,tx,hooks,mock(jakarta.persistence.EntityManager.class),mock(jakarta.persistence.EntityManagerFactory.class));
+        when(db.query(eq("SELECT * FROM grading_attempts WHERE attempt_id=?"), org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<A704.DODREAM.quiz.grading.GradingContract.Attempt>>any(), anyString())).thenReturn(List.of(
+            new A704.DODREAM.quiz.grading.GradingContract.Attempt(1,"00000000-0000-0000-0000-000000000001",21,73,"key","fingerprint","READY",0,null,null,java.time.LocalDateTime.now(),null)));
+        var input = A704.DODREAM.quiz.grading.GradingContract.parse("00000000-0000-0000-0000-000000000001",73L,
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree("{\"answers\":[{\"quizId\":999,\"version\":0,\"answer\":\"x\"}]}"));
+        var error = assertThrows(AuthorizationFailure.class, () -> store.accept(21,73,input));
+        assertEquals(HttpStatus.BAD_REQUEST,error.getStatus());
+        verify(db,never()).update(contains("student_quiz_logs"),any(Object[].class));
+        verify(tx).rollback(any());
+        verifyNoInteractions(hooks);
     }
 }

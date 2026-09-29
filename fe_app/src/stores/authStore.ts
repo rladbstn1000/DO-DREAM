@@ -406,6 +406,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clear: () => {
+    authApi.invalidateLocalSession();
     set({
       student: null,
       accessToken: null,

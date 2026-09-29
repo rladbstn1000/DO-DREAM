@@ -1,4 +1,5 @@
 from datetime import datetime
+import asyncio
 from typing import Optional, List
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -12,6 +13,8 @@ from app.rag.database import get_rag_db
 from app.rag import models as rag_models
 from app.rag.models import ChatSessionDetailDto, ChatSessionDto
 from app.rag.quiz_service import generate_quiz_with_rag, grade_quiz_answers
+from app.rag.grading_contract import (BatchGradingRequest, GradingResultResponse,
+    load_grading_snapshot, validate_results, GRADING_TIMEOUT_SECONDS)
 from app.security.auth import get_current_user
 from app.security.models import User
 from app.security.authorization import (
@@ -63,23 +66,6 @@ class QuizQuestionResponse(BaseModel):
 class GenerateQuizResponse(BaseModel):
     questions: List[QuizQuestionResponse]
     generated_at: datetime
-
-
-class GradeStudentAnswerItem(RequestModel):
-    question_id: StrictInt = Field(gt=0, le=9223372036854775807)
-    student_answer: str
-
-
-class BatchGradingRequest(RequestModel):
-    material_id: StrictInt = Field(gt=0, le=9223372036854775807)
-    student_answers: List[GradeStudentAnswerItem]
-
-
-class GradingResultResponse(BaseModel):
-    question_id: int
-    student_answer: str
-    is_correct: bool
-    ai_feedback: str
 
 
 router = APIRouter(prefix="/rag", tags=["RAG"])
@@ -221,20 +207,19 @@ async def api_grade_quiz_batch(
     request: BatchGradingRequest, current_user: User = Depends(get_current_user),
     common_db: Session = Depends(get_db),
 ):
-    quizzes = require_quizzes(common_db, current_user, request.material_id,
-                              [answer.question_id for answer in request.student_answers])
-    questions = [{"id": quiz.id, "content": quiz.content, "correct_answer": quiz.correct_answer}
-                 for quiz in quizzes.values()]
-    answers = [answer.model_dump() for answer in request.student_answers]
+    questions, answers, context = load_grading_snapshot(common_db, current_user, request)
     try:
-        results = await grade_quiz_answers(questions, answers)
-        if len(results) != len(quizzes) or {r.get("question_id") for r in results} != set(quizzes):
-            raise ValueError("Invalid grading result identifiers")
-        return [GradingResultResponse(**result) for result in results]
+        results = await asyncio.wait_for(grade_quiz_answers(questions, answers, execution=context),
+                                         timeout=GRADING_TIMEOUT_SECONDS)
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(503, "Grading unavailable") from None
+        # A dispatched provider timeout/exception leaves its work outcome unknown.
+        raise HTTPException(504, "Grading outcome unknown") from None
+    try:
+        return validate_results(results, answers)
+    except (ValueError, TypeError):
+        raise HTTPException(502, "Invalid grading provider response") from None
 
 
 @router.get("/chat/sessions", response_model=List[ChatSessionDto])

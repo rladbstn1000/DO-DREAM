@@ -9,6 +9,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class QuizDto {
+	private long version;
 	private Long id; // 생성 시엔 null, 조회 시엔 존재
 	@JsonProperty("question_number")
 	private Integer questionNumber;
@@ -23,7 +24,7 @@ public class QuizDto {
 
 	public static QuizDto from(Quiz quiz) {
 		return QuizDto.builder()
-			.id(quiz.getId())
+			.id(quiz.getId()).version(quiz.getVersion())
 			.questionNumber(quiz.getQuestionNumber())
 			.questionType(quiz.getQuestionType())
 			.title(quiz.getTitle())

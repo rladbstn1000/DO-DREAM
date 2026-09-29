@@ -132,15 +132,16 @@ class AuthorizationDatabaseTests {
         org.mockito.Mockito.verifyNoInteractions(storage, notifications);
     }
     @Test void realDatabaseDeniedSubmissionDoesNotReadQuestionsOrGrade() {
-        var quizzes = org.mockito.Mockito.mock(A704.DODREAM.quiz.repository.QuizRepository.class);
-        var logs = org.mockito.Mockito.mock(A704.DODREAM.quiz.repository.StudentQuizLogRepository.class);
-        var client = org.mockito.Mockito.mock(org.springframework.web.reactive.function.client.WebClient.class);
-        var service = new A704.DODREAM.quiz.service.QuizService(policy, quizzes, logs,
-            context.getBean(A704.DODREAM.material.repository.MaterialRepository.class),
-            context.getBean(A704.DODREAM.user.repository.UserRepository.class), client);
-        hidden(() -> service.gradeAndLog(material.getId(), peer.getId(), new A704.DODREAM.quiz.dto.QuizSubmissionDto(), "synthetic"));
-        org.mockito.Mockito.verifyNoInteractions(quizzes, logs, client);
+        var db = org.mockito.Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class);
+        var hooks = org.mockito.Mockito.mock(A704.DODREAM.quiz.grading.GradingLocalHooks.class);
+        var tx = org.mockito.Mockito.mock(org.springframework.transaction.PlatformTransactionManager.class);
+        org.mockito.Mockito.when(tx.getTransaction(org.mockito.ArgumentMatchers.any())).thenReturn(new org.springframework.transaction.support.SimpleTransactionStatus());
+        var store = new A704.DODREAM.quiz.grading.GradingStore(db,policy,tx,hooks,em,em.getEntityManagerFactory());
+        var input = new A704.DODREAM.quiz.grading.GradingContract.Submission("00000000-0000-0000-0000-000000000001","synthetic",java.util.List.of());
+        hidden(() -> store.accept(peer.getId(), material.getId(), input));
+        org.mockito.Mockito.verifyNoInteractions(db,hooks);
     }
+
     @Test void legitimateQuizEditPreservesExistingStudentLogForeignKey() {
         var quiz = save(A704.DODREAM.quiz.entity.Quiz.builder().material(material).questionNumber(1)
             .questionType("SHORT_ANSWER").title("before").content("before").correctAnswer("answer").build());

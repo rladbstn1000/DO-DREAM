@@ -92,3 +92,18 @@
 확인한 범위에서 기존 지적4/5/6/7의 접근권한 조건을 수정했다. 실제 공급자 유출 공격을 수행했다는 뜻은 아니다. 운영 SSRF/redirect·전체 로그·배포 설정, LLM 품질, 서명 URL 즉시 철회는 미검증이다. 지적8(채점 트랜잭션/중복),9(임베딩 선삭제/복구),10(전체 SSRF),11(전체 로그),12(운영 설정),13(포괄 검증 부족)의 남은 부분과 모바일 저장매체/실기기는 별도 후속 작업이다. 과거 풀이 정답 버전과 원자적 업로드/발행/큐 복구도 보장하지 않는다.
 
 `SECURITY_REGRESSION_ALL`은 **실행한 회귀 검사 범위의 통과만** 뜻하며 최종 상태는 08 문서를 따른다. `KNOWN_SECURITY_FINDINGS_OPEN=true`, `REAL_AI_INTEGRATION=NOT_RUN`, `PUBLIC_DEPLOYMENT_READY=false`를 유지한다.
+
+
+## 3-A 채점 안정화 (2026-09-29~30)
+
+과거 지적8과 당시 실패 증거는 보존하고 후속 채점 경로만 개선한다. [09 설계](09-grading-reliability-design.md)에 제출 키·고정 snapshot·버전·상태·복구·권한·DB 경계를, [10 결과](10-phase3a-results.md)에 최종 실제 명령·횟수·실패 원인과 미실행 범위를 기록한다.
+
+기준2-B에서 새 합성2문항을 같은 본문으로 재전송하면 로그가2→4개가 됐고, 교사 정답 편집 뒤 기존 이력의 정답도 바뀌었다. 실제 재현과 정적 추론을 구분했다. 새 구현은 필수 UUID key와 실제 MySQL unique, 최초 정답/문제 snapshot, 버전 충돌, 트랜잭션 밖 공급자 호출, 엄격한 응답 검사, 결과·로그·상태의 원자 확정, 세대·기한 기반 제한 재시도를 사용한다. 모든 새 경로와 성공 replay는 현재2-B 권한을 재검사한다.
+
+실제 경계 검사에서 NOT_SUPPORTED의 빈 synchronization 및 OSIV의 물리 연결 유지 문제를 발견해 호출을 차단했다. 안전 검사를 완화하거나 해당 요청을 PASS로 바꾸지 않았다. 채점 저장 작업의 EntityManager 수명을 분리하고 실제 물리 연결 상태까지 관측하는 수정과 재검증을 수행했다. 최종 채점 통합278개와 별도 공급자 대기 중 DB 조회6개가 PASS였다. 12개 클라이언트×3라운드에서 라운드별 attempt1/결과2/로그2/공급자 호출1을 확인했고 실제 Spring 재시작4구간도 통과했다.
+
+기존 인증·권한 식별자와 양성 대조군을 유지한다. 학생 문제DTO에는 정답이 아닌 version만 추가한다. 직접 AI 채점의 이전 임의 자료/문항 본문은422로 거부되며, 내부 attempt 실행 capability와 고정 snapshot만 허용한다. 기존 입력 계약을 새 UUID/version에 맞춘 변경과 권한 기대 완화를 구분한다. 최종 Spring104/AI67/PDF6, 인증131/기동차단6/객체권한188/보안16, Chrome 인증17/교사UI권한18/채점API11이 PASS였다. 최초 Chrome 인증은 별도 short BE의 Redis 타임아웃으로 실패했으며 해당 프로세스 연결 복구 후 같은 검사로 통과했다. 실패·복구 근거를 포함한 실제 최종 판정은10문서 및 ignored 증거를 따른다.
+
+대역 호출 횟수와 DB 확정 횟수를 분리한다. 정상 조건의 추가 채점 방지와 장애 복구 시 외부 중복 실행 가능성은 서로 다른 보장이다. 실제 AI 품질/요금/외부 exactly-once는 검증하지 않았다. `REAL_AI_INTEGRATION=NOT_RUN`, `KNOWN_SECURITY_FINDINGS_OPEN=true`, `PUBLIC_DEPLOYMENT_READY=false`를 유지한다. 임베딩 선삭제/전환 복구·전체outbox·SSRF·로그·운영 설정·모바일 저장소/실기기·공개 배포는 후속 범위다.
+
+최종 자체 데이터 보존과 `CURRENT_MUTATION_SCOPE`는 PASS지만, 이번 새 전후 비교의 `CURRENT_EXTERNAL_ID_STABILITY`는 FAIL이다. ETCH 계열 외부6개 ID 교체와 별도2개 실행 상태 변화가 관측됐으며 원인 귀속은 UNVERIFIED다. strict isolation14 PASS/3 FAIL·종료1을 그대로 기록한다. 과거 실패를 소급 변경하거나 현재 전체 외부 보존을 PASS로 표시하지 않는다. 자세한 범위/증거는10문서를 따른다.
