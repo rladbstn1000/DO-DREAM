@@ -3,8 +3,9 @@ import copy
 from pathlib import Path
 import sys
 import unittest
+import socket
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from scope_guard import command_scope,validate_inventory,validate_plan,preservation_status,ScopeError,PROJECT,RUN_LABEL
+from scope_guard import command_scope,validate_inventory,validate_plan,preservation_status,port_available,ScopeError,PROJECT,RUN_LABEL
 
 ROOT=Path('/synthetic/dodream')
 def plan():
@@ -93,5 +94,16 @@ class PreservationTests(unittest.TestCase):
     def test_blocked_is_distinct_from_pass(self):
         self.assertEqual(preservation_status(True,{'checks':[{'status':'BLOCKED'}]}),'BLOCKED')
         self.assertEqual(preservation_status(True,{'checks':[{'status':'PASS'}]}),'PASS')
+
+class LocalPortTests(unittest.TestCase):
+    def test_active_listener_is_refused_even_with_reuseaddr(self):
+        with socket.socket() as listener:
+            listener.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+            listener.bind(('127.0.0.1',0));listener.listen()
+            self.assertFalse(port_available(listener.getsockname()[1]))
+    def test_closed_listener_becomes_available(self):
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1',0));port=listener.getsockname()[1];listener.listen()
+        self.assertTrue(port_available(port))
 
 if __name__=='__main__':unittest.main()

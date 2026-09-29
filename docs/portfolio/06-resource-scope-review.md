@@ -32,3 +32,11 @@
 `python3 scripts/local/manage.py scope-test`: 합성 명령/metadata 단위검사33개 PASS, exit0. `config`: exit0. 연결 복구 후 `scope`: 실제 target 검증 PASS, exit0. 새 `.local/phase2b/results/resources-before.json`에는 자체9개 컨테이너 모두 exited, 외부33개, 전체 볼륨31개/네트워크12개가 기록됐다. 변경 전 snapshot은 한번만 저장하고 덮어쓰지 않는다.
 
 현재 명령 범위, 새 외부 ID 보존, 자체 데이터 보존은 각각 출력한다. 실행 종료 뒤의 결과는 08에 기록한다. 과거/현재 외부 ID 변화만으로 명령 범위를 추정하지 않고 관측 범위 밖의 직접·간접 영향 부재를 보장하지 않는다.
+
+## 2-B 후속 회귀 중 보강
+
+인증 검사 중 한 번의 metadata 읽기 실패는 gate에서 차단됐다. 현재 scope를 다시 확인한 뒤 인증131개를 통과했으며, 실패한 하위 명령 종류와 종료 코드만 진단에 남기도록 수정했다. 원문 설정이나 비밀 인자는 기록하지 않는다.
+
+영속성 첫 시도는 stop 성공 뒤 loopback 포트가 즉시 반환되지 않아 up 전에 BLOCKED였다. 후속 읽기에서는 일반 서비스 포트에 리스너가 없고 bind 가능함을 확인했다. 정확한 일시 점유 주체는 단정하지 않는다. 종료 연결의 TIME_WAIT는 재기동 충돌과 구분하도록 SO_REUSEADDR를 사용하고, 실제 listener는 계속 거부한다(SO_REUSEPORT 사용 안 함). 전용 임시 loopback 소켓의 실제 listener 거부/종료 후 사용 가능 검사2개를 추가해 최종 scope 단위검사는35 PASS다. ETCH나 다른 프로세스를 테스트 대상으로 삼지 않았다.
+
+영속성 스크립트는 이번 프로젝트 stop 후 최대5초 동안 읽기 전용 포트 반환을 확인한다. 계속 점유되면 실패로 기록하고 up을 실행하지 않는다. 충돌 프로세스를 종료하거나 강제로 포트를 빼앗지 않는다. strict 외부 ID 보존 기대는 그대로다.

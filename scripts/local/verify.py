@@ -10,6 +10,7 @@ import time
 import urllib.error
 import urllib.request
 from manage import ROOT, RESULTS, settings, compose_args, clean_env
+from scope_guard import port_available
 
 ENV = settings()
 BASE = {name: 'http://127.0.0.1:' + ENV[key] for name, key in
@@ -194,6 +195,15 @@ def persistence():
     saved=json.loads((RESULTS/'synthetic-session.json').read_text()) if (RESULTS/'synthetic-session.json').exists() else None
     result=subprocess.run(compose_args('stop'),capture_output=True,text=True,env=clean_env())
     check('compose_stop',result.returncode==0,'exit '+str(result.returncode))
+    if result.returncode:return
+    # Give this project's just-stopped port forwarders a bounded release window.
+    # An actual remaining listener is still a failure; never terminate it.
+    deadline=time.monotonic()+5
+    ports=[int(ENV[k]) for k in ('WEB_PORT','BE_PORT','AI_PORT','PDF_PORT')]
+    while not all(port_available(p) for p in ports) and time.monotonic()<deadline:time.sleep(.25)
+    released=all(port_available(p) for p in ports)
+    check('loopback_ports_released_after_stop',released,'bounded read-only check; no process termination')
+    if not released:return
     result=subprocess.run(compose_args('up','-d','--wait','--wait-timeout','240'),capture_output=True,text=True,env=clean_env())
     check('compose_restart',result.returncode==0,'exit '+str(result.returncode))
     if result.returncode: return

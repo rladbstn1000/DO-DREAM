@@ -35,6 +35,16 @@ def preservation_status(volumes_preserved, persistence):
     return 'PASS' if statuses=={'PASS'} else 'NOT_RUN'
 
 
+def port_available(port):
+    # A closed connection's TIME_WAIT is not a live listener. REUSEADDR permits
+    # that normal restart case, but never uses REUSEPORT to share a listener.
+    with socket.socket() as sock:
+        sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        try:sock.bind(('127.0.0.1',port))
+        except OSError:return False
+    return True
+
+
 def command_scope(args):
     """Parse only the small option vocabulary used by checked-in local scripts."""
     args=list(args); index=0; profiles=[]
@@ -144,7 +154,7 @@ def read_metadata(env):
 
 def _read(args,env):
     result=subprocess.run(args,capture_output=True,text=True,env=env,timeout=20)
-    require(result.returncode==0,'Docker metadata/config unavailable; mutations blocked')
+    require(result.returncode==0,'Docker metadata/config unavailable ('+' '.join(args[:2])+'; exit '+str(result.returncode)+'); mutations blocked')
     return result.stdout
 
 
@@ -168,9 +178,7 @@ def _gate(args,base,root,env):
         used={int(binding['HostPort']) for r in owned if r['state']=='running' for bindings in r['ports'].values() for binding in (bindings or []) if binding['HostIp']=='127.0.0.1'}
         for service,port in ports:
             if service in targets and port not in used:
-                with socket.socket() as sock:
-                    try:sock.bind(('127.0.0.1',port))
-                    except OSError:raise ScopeError('Loopback port conflict; do not terminate the existing process')
+                require(port_available(port),'Loopback port '+str(port)+' unavailable; do not terminate the existing process')
     return {'status':'PASS','operation':operation,'project':PROJECT,'services':targets,'validated_containers':[{'id':r['id'],'service':r['service']} for r in owned], 'limits':'Target metadata only; no claim about unobserved direct or indirect effects.'}
 
 
