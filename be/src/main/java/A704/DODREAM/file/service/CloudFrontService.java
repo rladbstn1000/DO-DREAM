@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -16,6 +17,7 @@ import software.amazon.awssdk.services.cloudfront.model.CannedSignerRequest;
 
 @Slf4j
 @Service
+@Profile("!local")
 @RequiredArgsConstructor
 public class CloudFrontService {
 

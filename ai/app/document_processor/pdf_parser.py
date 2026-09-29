@@ -1,8 +1,9 @@
 import json
 from typing import Dict, Any, List
 
-from openai import OpenAI
-from app.config import OPENAI_API_KEY
+from app.config import OPENAI_API_KEY, LOCAL_EXTERNAL_STUBS
+if not LOCAL_EXTERNAL_STUBS:
+    from openai import OpenAI
 
 
 class PDFParser:
@@ -13,6 +14,10 @@ class PDFParser:
         api_key: str | None = None,
         model: str = "gpt-5-mini",  # 필요시 gpt-4.1 / gpt-4o 등으로 변경
     ) -> None:
+        if LOCAL_EXTERNAL_STUBS:
+            self.client = None
+            self.model = "local_stub"
+            return
         self.client = OpenAI(api_key=api_key or OPENAI_API_KEY)
         self.model = model
 
@@ -35,6 +40,10 @@ class PDFParser:
 
     def parse_pdf(self, pdf_path: str, output_format: str) -> Dict[str, Any]:
         """PDF를 파싱하여 지정된 형식으로 반환"""
+
+        if LOCAL_EXTERNAL_STUBS:
+            from app.local_providers import parse_pdf
+            return parse_pdf(pdf_path)
 
         print(f"PDF 파일 업로드 중: {pdf_path}")
         uploaded_file = None
@@ -191,6 +200,10 @@ class PDFParser:
         """
         개념 Check 항목을 OpenAI로 가공하여 정제된 형태로 반환
         """
+
+        if LOCAL_EXTERNAL_STUBS:
+            from app.local_providers import process_concept_checks
+            return process_concept_checks(concept_checks)
 
         concept_checks_json = json.dumps(concept_checks, ensure_ascii=False, indent=2)
 

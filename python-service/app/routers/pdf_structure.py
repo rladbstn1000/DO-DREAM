@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 
 from app.services.pdf_analyzer import PDFAnalyzer
+from app.utils.config import settings
 from app.services.heading_detector import HeadingDetector
 # from app.services.layout_detector import LayoutDetector  # Optional: Requires layoutparser
 from app.services.reading_order import ReadingOrderRestorer, TextBlockOrderRestorer
@@ -209,6 +210,8 @@ async def extract_structure(request: ExtractStructureRequest):
                     tiptap_doc["content"].append(table_node)
 
         else:
+            if not LAYOUT_DETECTOR_AVAILABLE:
+                raise HTTPException(status_code=501, detail="OCR/layout model is not installed in the local runtime")
             # OCR + LayoutParser path
             logger.info("Using OCR + LayoutParser extraction")
 
@@ -365,6 +368,9 @@ async def download_pdf(url: str) -> Path:
     Returns:
         Path to downloaded PDF file
     """
+    if settings.LOCAL_EXTERNAL_STUBS:
+        from app.services.local_provider import download_fixture_pdf
+        return download_fixture_pdf(url)
     try:
         async with httpx.AsyncClient(timeout=300.0) as client:  # 5 minute timeout
             response = await client.get(url)
@@ -587,8 +593,8 @@ async def parse_pdf_with_gemini(request: GeminiParseRequest):
 
         # Prepare metadata
         metadata = {
-            "model": "gemini-2.5-flash",
-            "extractionMethod": "gemini_multimodal",
+            "model": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini-2.5-flash",
+            "extractionMethod": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini_multimodal",
             "customPrompt": request.customPrompt is not None,
             "customFormat": request.outputFormat is not None
         }
@@ -679,8 +685,8 @@ async def parse_pdf_with_gemini_upload(
             "filename": file.filename,
             "parsedData": parsed_data,
             "metadata": {
-                "model": "gemini-2.5-flash",
-                "extractionMethod": "gemini_multimodal"
+                "model": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini-2.5-flash",
+                "extractionMethod": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini_multimodal"
             }
         })
 

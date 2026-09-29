@@ -1,0 +1,74 @@
+# Only the explicit local profile skips Vault and uses synthetic external boundaries.
+spring:
+  application:
+    name: DODREAM-local
+  cloud:
+    vault:
+      enabled: false
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:mysql}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:dodream_local}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: ${MYSQL_USER:dodream}
+    password: ${MYSQL_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+jwt:
+  secret: ${JWT_SECRET}
+  # Preserve the existing access-token lifetime for the phase 1 security baseline.
+  access-exp-seconds: 86400
+  refresh-exp-seconds: 1209600
+fastapi:
+  url: ${AI_BASE_URL:http://ai:8000}
+file:
+  upload:
+    dir: ${LOCAL_DATA_DIR:/app/local-data}/uploads
+    temp-dir: ${LOCAL_DATA_DIR:/app/local-data}/temp
+aws:
+  s3:
+    bucket: local-synthetic-fixtures
+    region: ap-northeast-2
+    upload-prefix: pdf
+    presign-exp-minutes: 5
+  cloudfront:
+    domain: local.invalid
+    key-pair-id: local-disabled
+    private-key-pem: local-disabled
+clova:
+  ocr:
+    api-url: http://127.0.0.1:9/disabled
+    secret-key: local-disabled
+firebase-credentials-file: local-disabled
+logging:
+  level:
+    root: WARN
+    A704.DODREAM.local: INFO
+    org.springframework.boot.web.embedded.tomcat: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+springdoc:
+  api-docs:
+    path: /api/v3/api-docs
+  swagger-ui:
+    path: /api/swagger-ui
+    url: /api/v3/api-docs
+    config-url: /api/v3/api-docs/swagger-config

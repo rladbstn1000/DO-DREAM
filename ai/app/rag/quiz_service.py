@@ -6,8 +6,10 @@ import asyncio
 from typing import List, Dict, Any
 from fastapi import HTTPException
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_chroma import Chroma
-from langchain_openai import ChatOpenAI # 직접 초기화를 위해 임포트
+from app.config import LOCAL_EXTERNAL_STUBS
+if not LOCAL_EXTERNAL_STUBS:
+    from langchain_chroma import Chroma
+    from langchain_openai import ChatOpenAI
 
 from app.rag.service import (
     embedding_model,
@@ -18,17 +20,19 @@ from app.rag.service import (
 )
 
 # --- (신규) 퀴즈/채점 전용 고속 LLM 초기화 ---
-try:
-    quiz_llm = ChatOpenAI(
-        temperature=0.0, # 채점은 일관성이 중요하므로 0.0으로 설정
-        model_name="gpt-5-mini", # 속도/비용 최적화 모델
-        api_key=GMS_KEY,
-        base_url=GMS_BASE_URL
-    )
-    print("✅ 퀴즈/채점용 Fast LLM (gpt-5-mini) 초기화 성공")
-except Exception as e:
-    print(f"❌ 퀴즈용 LLM 초기화 실패: {e}")
-    quiz_llm = None
+quiz_llm = None
+if not LOCAL_EXTERNAL_STUBS:
+    try:
+        quiz_llm = ChatOpenAI(
+            temperature=0.0, # 채점은 일관성이 중요하므로 0.0으로 설정
+            model_name="gpt-5-mini", # 속도/비용 최적화 모델
+            api_key=GMS_KEY,
+            base_url=GMS_BASE_URL
+        )
+        print("✅ 퀴즈/채점용 Fast LLM (gpt-5-mini) 초기화 성공")
+    except Exception as e:
+        print(f"❌ 퀴즈용 LLM 초기화 실패: {e}")
+        quiz_llm = None
 # ---------------------------------------
 
 
@@ -40,6 +44,10 @@ async def generate_quiz_with_rag(
     RAG를 사용하여 문서에서 퀴즈를 자동 생성합니다.
     """
     
+    if LOCAL_EXTERNAL_STUBS:
+        from app.local_providers import generate_quiz
+        return generate_quiz(_get_collection_name(document_id), num_questions)
+
     # 모델 초기화 확인
     if not embedding_model or not quiz_llm:
         raise ValueError("임베딩 모델 또는 퀴즈용 LLM이 초기화되지 않았습니다.")
@@ -167,6 +175,10 @@ async def grade_quiz_answers(
     (Spring Server에서 요청받은 questions와 student_answers 리스트를 처리)
     """
     
+    if LOCAL_EXTERNAL_STUBS:
+        from app.local_providers import grade_answers
+        return grade_answers(questions, student_answers)
+
     if not quiz_llm:
         raise ValueError("채점용 LLM이 초기화되지 않았습니다.")
     

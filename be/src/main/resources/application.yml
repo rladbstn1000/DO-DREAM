@@ -40,6 +40,8 @@ spring:
 
       uri: ${vaultAddr}
   config:
+    activate:
+      on-profile: "!local"
     import: vault://
 
   datasource:

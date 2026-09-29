@@ -1,5 +1,6 @@
 import httpx  # (수정) Celery는 동기 작업이 기본이므로, 'async'가 아닌 'sync' httpx 사용
 import json
+from app.config import LOCAL_EXTERNAL_STUBS
 from app.celery_config import celery_app
 from app.rag.service import (
     extract_data_from_json,
@@ -19,6 +20,9 @@ def download_json_sync(url: str) -> dict:
     """
     (수정) Celery 동기 작업을 위한 '동기식(sync)' 다운로더
     """
+    if LOCAL_EXTERNAL_STUBS:
+        from app.local_providers import load_fixture_json
+        return load_fixture_json(url)
     try:
         # service.py의 async Httpx와 달리, sync Httpx 사용
         response = httpx.get(url, follow_redirects=True, timeout=60.0)
@@ -69,7 +73,7 @@ def create_initial_embedding_task(self, pdf_id: str, s3_url: str):
         log.info(f"[Initial Embedding Task Success] PDF ID: {pdf_id}")
 
         return {
-            "status": "success",
+            "status": "success", "external_provider": "local_stub" if LOCAL_EXTERNAL_STUBS else "configured",
             "pdf_id": pdf_id,
             "collection_name": f"pdf_{pdf_id}",
             "document_count": len(documents),
@@ -102,7 +106,7 @@ def create_embedding_task(self, document_id: str, s3_url: str):
         create_and_store_embeddings(document_id, documents)
         log.info(f"[Task Success] 임베딩 작업 완료. DocID: {document_id}")
 
-        return {"status": "success", "document_id": document_id}
+        return {"status": "success", "external_provider": "local_stub" if LOCAL_EXTERNAL_STUBS else "configured", "document_id": document_id}
 
     except Exception as e:
         log.error(f"[Task Failed] 임베딩 작업 실패. DocID: {document_id}. Error: {e}")

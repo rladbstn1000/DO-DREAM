@@ -1,0 +1,16 @@
+FROM gradle:8.14.3-jdk17 AS build
+WORKDIR /workspace
+COPY --chown=gradle:gradle build.gradle settings.gradle ./
+COPY --chown=gradle:gradle src ./src
+RUN gradle --no-daemon bootJar testClasses resolveTestRuntime
+
+# Runs the existing tests against the isolated Compose MySQL and Redis services.
+FROM build AS test
+CMD ["gradle", "--offline", "--no-daemon", "test", "--rerun-tasks"]
+
+FROM eclipse-temurin:17-jre AS runtime
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+COPY --from=build /workspace/build/libs/*.jar /app/app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

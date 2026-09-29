@@ -114,7 +114,7 @@ const formatYmdFromIso = (iso: string | null | undefined) => {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
-const RAG_BASE = 'https://www.dodream.io.kr/ai';
+const RAG_BASE = (import.meta.env.VITE_RAG_BASE || '/ai').replace(/\/+$/, '');
 
 export default function StudentRoom() {
   const navigate = useNavigate();

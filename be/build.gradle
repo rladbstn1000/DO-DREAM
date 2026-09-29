@@ -86,3 +86,11 @@ dependencyManagement {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// Pre-resolve test runtime jars while the build has dependency-download access.
+// The local test container runs with --offline on the isolated internal network.
+tasks.register('resolveTestRuntime') {
+	doLast {
+		configurations.testRuntimeClasspath.files
+	}
+}

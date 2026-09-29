@@ -617,7 +617,8 @@ export default function AdvancedEditor({
     });
 
     try {
-      const url = `https://www.dodream.io.kr/ai/rag/quiz/generate`;
+      const ragBase = (import.meta.env.VITE_RAG_BASE || '/ai').replace(/\/+$/, '');
+      const url = `${ragBase}/rag/quiz/generate`;
 
       const documentId = materialId
         ? String(materialId)

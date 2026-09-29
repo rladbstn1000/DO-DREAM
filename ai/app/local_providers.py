@@ -1,0 +1,125 @@
+"""Explicit, network-free external-provider doubles for local/test only.
+
+These are deterministic contract fixtures, not an AI or retrieval-quality evaluation.
+The existing routers, JWT verification, shared users DB and Celery worker remain real.
+"""
+import hashlib
+import json
+from pathlib import Path
+import sqlite3
+from langchain_core.documents import Document
+from fastapi import HTTPException
+from app.config import LOCAL_EXTERNAL_STUBS, LOCAL_PROVIDER_DATA_DIR
+
+if not LOCAL_EXTERNAL_STUBS:
+    raise RuntimeError("Local providers require LOCAL_EXTERNAL_STUBS=true in local/test")
+
+MARKER = "[LOCAL STUB: 실제 AI 아님]"
+FIXTURE_BASE = "https://local-fixture.invalid/"
+SAMPLE_CONTENT = "이 자료는 로컬 실행 검증을 위한 합성 학습 자료입니다. 물은 수소와 산소로 구성됩니다."
+
+
+def load_fixture_json(url):
+    if url != FIXTURE_BASE + "sample.json":
+        raise ValueError("Local storage supports only the synthetic sample.json fixture; network denied")
+    return {
+        "external_provider": "local_stub",
+        "chapters": [{"id": "local-1", "title": "로컬 합성 과학", "type": "content", "content": SAMPLE_CONTENT}],
+        "parsedData": {"indexes": ["01 로컬 합성 과학"], "data": [{"index": "01", "index_title": "로컬 합성 과학", "titles": [{"title": "물의 구성", "s_titles": [{"s_title": "합성 내용", "contents": SAMPLE_CONTENT, "ss_titles": []}]}], "concept_checks": []}]},
+    }
+
+
+def write_fixture_pdf(url, path):
+    if url != FIXTURE_BASE + "sample.pdf":
+        raise HTTPException(status_code=400, detail="Local storage supports only synthetic sample.pdf; network denied")
+    # Deliberately opaque fixture for the parser boundary; this is not PDF/OCR validation.
+    Path(path).write_bytes(b"%PDF-1.4\n% DO-DREAM LOCAL SYNTHETIC FIXTURE\n%%EOF\n")
+
+
+def parse_pdf(path):
+    if b"DO-DREAM LOCAL SYNTHETIC FIXTURE" not in Path(path).read_bytes():
+        raise ValueError("Local PDF provider accepts only its synthetic fixture")
+    data = load_fixture_json(FIXTURE_BASE + "sample.json")["parsedData"]
+    return {"external_provider": "local_stub", **data}
+
+
+def process_concept_checks(items):
+    return {"external_provider": "local_stub", "processed_concept_checks": [
+        {"title": MARKER, "questions": [{"question": item.get("contents", ""), "answer": item.get("answer", "")}]} for item in items
+    ]}
+
+
+class LocalEmbeddings:
+    """Small deterministic hash vectors; no trained model and no network."""
+    def embed_documents(self, texts):
+        return [self.embed_query(text) for text in texts]
+
+    def embed_query(self, text):
+        return [byte / 255 for byte in hashlib.sha256(text.encode()).digest()[:8]]
+
+
+class LocalVectorStore:
+    """SQLite-backed stand-in for the Chroma persistence/embedding boundary."""
+    def __init__(self, *, collection_name, **kwargs):
+        self.name = collection_name
+        directory = Path(LOCAL_PROVIDER_DATA_DIR)
+        directory.mkdir(parents=True, exist_ok=True)
+        self.path = directory / "vectors.sqlite3"
+        with self.connect() as db:
+            db.execute("CREATE TABLE IF NOT EXISTS chunks (collection TEXT NOT NULL, content TEXT NOT NULL, metadata TEXT NOT NULL, vector TEXT NOT NULL)")
+
+    def connect(self):
+        return sqlite3.connect(self.path, timeout=30)
+
+    def delete_collection(self):
+        with self.connect() as db:
+            db.execute("DELETE FROM chunks WHERE collection = ?", (self.name,))
+
+    @classmethod
+    def from_documents(cls, *, documents, embedding, collection_name, **kwargs):
+        store = cls(collection_name=collection_name)
+        vectors = embedding.embed_documents([doc.page_content for doc in documents])
+        with store.connect() as db:
+            db.executemany("INSERT INTO chunks VALUES (?, ?, ?, ?)", [
+                (collection_name, doc.page_content, json.dumps(doc.metadata, ensure_ascii=False), json.dumps(vector))
+                for doc, vector in zip(documents, vectors)
+            ])
+        return store
+
+    def similarity_search(self, query, k=5):
+        # Stable fixture ordering, deliberately not presented as semantic retrieval.
+        with self.connect() as db:
+            rows = db.execute("SELECT content, metadata FROM chunks WHERE collection = ? ORDER BY rowid LIMIT ?", (self.name, k)).fetchall()
+        return [Document(page_content=content, metadata=json.loads(metadata)) for content, metadata in rows]
+
+
+class LocalRagChain:
+    def __init__(self, collection):
+        self.store = LocalVectorStore(collection_name=collection)
+        if not self.store.similarity_search("", k=1):
+            raise ValueError("No local embedding fixture exists for this document")
+
+    async def ainvoke(self, request):
+        docs = self.store.similarity_search(request["input"], k=1)
+        if not docs:
+            raise ValueError("Local collection is empty")
+        return {"answer": f"{MARKER} {docs[0].page_content[:300]}"}
+
+
+def generate_quiz(collection, num_questions):
+    docs = LocalVectorStore(collection_name=collection).similarity_search("", k=1)
+    if not docs:
+        raise ValueError("No local embedding fixture exists for this document")
+    return [{"question_type": "SHORT_ANSWER", "content": f"{MARKER} 물을 구성하는 두 원소는?", "correct_answer": "수소와 산소", "chapter_reference": docs[0].metadata.get("title", "local fixture")} for _ in range(num_questions)]
+
+
+def grade_answers(questions, student_answers):
+    question_map = {str(q["id"]): q for q in questions}
+    results = []
+    for answer in student_answers:
+        question = question_map.get(str(answer["question_id"]))
+        if question is None:
+            raise ValueError("Unknown local grading question")
+        correct = answer["student_answer"].strip() == question["correct_answer"].strip()
+        results.append({"question_id": answer["question_id"], "student_answer": answer["student_answer"], "is_correct": correct, "ai_feedback": f"{MARKER} 문자열 일치 비교: {'일치' if correct else '불일치'}"})
+    return results

@@ -16,7 +16,7 @@ type ChatSession = {
   messages: ChatMessage[];
 };
 
-const RAG_BASE = 'https://www.dodream.io.kr/ai';
+const RAG_BASE = (import.meta.env.VITE_RAG_BASE || '/ai').replace(/\/+$/, '');
 
 const formatYmdFromIso = (iso: string | null | undefined) => {
   if (!iso) return '';

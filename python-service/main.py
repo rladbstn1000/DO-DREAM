@@ -62,6 +62,14 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def mark_local_providers(request, call_next):
+    response = await call_next(request)
+    if settings.LOCAL_EXTERNAL_STUBS:
+        response.headers["X-DO-DREAM-External-Provider"] = "local_stub"
+    return response
+
+
 # ========== 기본 엔드포인트 ==========
 
 @app.get("/")
@@ -89,7 +97,8 @@ async def health_check():
         return {
             "status": "healthy",
             "service": "pdf-structure-service",
-            "environment": settings.ENVIRONMENT
+            "environment": settings.APP_ENV,
+            "external_provider": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "configured"
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")

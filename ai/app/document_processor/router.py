@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from typing import List, Dict, Any
 
 from app.document_processor.pdf_parser import PDFParser
+from app.config import LOCAL_EXTERNAL_STUBS
 
 router = APIRouter(
     prefix="/document",
@@ -71,6 +72,10 @@ async def download_from_cloudfront(url: str, local_path: str) -> None:
     Raises:
         HTTPException: 다운로드 실패 시
     """
+    if LOCAL_EXTERNAL_STUBS:
+        from app.local_providers import write_fixture_pdf
+        write_fixture_pdf(url, local_path)
+        return
     try:
         print(f"CloudFront에서 다운로드 시작: {url}")
         

@@ -11,6 +11,9 @@ import os
 class Settings(BaseSettings):
     """애플리케이션 설정"""
 
+    APP_ENV: str = "production"
+    LOCAL_EXTERNAL_STUBS: bool = False
+
     # 기본 설정
     APP_NAME: str = "PDF Structure Extraction Service"
     ENVIRONMENT: str = "development"
@@ -51,13 +54,19 @@ class Settings(BaseSettings):
     TEMP_DIR: str = "/tmp/pdf-processing"
 
     class Config:
-        env_file = ".env"
+        env_file = None if os.getenv("APP_ENV") in {"local", "test"} else ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
 
 
 # 싱글톤 인스턴스 생성
 settings = Settings()
+if settings.LOCAL_EXTERNAL_STUBS and settings.APP_ENV not in {"local", "test"}:
+    raise RuntimeError("LOCAL_EXTERNAL_STUBS is permitted only in local/test")
+if settings.APP_ENV == "local" and not settings.LOCAL_EXTERNAL_STUBS:
+    raise RuntimeError("Local runtime requires LOCAL_EXTERNAL_STUBS=true")
+if not settings.LOCAL_EXTERNAL_STUBS and not settings.GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY is required outside local doubles")
 
 # 임시 디렉토리 생성
 os.makedirs(settings.TEMP_DIR, exist_ok=True)

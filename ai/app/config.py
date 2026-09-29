@@ -1,38 +1,37 @@
-import os
+"""Runtime settings. Local provider doubles require an explicit local/test profile."""
 import base64
+import os
 from dotenv import load_dotenv
 
-# .env 파일 로드
-load_dotenv()
+APP_ENV = os.getenv("APP_ENV", "production").lower()
+if APP_ENV not in {"local", "test"}:
+    load_dotenv()
+LOCAL_EXTERNAL_STUBS = os.getenv("LOCAL_EXTERNAL_STUBS", "false").lower() == "true"
+if LOCAL_EXTERNAL_STUBS and APP_ENV not in {"local", "test"}:
+    raise RuntimeError("LOCAL_EXTERNAL_STUBS is permitted only in local/test")
+if APP_ENV == "local" and not LOCAL_EXTERNAL_STUBS:
+    raise RuntimeError("Local runtime requires LOCAL_EXTERNAL_STUBS=true")
 
-# .env 파일에서 설정 값 읽기
-SECRET_KEY_BASE64 = os.getenv("JWT_SECRET_BASE64")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_ISSUER = os.getenv("JWT_ISSUER", "dodream")
+SECRET_KEY_BASE64 = os.getenv("JWT_SECRET_BASE64")
+try:
+    SECRET_KEY_BYTES = base64.b64decode(SECRET_KEY_BASE64 or "", validate=True)
+except (ValueError, TypeError):
+    raise RuntimeError("JWT_SECRET_BASE64 must be valid base64") from None
+if len(SECRET_KEY_BYTES) < 32:
+    raise RuntimeError("JWT_SECRET_BASE64 must encode at least 32 bytes")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is required")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GMS_KEY = os.getenv("GMS_KEY")
+if not LOCAL_EXTERNAL_STUBS and (not OPENAI_API_KEY or not GMS_KEY):
+    raise RuntimeError("OPENAI_API_KEY and GMS_KEY are required outside local doubles")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# DB 설정
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    print("경고: DATABASE_URL이 .env 파일에 설정되지 않았습니다.")
-    # 여기서 e 변수를 사용하던 오류를 수정했습니다.
-
-# --- JWT Secret Key 디코딩 ---
-# Spring의 Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretBase64))와 동일합니다.
-try:
-    if SECRET_KEY_BASE64 is None:
-        raise ValueError("JWT_SECRET_BASE64가 .env 파일에 설정되지 않았습니다.")
-
-    SECRET_KEY_BYTES = base64.b64decode(SECRET_KEY_BASE64)
-
-except Exception as e:  # 'e' 변수가 여기서 정의됩니다.
-    print(f"JWT_SECRET_BASE64 값 디코딩 오류! .env 파일을 확인하세요. 오류: {e}")
-    # 실제 운영 환경에서는 서버가 시작되지 않도록 처리해야 합니다.
-    SECRET_KEY_BYTES = b""  # 오류 발생 시 임시 바이트
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
+RAG_DATABASE_URL = os.getenv("RAG_DATABASE_URL", "sqlite:////app/db_data/rag.db")
+LOCAL_PROVIDER_DATA_DIR = os.getenv("LOCAL_PROVIDER_DATA_DIR", "/app/db_data/local_provider")

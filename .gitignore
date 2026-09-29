@@ -1,0 +1,5 @@
+# Phase 1 local-only generated secrets, logs, evidence, caches
+.local/
+.env.local
+**/__pycache__/
+**/.venv/

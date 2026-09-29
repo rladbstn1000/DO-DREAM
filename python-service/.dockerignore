@@ -52,3 +52,7 @@ Thumbs.db
 models/
 *.pth
 *.pkl
+# Pydantic source DTOs are not trained model weights.
+!app/models/
+!app/models/**
+*.pdf

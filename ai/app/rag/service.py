@@ -6,89 +6,94 @@ import html
 from typing import List
 from sqlalchemy.orm import Session
 from app.config import GMS_KEY
-from app.config import HUGGINGFACE_TOKEN
+from app.config import HUGGINGFACE_TOKEN, LOCAL_EXTERNAL_STUBS
 
 # --- LCEL 임포트 ---
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from fastapi import HTTPException
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_classic.chains import (
-    create_history_aware_retriever,
-    create_retrieval_chain,
-)
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-
-# --- Re-ranking 임포트 ---
-from langchain_classic.retrievers import ContextualCompressionRetriever
-from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+if LOCAL_EXTERNAL_STUBS:
+    from app.local_providers import LocalVectorStore as Chroma
+else:
+    from langchain_chroma import Chroma
+    from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+    from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+    from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
+    from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+    from langchain_classic.retrievers import ContextualCompressionRetriever
+    from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
+    from langchain_community.cross_encoders import HuggingFaceCrossEncoder
 
 
 # --- 전역 변수 초기화 ---
 GMS_BASE_URL = "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
-CHROMA_PERSIST_DIRECTORY = "./chroma_db"
+CHROMA_PERSIST_DIRECTORY = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
 
 # 1. 모델 및 벡터 스토어 클라이언트 초기화
-try:
-    embedding_model = OpenAIEmbeddings(
-        model="text-embedding-3-large", api_key=GMS_KEY, base_url=GMS_BASE_URL
-    )
-    print("✅ 임베딩 모델 초기화 성공")
-
-    llm = ChatOpenAI(
-        temperature=0.7, model_name="gpt-5-mini", api_key=GMS_KEY, base_url=GMS_BASE_URL
-    )
-    print("✅ LLM 모델 초기화 성공")
-
-    # --- Reranker 모델 초기화 (다중 fallback 전략) ---
-    reranker_model = None
-
-    # 시도 1: 한국어 최적화 모델 (토큰 필요)
-    if HUGGINGFACE_TOKEN:
-        try:
-            reranker_model = HuggingFaceCrossEncoder(
-                model_name="Dongjin-kr/ko-reranker",
-                model_kwargs={
-                    'device': 'cpu',
-                    'trust_remote_code': True,
-                    'token': HUGGINGFACE_TOKEN
-                }
-            )
-            print("✅ Reranker 모델 초기화 성공 (Dongjin-kr/ko-reranker)")
-        except Exception as e:
-            print(f"⚠️ 한국어 Reranker 초기화 실패: {e}")
-
-    # 시도 2: 공개 다국어 모델 (토큰 불필요)
-    if reranker_model is None:
-        try:
-            reranker_model = HuggingFaceCrossEncoder(
-                model_name="BAAI/bge-reranker-base",
-                model_kwargs={'device': 'cpu'}
-            )
-            print("✅ Reranker 모델 초기화 성공 (BAAI/bge-reranker-base)")
-        except Exception as e:
-            print(f"⚠️ BAAI Reranker 초기화 실패: {e}")
-
-    # 시도 3: 가장 안정적인 영어 모델 (최종 fallback)
-    if reranker_model is None:
-        try:
-            reranker_model = HuggingFaceCrossEncoder(
-                model_name="cross-encoder/ms-marco-MiniLM-L-6-v2",
-                model_kwargs={'device': 'cpu'}
-            )
-            print("✅ Reranker 모델 초기화 성공 (ms-marco-MiniLM-L-6-v2)")
-        except Exception as e:
-            print(f"❌ 모든 Reranker 초기화 실패: {e}")
-            reranker_model = None
-
-except Exception as e:
-    print(f"❌ 모델 초기화 실패: {e}")
-    embedding_model = None
+if LOCAL_EXTERNAL_STUBS:
+    from app.local_providers import LocalEmbeddings
+    embedding_model = LocalEmbeddings()
     llm = None
     reranker_model = None
+else:
+    try:
+        embedding_model = OpenAIEmbeddings(
+            model="text-embedding-3-large", api_key=GMS_KEY, base_url=GMS_BASE_URL
+        )
+        print("✅ 임베딩 모델 초기화 성공")
+
+        llm = ChatOpenAI(
+            temperature=0.7, model_name="gpt-5-mini", api_key=GMS_KEY, base_url=GMS_BASE_URL
+        )
+        print("✅ LLM 모델 초기화 성공")
+
+        # --- Reranker 모델 초기화 (다중 fallback 전략) ---
+        reranker_model = None
+
+        # 시도 1: 한국어 최적화 모델 (토큰 필요)
+        if HUGGINGFACE_TOKEN:
+            try:
+                reranker_model = HuggingFaceCrossEncoder(
+                    model_name="Dongjin-kr/ko-reranker",
+                    model_kwargs={
+                        'device': 'cpu',
+                        'trust_remote_code': True,
+                        'token': HUGGINGFACE_TOKEN
+                    }
+                )
+                print("✅ Reranker 모델 초기화 성공 (Dongjin-kr/ko-reranker)")
+            except Exception as e:
+                print(f"⚠️ 한국어 Reranker 초기화 실패: {e}")
+
+        # 시도 2: 공개 다국어 모델 (토큰 불필요)
+        if reranker_model is None:
+            try:
+                reranker_model = HuggingFaceCrossEncoder(
+                    model_name="BAAI/bge-reranker-base",
+                    model_kwargs={'device': 'cpu'}
+                )
+                print("✅ Reranker 모델 초기화 성공 (BAAI/bge-reranker-base)")
+            except Exception as e:
+                print(f"⚠️ BAAI Reranker 초기화 실패: {e}")
+
+        # 시도 3: 가장 안정적인 영어 모델 (최종 fallback)
+        if reranker_model is None:
+            try:
+                reranker_model = HuggingFaceCrossEncoder(
+                    model_name="cross-encoder/ms-marco-MiniLM-L-6-v2",
+                    model_kwargs={'device': 'cpu'}
+                )
+                print("✅ Reranker 모델 초기화 성공 (ms-marco-MiniLM-L-6-v2)")
+            except Exception as e:
+                print(f"❌ 모든 Reranker 초기화 실패: {e}")
+                reranker_model = None
+
+    except Exception as e:
+        print(f"❌ 모델 초기화 실패: {e}")
+        embedding_model = None
+        llm = None
+        reranker_model = None
+
 
 
 # --- ID-컬렉션명 변환 헬퍼 함수 ---
@@ -122,6 +127,9 @@ def _get_collection_name(document_id: str) -> str:
 # --- 워크플로우 1: 임베딩 생성 (Service Logic) ---
 
 async def download_json_from_cloudfront(url: str) -> dict:
+    if LOCAL_EXTERNAL_STUBS:
+        from app.local_providers import load_fixture_json
+        return load_fixture_json(url)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url, follow_redirects=True)
@@ -353,6 +361,9 @@ def create_initial_embeddings(pdf_id: str, documents: List[Document]):
 # (get_rag_chain 함수는 기존과 동일하게 유지)
 
 def get_rag_chain(document_id: str):
+    if LOCAL_EXTERNAL_STUBS:
+        from app.local_providers import LocalRagChain
+        return LocalRagChain(_get_collection_name(document_id))
     if not embedding_model or not llm:
         raise ValueError("LLM 또는 임베딩 모델이 초기화되지 않았습니다.")
 

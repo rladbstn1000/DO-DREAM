@@ -90,9 +90,8 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
       if (token) {
         localStorage.setItem('accessToken', token);
-        console.log('✅ Token saved:', token.substring(0, 20) + '...');
       } else {
-        console.warn('⚠️ No token found in response:', payload);
+        console.warn('No access token found in login response');
       }
 
       // 사용자 정보 저장
