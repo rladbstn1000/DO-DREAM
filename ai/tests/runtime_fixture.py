@@ -14,6 +14,7 @@ os.environ.update(
     DATABASE_URL=f"sqlite:///{TEMP.name}/users.db",
     RAG_DATABASE_URL=f"sqlite:///{TEMP.name}/rag.db",
     LOCAL_PROVIDER_DATA_DIR=f"{TEMP.name}/provider",
+    LOCAL_OBJECT_STORAGE_DIR=f"{TEMP.name}/objects",
 )
 
 

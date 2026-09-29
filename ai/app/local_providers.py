@@ -7,9 +7,11 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+import re
+from urllib.parse import urlsplit, unquote
 from langchain_core.documents import Document
 from fastapi import HTTPException
-from app.config import LOCAL_EXTERNAL_STUBS, LOCAL_PROVIDER_DATA_DIR
+from app.config import LOCAL_EXTERNAL_STUBS, LOCAL_PROVIDER_DATA_DIR, LOCAL_OBJECT_STORAGE_DIR
 
 if not LOCAL_EXTERNAL_STUBS:
     raise RuntimeError("Local providers require LOCAL_EXTERNAL_STUBS=true in local/test")
@@ -20,8 +22,19 @@ SAMPLE_CONTENT = "이 자료는 로컬 실행 검증을 위한 합성 학습 자
 
 
 def load_fixture_json(url):
-    if url != FIXTURE_BASE + "sample.json":
-        raise ValueError("Local storage supports only the synthetic sample.json fixture; network denied")
+    if url not in (FIXTURE_BASE + "sample.json", FIXTURE_BASE + "local/synthetic/lesson.json"):
+        parsed = urlsplit(url)
+        key = unquote(parsed.path.lstrip("/"))
+        if (parsed.scheme != "https" or parsed.netloc != "local-fixture.invalid" or parsed.query or parsed.fragment
+                or not re.fullmatch(r"local/synthetic/authz/[A-Za-z0-9/_-]+\.json", key)):
+            raise ValueError("Local storage accepts only authorized synthetic object keys; network denied")
+        path = Path(LOCAL_OBJECT_STORAGE_DIR) / (hashlib.sha256(key.encode()).hexdigest() + ".json")
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 10 * 1024 * 1024:
+            raise ValueError("Synthetic object unavailable")
+        data = json.loads(path.read_text())
+        if not isinstance(data, dict):
+            raise ValueError("Invalid synthetic object")
+        return data
     return {
         "external_provider": "local_stub",
         "chapters": [{"id": "local-1", "title": "로컬 합성 과학", "type": "content", "content": SAMPLE_CONTENT}],
@@ -86,21 +99,24 @@ class LocalVectorStore:
             ])
         return store
 
-    def similarity_search(self, query, k=5):
+    def similarity_search(self, query, k=5, filter=None):
         # Stable fixture ordering, deliberately not presented as semantic retrieval.
         with self.connect() as db:
-            rows = db.execute("SELECT content, metadata FROM chunks WHERE collection = ? ORDER BY rowid LIMIT ?", (self.name, k)).fetchall()
-        return [Document(page_content=content, metadata=json.loads(metadata)) for content, metadata in rows]
+            rows = db.execute("SELECT content, metadata FROM chunks WHERE collection = ? ORDER BY rowid", (self.name,)).fetchall()
+        documents = [Document(page_content=content, metadata=json.loads(metadata)) for content, metadata in rows]
+        if filter is not None:
+            documents = [doc for doc in documents if all(doc.metadata.get(key) == value for key, value in filter.items())]
+        return documents[:k]
 
 
 class LocalRagChain:
     def __init__(self, collection):
         self.store = LocalVectorStore(collection_name=collection)
-        if not self.store.similarity_search("", k=1):
+        if not self.store.similarity_search("", k=1, filter={"type": "content"}):
             raise ValueError("No local embedding fixture exists for this document")
 
     async def ainvoke(self, request):
-        docs = self.store.similarity_search(request["input"], k=1)
+        docs = self.store.similarity_search(request["input"], k=1, filter={"type": "content"})
         if not docs:
             raise ValueError("Local collection is empty")
         return {"answer": f"{MARKER} {docs[0].page_content[:300]}"}

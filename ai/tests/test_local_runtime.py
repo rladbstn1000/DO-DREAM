@@ -11,7 +11,7 @@ from jose import jwt
 from app.config import SECRET_KEY_BYTES, JWT_ISSUER
 from app.main import app
 from app.common.db_session import Base, engine, SessionLocal
-from app.common.models import User, RoleEnum
+from app.common.models import (User, RoleEnum, TeacherProfile, StudentProfile, ClassroomTeacher, UploadedFile, Material, MaterialShare)
 from app.local_providers import load_fixture_json, grade_answers, FIXTURE_BASE
 from app.rag.service import extract_data_from_json, create_and_store_embeddings
 
@@ -21,7 +21,15 @@ class LocalRuntimeTests(unittest.TestCase):
     def setUpClass(cls):
         Base.metadata.create_all(engine)
         with SessionLocal() as db:
-            db.add(User(id=101, name="Synthetic unit student", role=RoleEnum.STUDENT))
+            db.add_all([
+                User(id=101, name="Synthetic unit student", role=RoleEnum.STUDENT),
+                User(id=110, name="Synthetic owner", role=RoleEnum.TEACHER),
+                TeacherProfile(id=210, user_id=110), StudentProfile(id=211, user_id=101, classroom_id=310),
+                ClassroomTeacher(id=212, teacher_id=210, classroom_id=310),
+                UploadedFile(id=410, uploader_id=110, s3_key="local/synthetic/lesson.json", json_s3_key="local/synthetic/lesson.json"),
+                Material(id=510, teacher_id=110, uploaded_file_id=410, title="Synthetic fixture", post_status="PUBLISHED"),
+                MaterialShare(id=610, material_id=510, teacher_id=110, student_id=101, share_type="INDIVIDUAL", class_id=310),
+            ])
             db.commit()
         cls.client = TestClient(app)
         cls.token = jwt.encode(access_claims(), SECRET_KEY_BYTES, algorithm="HS256")
@@ -45,8 +53,8 @@ class LocalRuntimeTests(unittest.TestCase):
 
     def test_existing_rag_route_persists_local_chat(self):
         docs = extract_data_from_json(load_fixture_json(FIXTURE_BASE + "sample.json"))
-        create_and_store_embeddings("unit-fixture", docs)
-        result = self.client.post("/rag/chat", headers={"Authorization": f"Bearer {self.token}"}, json={"document_id": "unit-fixture", "question": "합성 질문"})
+        create_and_store_embeddings("510", docs)
+        result = self.client.post("/rag/chat", headers={"Authorization": f"Bearer {self.token}"}, json={"document_id": "510", "question": "합성 질문"})
         self.assertEqual(result.status_code, 200)
         self.assertIn("LOCAL STUB", result.json()["answer"])
         from app.rag.database import SessionLocal as RagSession

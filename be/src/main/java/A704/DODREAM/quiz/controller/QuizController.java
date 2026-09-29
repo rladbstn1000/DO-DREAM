@@ -45,8 +45,8 @@ public class QuizController {
 
 	@Operation(summary = "퀴즈 목록 조회", description = "해당 자료의 퀴즈 목록을 불러옵니다.")
 	@GetMapping("/{materialId}/quizzes")
-	public ResponseEntity<List<QuizDto>> getQuizzes(@PathVariable Long materialId) {
-		return ResponseEntity.ok(quizService.getQuizzes(materialId));
+	public ResponseEntity<List<?>> getQuizzes(@PathVariable Long materialId, @AuthenticationPrincipal UserPrincipal actor) {
+		return ResponseEntity.ok(quizService.getQuizzes(materialId, actor.userId()));
 	}
 
 	@Operation(summary = "퀴즈 채점 및 제출", description = "학생이 푼 답안을 제출하고 AI 채점 결과를 받습니다.")

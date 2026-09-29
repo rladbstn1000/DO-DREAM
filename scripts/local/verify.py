@@ -142,15 +142,21 @@ def security():
     check('access_token_kind_claim', any(claim.get(k) == 'access' for k in ('token_use','type','typ')), 'access token needs a verifiable kind')
     ttl = claim['exp'] - claim['iat']
     CHECKS.append({'name':'actual_access_token_lifetime','status':'PASS' if ttl == 900 else 'FAIL','detail':str(ttl)+' seconds observed; phase2a policy=900'})
-    materials = material_ids(teacher); doc = materials[0]['materialId']; file_id = materials[0]['uploadedFileId']
+    materials = material_ids(teacher)
+    # Owner library ordering is not a sharing contract. Select the student's
+    # actual shared fixture so this remains a positive 200/no-answer assertion.
+    code, shared_data, _, _ = req('be','/api/materials/shared',student)
+    if code != 200: raise RuntimeError('Shared fixture prerequisite unavailable')
+    shared_ids = {m['materialId'] for m in shared_data['materials']}
+    shared = next((m for m in materials if m['materialId'] in shared_ids), None)
+    if shared is None: raise RuntimeError('Shared fixture prerequisite unavailable')
+    doc = shared['materialId']; file_id = shared['uploadedFileId']
     code, quizzes, _, _ = req('be',f'/api/materials/{doc}/quizzes',student)
     leaks = isinstance(quizzes,list) and any('correct_answer' in q for q in quizzes)
     check('student_quiz_must_exclude_correct_answer', code==200 and not leaks, 'HTTP '+str(code)+'; correct_answer present='+str(leaks))
     code, _, _, _ = req('be',f'/api/files/{file_id}/download-url')
     check('anonymous_file_url_must_be_denied', code in (401,403), 'HTTP '+str(code)+'; local signing boundary')
     # Known synthetic document, never an external URL. This is an intentionally unshared fixture.
-    code, data, _, _ = req('be','/api/materials/shared',student)
-    shared_ids = {m['materialId'] for m in data['materials']}
     private = next((m for m in materials if m['materialId'] not in shared_ids), None)
     if private:
         private_doc = private['materialId']

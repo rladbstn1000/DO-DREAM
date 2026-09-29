@@ -1,5 +1,10 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, HttpUrl
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+from app.common.db_session import get_db
+from app.security.auth import get_current_user
+from app.security.models import User
+from app.security.authorization import require_file, require_object_url
+from pydantic import BaseModel, HttpUrl, ConfigDict, Field, StrictInt
 import tempfile
 import os
 import httpx
@@ -16,6 +21,8 @@ router = APIRouter(
 
 # 요청 바디 모델 정의
 class CloudFrontPDFRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    uploaded_file_id: StrictInt = Field(gt=0, le=9223372036854775807)
     cloudfront_url: HttpUrl  # CloudFront URL
     output_format: str = """
 {
@@ -59,6 +66,8 @@ class CloudFrontPDFRequest(BaseModel):
 
 # 개념 Check 가공 요청 모델
 class ConceptCheckRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    uploaded_file_id: StrictInt = Field(gt=0, le=9223372036854775807)
     concept_checks: List[Dict[str, Any]]  # s_title == "개념 Check"인 항목 리스트
 
 async def download_from_cloudfront(url: str, local_path: str) -> None:
@@ -77,7 +86,7 @@ async def download_from_cloudfront(url: str, local_path: str) -> None:
         write_fixture_pdf(url, local_path)
         return
     try:
-        print(f"CloudFront에서 다운로드 시작: {url}")
+        print("Authorized object download started")
         
         # httpx 비동기 클라이언트 생성
         async with httpx.AsyncClient(timeout=60.0) as client:  # 60초 타임아웃
@@ -91,7 +100,7 @@ async def download_from_cloudfront(url: str, local_path: str) -> None:
             elif response.status_code != 200:
                 raise HTTPException(
                     status_code=response.status_code,
-                    detail=f"CloudFront 다운로드 실패: HTTP {response.status_code}"
+                    detail="Object download failed"
                 )
             
             # Content-Type 검증 (선택사항이지만 안전함)
@@ -117,15 +126,16 @@ async def download_from_cloudfront(url: str, local_path: str) -> None:
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="CloudFront 다운로드 시간 초과 (60초)")
     except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"네트워크 오류: {str(e)}")
+        raise HTTPException(status_code=502, detail="Object provider unavailable")
     except HTTPException:
         # HTTPException은 그대로 재발생
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"파일 다운로드 중 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail="Object download failed")
 
 @router.post("/parse-pdf-from-cloudfront")
-async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest):
+async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest,
+    current_user: User = Depends(get_current_user), common_db: Session = Depends(get_db)):
     """
     CloudFront URL로부터 PDF를 다운로드하여 Gemini로 파싱
     
@@ -142,6 +152,8 @@ async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest):
         "parsed_data": { ... }
     }
     """
+    file = require_file(common_db, current_user, request.uploaded_file_id)
+    require_object_url(request.cloudfront_url, file.s3_key)
     temp_path = None
     try:
         # URL 검증 - PDF 파일인지 확인
@@ -175,9 +187,6 @@ async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest):
         # 파일명 추출 (URL 끝에서)
         filename = url_str.split('/')[-1].split('?')[0]  # 쿼리 파라미터 제거
         
-        print(url_str)
-        print(filename)
-        print(parsed_data)
         return {
             "cloudfront_url": url_str,
             "filename": filename,
@@ -188,8 +197,8 @@ async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest):
         # HTTPException은 그대로 재발생
         raise
     except Exception as e:
-        print(f"❌ 예상치 못한 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"PDF 파싱 중 오류: {str(e)}")
+        print("Document processing failed")
+        raise HTTPException(status_code=500, detail="Document processing unavailable")
     finally:
         # 임시 파일 정리
         if temp_path and os.path.exists(temp_path):
@@ -200,7 +209,8 @@ async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest):
                 print(f"⚠️ 임시 파일 삭제 실패: {e}")
 
 @router.post("/process-concept-check")
-async def process_concept_check(request: ConceptCheckRequest):
+async def process_concept_check(request: ConceptCheckRequest,
+    current_user: User = Depends(get_current_user), common_db: Session = Depends(get_db)):
     """
     개념 Check 항목을 Gemini로 가공하여 정제된 형태로 반환
 
@@ -230,6 +240,7 @@ async def process_concept_check(request: ConceptCheckRequest):
         ]
     }
     """
+    require_file(common_db, current_user, request.uploaded_file_id)
     try:
         print(f"개념 Check 가공 시작: {len(request.concept_checks)}개 항목")
 
@@ -241,12 +252,11 @@ async def process_concept_check(request: ConceptCheckRequest):
         processed_data = parser.process_concept_checks(request.concept_checks)
 
         print(f"✅ 개념 Check 가공 완료")
-        print(processed_data)
 
         return processed_data
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ 개념 Check 가공 중 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"개념 Check 가공 중 오류: {str(e)}")
+        print("Concept processing failed")
+        raise HTTPException(status_code=500, detail="Concept processing unavailable")

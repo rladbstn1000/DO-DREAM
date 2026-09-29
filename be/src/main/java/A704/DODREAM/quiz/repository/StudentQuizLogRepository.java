@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import A704.DODREAM.quiz.entity.StudentQuizLog;
 
 public interface StudentQuizLogRepository extends JpaRepository<StudentQuizLog, Long> {
+    boolean existsByQuizId(Long quizId);
 	// 교사용: 특정 자료에 대한 모든 학생의 풀이 기록
 	List<StudentQuizLog> findByQuizMaterialId(Long materialId);
 

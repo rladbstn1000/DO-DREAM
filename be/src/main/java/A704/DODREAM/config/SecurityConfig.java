@@ -75,17 +75,17 @@ public class SecurityConfig {
                             .requestMatchers("/api/actuator/**").permitAll()
 				.requestMatchers("/actuator/**").permitAll()
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
-        .requestMatchers("/api/pdf/**").permitAll().requestMatchers("/api/files/**").permitAll()
+        .requestMatchers("/api/pdf/**", "/api/files/**", "/api/documents/**").authenticated()
         .requestMatchers("/document/parse-pdf-from-cloudfront").permitAll()
-        .requestMatchers("/api/documents/**").permitAll()
+
 				.requestMatchers("/error", "/error/**").permitAll()
 				.requestMatchers(
-					"/api/swagger-ui/**", "/api/v3/api-docs/**","/api/files/**",
+					"/api/swagger-ui/**", "/api/v3/api-docs/**",
 					"/swagger-ui/**", "/v3/api-docs/**",
 					"/swagger-resources/**"
 				).permitAll()
 				.requestMatchers("/api/auth/**", "/auth/**", "/actuator/**", "/health").permitAll()
-        .requestMatchers(HttpMethod.POST, "/api/files/presigned-url").permitAll()
+        .requestMatchers("/api/test/**").denyAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
 							.requestMatchers("/api/students/**").authenticated()

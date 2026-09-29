@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class QuizService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
 
 	private final QuizRepository quizRepository;
 	private final StudentQuizLogRepository studentQuizLogRepository;
@@ -48,7 +49,8 @@ public class QuizService {
 	 * 교사가 검토한 퀴즈 리스트를 최종 저장 (기존 퀴즈 덮어쓰기)
 	 */
 	@Transactional
-	public void saveQuizzes(Long materialId, Long userId, List<QuizSaveDto> quizDtos) { // (수정) 파라미터 타입 변경
+	public void saveQuizzes(Long materialId, Long userId, List<QuizSaveDto> quizDtos) {
+        policy.owned(userId, materialId); // (수정) 파라미터 타입 변경
 		Material material = materialRepository.findById(materialId)
 			.orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
 
@@ -57,110 +59,98 @@ public class QuizService {
 			throw new CustomException(ErrorCode.FORBIDDEN);
 		}
 
-		// 기존 퀴즈 삭제
-		quizRepository.deleteAllByMaterialId(materialId);
+        validateEdits(materialId, quizDtos);
+        Map<Integer, Quiz> existing = quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId).stream()
+            .collect(Collectors.toMap(Quiz::getQuestionNumber, q -> q));
+        for (QuizSaveDto dto : quizDtos) {
+            Quiz quiz = existing.remove(dto.getQuestionNumber());
+            if (quiz == null) {
+                quiz = Quiz.builder().material(material).questionNumber(dto.getQuestionNumber()).build();
+            }
+            quiz.edit(dto);
+            quizRepository.save(quiz);
+        }
+        quizRepository.deleteAll(existing.values());
+    }
 
-		// (수정) QuizSaveDto -> Quiz Entity 변환
-		List<Quiz> quizzes = quizDtos.stream()
-			.map(dto -> Quiz.builder()
-				.material(material)
-				.questionNumber(dto.getQuestionNumber())
-				.questionType(dto.getQuestionType())
-				.title(dto.getTitle())
-				.content(dto.getContent())
-				.correctAnswer(dto.getCorrectAnswer())
-				.chapterReference(dto.getChapterReference())
-				.build())
-			.collect(Collectors.toList());
-
-		quizRepository.saveAll(quizzes);
-		log.info("✅ 퀴즈 저장 완료: Material ID {}, 개수 {}", materialId, quizzes.size());
-	}
+    public void validateEdits(Long materialId, List<QuizSaveDto> quizzes) {
+        if (quizzes == null) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+        java.util.Set<Integer> numbers = new java.util.HashSet<>();
+        for (QuizSaveDto quiz : quizzes) {
+            if (quiz == null || quiz.getQuestionNumber() == null || quiz.getQuestionNumber() <= 0
+                || !numbers.add(quiz.getQuestionNumber()) || quiz.getTitle() == null || quiz.getContent() == null
+                || quiz.getCorrectAnswer() == null) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+        }
+        if (materialId != null) {
+            for (Quiz quiz : quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId)) {
+                if (!numbers.contains(quiz.getQuestionNumber()) && studentQuizLogRepository.existsByQuizId(quiz.getId()))
+                    throw new A704.DODREAM.authorization.AuthorizationFailure(org.springframework.http.HttpStatus.CONFLICT);
+            }
+        }
+    }
 
 	/**
 	 * 특정 자료의 퀴즈 목록 조회 (학생/교사 공용)
 	 */
 	@Transactional(readOnly = true)
-	public List<QuizDto> getQuizzes(Long materialId) {
-		return quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId)
-			.stream()
-			.map(QuizDto::from)
-			.collect(Collectors.toList());
-	}
+    public List<?> getQuizzes(Long materialId, Long actorId) {
+        policy.read(actorId, materialId);
+        boolean teacher = policy.actor(actorId).getRole() == A704.DODREAM.user.entity.Role.TEACHER;
+        return quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId).stream()
+            .map(quiz -> teacher ? QuizDto.from(quiz) : A704.DODREAM.quiz.dto.StudentQuizDto.from(quiz)).toList();
+    }
 
 	/**
 	 * 학생 답안 일괄 채점 및 로그 저장
 	 */
 	@Transactional
-	public List<GradingResultDto> gradeAndLog(Long materialId, Long studentId, QuizSubmissionDto submission, String token) {
-		User student = userRepository.findById(studentId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-		List<Quiz> quizzes = quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId);
-		Map<Long, Quiz> quizMap = quizzes.stream()
-			.collect(Collectors.toMap(Quiz::getId, q -> q));
-
-		List<Map<String, Object>> questionList = quizzes.stream()
-			.map(q -> Map.<String, Object>of(
-				"id", q.getId(),
-				"content", q.getContent(),
-				"correct_answer", q.getCorrectAnswer()
-			))
-			.collect(Collectors.toList());
-
-		List<Map<String, Object>> studentAnswerList = submission.getAnswers().stream()
-			.map(ans -> Map.<String, Object>of(
-				"question_id", ans.getQuizId(),
-				"student_answer", ans.getAnswer()
-			))
-			.collect(Collectors.toList());
-
-		Map<String, Object> fastApiRequest = Map.of(
-			"questions", questionList,
-			"student_answers", studentAnswerList
-		);
-
-		log.info("🤖 FastAPI 채점 요청 중... 학생 ID: {}", studentId);
-		List<GradingResultDto> results = webClient.post()
-			.uri(fastApiUrl + "/rag/quiz/grade-batch")
-			.header("Authorization", token)
-			.bodyValue(fastApiRequest)
-			.retrieve()
-			.bodyToMono(new ParameterizedTypeReference<List<GradingResultDto>>() {})
-			.block();
-
-		if (results == null) {
-			throw new RuntimeException("FastAPI 채점 응답이 비어있습니다.");
-		}
-
-		List<StudentQuizLog> logs = results.stream().map(res -> {
-			Quiz quiz = quizMap.get(res.getQuizId());
-			return StudentQuizLog.builder()
-				.quiz(quiz)
-				.student(student)
-				.studentAnswer(res.getStudentAnswer())
-				.isCorrect(res.isCorrect())
-				.aiFeedback(res.getAiFeedback())
-				.build();
-		}).collect(Collectors.toList());
-
-		studentQuizLogRepository.saveAll(logs);
-		log.info("✅ 채점 및 로그 저장 완료: {}건", logs.size());
-
-		return results;
-	}
+    public List<GradingResultDto> gradeAndLog(Long materialId, Long studentId, QuizSubmissionDto submission, String token) {
+        policy.studentMaterial(studentId, materialId);
+        User student = policy.role(studentId, A704.DODREAM.user.entity.Role.STUDENT);
+        if (submission.getAnswers() == null || submission.getAnswers().isEmpty()) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+        Map<Long, Quiz> quizMap = quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId).stream()
+            .collect(Collectors.toMap(Quiz::getId, q -> q));
+        Map<Long, String> submitted = new java.util.LinkedHashMap<>();
+        for (var answer : submission.getAnswers()) {
+            if (answer == null || answer.getQuizId() == null || answer.getAnswer() == null
+                || !quizMap.containsKey(answer.getQuizId()) || submitted.putIfAbsent(answer.getQuizId(), answer.getAnswer()) != null)
+                throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+        }
+        List<Map<String, Object>> answers = submitted.entrySet().stream().map(entry -> Map.<String, Object>of(
+            "question_id", entry.getKey(), "student_answer", entry.getValue())).toList();
+        List<GradingResultDto> results = webClient.post().uri(fastApiUrl + "/rag/quiz/grade-batch")
+            .header("Authorization", token).bodyValue(Map.of("material_id", materialId, "student_answers", answers))
+            .retrieve().bodyToMono(new ParameterizedTypeReference<List<GradingResultDto>>() {}).block();
+        if (results == null || results.size() != submitted.size()) throw new IllegalStateException("Invalid grading response");
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        List<StudentQuizLog> logs = new ArrayList<>();
+        List<GradingResultDto> safeResults = new ArrayList<>();
+        for (var result : results) {
+            if (result == null || !submitted.containsKey(result.getQuizId()) || !seen.add(result.getQuizId()))
+                throw new IllegalStateException("Invalid grading response");
+            Quiz quiz = quizMap.get(result.getQuizId());
+            String feedback = result.getAiFeedback() == null ? "" : result.getAiFeedback();
+            logs.add(StudentQuizLog.builder().quiz(quiz).student(student).studentAnswer(submitted.get(quiz.getId()))
+                .isCorrect(result.isCorrect()).aiFeedback(feedback).build());
+            safeResults.add(GradingResultDto.builder().quizId(quiz.getId()).studentAnswer(submitted.get(quiz.getId()))
+                .isCorrect(result.isCorrect()).aiFeedback(feedback).correctAnswer(quiz.getCorrectAnswer()).build());
+        }
+        studentQuizLogRepository.saveAll(logs);
+        return safeResults;
+    }
 
 	/**
 	 * 학생 퀴즈 풀이 기록 조회
 	 */
 	@Transactional(readOnly = true)
 	public List<GradingResultDto> getStudentLogs(Long materialId, Long studentId) {
+        policy.studentMaterial(studentId, materialId);
 		return studentQuizLogRepository.findByStudentIdAndQuizMaterialId(studentId, materialId).stream()
 			.map(log -> GradingResultDto.builder()
-				.quizId(log.getQuiz().getId())
+				.quizId(log.getQuiz().getId()).correctAnswer(log.getQuiz().getCorrectAnswer())
 				.studentAnswer(log.getStudentAnswer())
 				.isCorrect(log.isCorrect())
-				.aiFeedback(log.getAiFeedback())
+				.aiFeedback(log.getAiFeedback() == null ? "" : log.getAiFeedback())
 				.build())
 			.collect(Collectors.toList());
 	}
@@ -169,8 +159,10 @@ public class QuizService {
 	 * [API 1 수정] 특정 학생의 '모든 자료별' 퀴즈 성적 통계 리스트 조회
 	 */
 	@Transactional(readOnly = true)
-	public List<StudentMaterialStatsDto> getStudentStatsByMaterialList(Long studentId) {
-		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
+	public List<StudentMaterialStatsDto> getStudentStatsByMaterialList(Long studentId, Long actorId) {
+        policy.historySubject(actorId, studentId);
+		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId).stream()
+            .filter(log -> policy.historyVisible(actorId, studentId, log.getQuiz().getMaterial())).toList();
 
 		if (logs.isEmpty()) {
 			return new ArrayList<>();
@@ -223,8 +215,10 @@ public class QuizService {
 	 * (각 자료별 정답률을 구하고, 그 정답률들의 평균을 계산)
 	 */
 	@Transactional(readOnly = true)
-	public StudentOverallStatsDto getStudentOverallStats(Long studentId) {
-		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
+	public StudentOverallStatsDto getStudentOverallStats(Long studentId, Long actorId) {
+        policy.historySubject(actorId, studentId);
+		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId).stream()
+            .filter(log -> policy.historyVisible(actorId, studentId, log.getQuiz().getMaterial())).toList();
 
 		if (logs.isEmpty()) {
 			return StudentOverallStatsDto.builder()

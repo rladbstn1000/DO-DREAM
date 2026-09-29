@@ -71,8 +71,8 @@ public class LocalExternalConfiguration {
     }
 
     @Bean
-    S3Client s3Client() {
-        // A narrow, read-only object-storage adapter; no AWS SDK network client is constructed.
+    S3Client s3Client(LocalObjectStore objects) {
+        // Synthetic object storage only; no AWS SDK network client is constructed.
         return (S3Client) Proxy.newProxyInstance(S3Client.class.getClassLoader(), new Class<?>[]{S3Client.class},
             (proxy, method, args) -> {
                 if (method.getName().equals("close")) return null;
@@ -81,12 +81,22 @@ public class LocalExternalConfiguration {
                 if (method.getName().equals("hashCode")) return System.identityHashCode(proxy);
                 if (method.getName().equals("equals")) return proxy == args[0];
                 if (method.getName().equals("getObject") && args.length == 1 && args[0] instanceof GetObjectRequest request) {
-                    byte[] bytes = fixture(request.key());
+                    if (!"local-synthetic-fixtures".equals(request.bucket())) throw unavailable("Unknown synthetic bucket");
+                    byte[] bytes = objects.read(request.key());
                     return new ResponseInputStream<>(GetObjectResponse.builder()
                         .contentType("application/json").contentLength((long) bytes.length).build(),
                         new ByteArrayInputStream(bytes));
                 }
-                throw unavailable("Object-storage writes and non-fixture reads are unavailable");
+                if (method.getName().equals("putObject") && args.length == 2
+                    && args[0] instanceof software.amazon.awssdk.services.s3.model.PutObjectRequest request
+                    && args[1] instanceof software.amazon.awssdk.core.sync.RequestBody body) {
+                    if (!"local-synthetic-fixtures".equals(request.bucket())) throw unavailable("Unknown synthetic bucket");
+                    try (var input = body.contentStreamProvider().newStream()) {
+                        objects.write(request.key(), input.readNBytes(2 * 1024 * 1024 + 1));
+                    }
+                    return software.amazon.awssdk.services.s3.model.PutObjectResponse.builder().eTag("local-synthetic").build();
+                }
+                throw unavailable("Non-synthetic storage operations are unavailable");
             });
     }
 
@@ -103,15 +113,15 @@ public class LocalExternalConfiguration {
     }
 
     @Bean
-    CloudFrontService cloudFrontService(WebClient webClient) {
+    CloudFrontService cloudFrontService(WebClient webClient, LocalObjectStore objects) {
         return new CloudFrontService(null, webClient) {
             @Override
             public String generateSignedUrl(String key) {
-                fixture(key); // Reject every object outside the single synthetic fixture.
-                return "/api/local/fixtures/lesson.json?local_fixture=true";
+                objects.read(key);
+                return "https://local-fixture.invalid/" + key;
             }
             @Override
-            public byte[] downloadFile(String key) { return fixture(key); }
+            public byte[] downloadFile(String key) { return objects.read(key); }
         };
     }
 

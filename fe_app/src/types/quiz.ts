@@ -6,7 +6,6 @@ export interface QuizQuestion {
   question_number: number;
   title: string;
   content: string;
-  correct_answer: string;
   chapter_reference: string;
 }
 

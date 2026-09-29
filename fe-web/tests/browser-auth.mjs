@@ -199,7 +199,7 @@ try {
   if (browser) await browser.close();
   const report = { browser: 'Chrome ' + version, origin, checks, externalRequestsBlocked: blockedExternal,
     nativeDeviceExecution: 'NOT_RUN', counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase2a/results/browser-checks.json');
+  const output = path.join(root, '.local/phase2b/results/browser-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');

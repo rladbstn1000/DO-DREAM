@@ -112,3 +112,31 @@ AI/PDF 응답에는 `X-DO-DREAM-External-Provider: local_stub`, Spring에는 `X-
 루트 생성 파일: `COMPOSE_PROJECT_NAME`, `BE_PORT`, `AI_PORT`, `PDF_PORT`, `WEB_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `JWT_SECRET_BASE64`, `LOCAL_TEACHER_PASSWORD`, `LOCAL_STUDENT_SECRET`.
 
 Compose가 local 전용으로 주입: `SPRING_PROFILES_ACTIVE`, `JWT_SECRET`(공유 JWT 변수 매핑), `AI_BASE_URL`, `JAVA_TOOL_OPTIONS`, `APP_ENV`, `LOCAL_EXTERNAL_STUBS`, `DATABASE_URL`, `JWT_ISSUER`, `CELERY_BROKER_URL`, `RAG_DATABASE_URL`, `LOCAL_PROVIDER_DATA_DIR`, `ENVIRONMENT`, `DEBUG`. 외부 공급자 키는 주입하지 않는다. local/test가 아닌 환경에서 대역 사용 또는 필수 키 누락은 실패하도록 한다.
+
+## 2-B 이후 실행과 검증
+
+현재 증거 기본 경로는 `.local/phase2b/results/`다. 위 1차/2-A 설명과 원본 결과는 당시 상태이며, 2-B 결과는 [08](08-phase2b-results.md)를 따른다. 새 단계용 폴더에서는 먼저 `resources-before`, `scope`를 실행한다. 최초 snapshot은 덮어쓰지 않는다. `scope-test`는 Docker 없이 합성 명령/metadata를 검사한다. 실제 자원 변경은 고정 Compose/project/directory와 라벨·서비스·볼륨·마운트·이미지·네트워크 검사를 통과해야 한다. 검사 실패 시 우회 실행하지 않는다.
+
+```bash
+python3 scripts/local/manage.py resources-before
+python3 scripts/local/manage.py scope-test
+python3 scripts/local/manage.py scope
+python3 scripts/local/manage.py build
+python3 scripts/local/manage.py up
+python3 scripts/local/manage.py test
+python3 scripts/local/manage.py auth
+python3 scripts/local/manage.py startup
+python3 scripts/local/manage.py smoke
+python3 scripts/local/manage.py security
+python3 scripts/local/manage.py authorization
+```
+
+`authorization`은 새 AUTHZ 전용 계정의 실제 로그인과 MySQL/JPA·FastAPI 조회를 사용한다. 같은 학교 비담당 교사·타학교 교사·직접/CLASS 공유 학생·같은 반 비공유 학생·타반/타학교 학생을 구분한다. 거부 요청의 DB checksum/행 수, SQLite 행 digest, 합성 객체 digest를 대조한다. 공급자 호출 횟수는 별도 서비스 테스트에서 검사한다. 공유 회수/담당 관계 변경/soft-delete 검사는 전용 합성 행에만 적용하고 finally에서 복구한다. 일반 사용자 자료의 소유권을 재설정하지 않는다.
+
+웹: `npm run test:auth`, `npm run test:authorization`, `npm run typecheck`, `npm run build -- --mode phase1`. 실제 Chrome은 `auth-test-up` 뒤 `npm run test:browser-auth`, 일반 웹15173에서 `npm run test:browser-authorization` 순으로 실행한다. 실제 사용자 프로필을 사용하지 않는다. API 도구 검사는 Chrome 결과와 별도다. 인증 장애/영속성/브라우저/권한 검사는 서로 순차 실행한다. 동일 합성 계정의 로그인과 공유 회수가 겹치지 않게 한다.
+
+그 다음 `persistence`, `stop`, `isolation`을 실행하되 시작 상태가 모두 중지가 아니었다면 시작 snapshot에 맞춰 **이번에 시작한 서비스만** 원래 상태로 되돌린다. 볼륨은 유지한다. 실행별 로그는 시각별 파일로 보존하고 최신 요약 파일과 구분한다.
+
+2-B local 저장소는 `local/synthetic/authz/<uuid>.json`만 쓰기/읽기를 허용한다. 원래 합성 fixture는 읽기 전용이다. 실제 AWS 업로드/서명/삭제는 실행하지 않는다. `be-data:/app/be-local-data:ro`를 ai/worker에 연결하고 `LOCAL_OBJECT_STORAGE_DIR`를 주입해 같은 합성 JSON을 읽는다. 외부 FCM은 계속 disabled이며 공유 성공과 실제 알림 전송 성공은 다르다.
+
+추가 fixture는 idempotent하게 별도 계정/자료만 만든다. 원래 fixture의 암호·내용을 덮어쓰지 않는다. SQL의 파일 컬럼 `s3key/jsons3key`는 기존 Java 물리명에 Python을 맞춘다. 새 SQLite `embedding_tasks`는 additive하게 생성하고 과거 작업에 추측한 소유자를 넣지 않는다. 일반 운영에서는 AI의 `OBJECT_STORAGE_HOST`를 실제 허용 객체 호스트로 설정해야 한다. 미설정은 실패하며 운영 설정·SSRF 전체 검증은 수행하지 않았다.

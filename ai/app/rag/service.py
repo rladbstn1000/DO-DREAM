@@ -98,30 +98,11 @@ else:
 
 # --- ID-컬렉션명 변환 헬퍼 함수 ---
 def _get_collection_name(document_id: str) -> str:
-    """
-    document_id를 Chroma 컬렉션명으로 변환
-    
-    [수정된 규칙]
-    항상 'material_' 접두사를 붙여서 ChromaDB의 Naming Rule(3자 이상)을 만족시키고,
-    입력된 document_id에 따라 분기됩니다.
-    
-    - 입력 "14" -> "material_14" (최종본)
-    - 입력 "pdf_14" -> "material_pdf_14" (초기본)
-    """
-    if not document_id:
-        raise ValueError("Document ID가 비어있습니다.")
+    # Canonical IDs make the mapping injective; never sanitize or truncate aliases.
+    from app.security.authorization import document_ref
+    document_ref(document_id)
+    return f"material_{document_id}"
 
-    # 특수문자를 언더스코어로 변환
-    sanitized_id = re.sub(r"[^a-zA-Z0-9_]", "_", document_id)
-
-    # 🔧 수정: 조건문 제거하고 항상 material_ 접두사 사용
-    collection_name = f"material_{sanitized_id}"
-
-    # Chroma 컬렉션명 길이 제한 (63자)
-    if len(collection_name) > 63:
-        collection_name = collection_name[:63]
-
-    return collection_name
 
 
 # --- 워크플로우 1: 임베딩 생성 (Service Logic) ---
@@ -377,13 +358,13 @@ def get_rag_chain(document_id: str):
             collection_name=collection_name,
         )
         # 컬렉션 존재 여부 확인용 쿼리
-        vectorstore.similarity_search("test", k=1)
+        vectorstore.similarity_search("test", k=1, filter={"type": "content"})
     except Exception as e:
         raise ValueError(f"'{collection_name}' 컬렉션을 찾을 수 없습니다. (ID: {document_id}): {e}")
 
     base_retriever = vectorstore.as_retriever(
         search_type="mmr",
-        search_kwargs={"k": 10, "fetch_k": 20},
+        search_kwargs={"k": 10, "fetch_k": 20, "filter": {"type": "content"}},
     )
 
     if reranker_model:
@@ -398,7 +379,7 @@ def get_rag_chain(document_id: str):
         print(f"⚠️ Reranker 미적용: Base Retriever만 사용 (k=5로 조정)")
         final_retriever = vectorstore.as_retriever(
             search_type="mmr",
-            search_kwargs={"k": 5, "fetch_k": 15},
+            search_kwargs={"k": 5, "fetch_k": 15, "filter": {"type": "content"}},
         )
 
     rephrase_prompt = ChatPromptTemplate.from_messages(

@@ -12,6 +12,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GradingResultDto {
+	@JsonProperty("correct_answer")
+	private String correctAnswer;
 	@JsonProperty("question_id")
 	private Long quizId;
 

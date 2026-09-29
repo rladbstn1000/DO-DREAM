@@ -1,4 +1,4 @@
-import { QuizQuestion } from "../quiz";
+import type { QuizQuestion } from "../quiz";
 
 /**
  * 퀴즈 채점 요청 시 개별 답변 타입
@@ -23,14 +23,14 @@ export interface RawQuizGradingResult {
   is_correct: boolean;
   student_answer: string;
   ai_feedback: string;
-  correct: boolean; // is_correct와 중복될 수 있음
+  correct_answer: string; // 정상 제출 이후에만 서버 DB 기준으로 공개
 }
 
 /**
  * 앱 내부에서 사용할 최종 채점 결과 항목 타입 (camelCase)
  */
 export interface QuizGradingResultItem extends QuizQuestion {
-  question_number: number;
+  correct_answer: string;
   userAnswer: string;
   isCorrect: boolean;
   feedback?: string;

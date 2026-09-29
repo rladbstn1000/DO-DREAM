@@ -60,4 +60,12 @@ public class Quiz {
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
+
+    public void edit(A704.DODREAM.quiz.dto.QuizSaveDto input) {
+        this.questionType = input.getQuestionType();
+        this.title = input.getTitle();
+        this.content = input.getContent();
+        this.correctAnswer = input.getCorrectAnswer();
+        this.chapterReference = input.getChapterReference();
+    }
 }

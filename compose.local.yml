@@ -89,8 +89,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       RAG_DATABASE_URL: sqlite:////app/db_data/rag.db
       LOCAL_PROVIDER_DATA_DIR: /app/db_data/local_provider
+      LOCAL_OBJECT_STORAGE_DIR: /app/be-local-data/objects
     volumes:
       - ai-data:/app/db_data
+      - be-data:/app/be-local-data:ro
     depends_on:
       be: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -109,6 +111,7 @@ services:
     command: [celery, -A, app.celery_config.celery_app, worker, --loglevel=warning, --concurrency=1, --pool=solo]
     volumes:
       - ai-data:/app/db_data
+      - be-data:/app/be-local-data:ro
     depends_on:
       ai: {condition: service_healthy}
     cpus: 1.0

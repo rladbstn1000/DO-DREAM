@@ -46,7 +46,7 @@ public class ProgressReportController {
         Long studentId = userPrincipal.userId();
         log.info("진행률 조회 요청: studentId={}, materialId={}", studentId, materialId);
 
-        ProgressReportResponse response = progressReportService.getProgressReport(studentId, materialId);
+        ProgressReportResponse response = progressReportService.getProgressReport(studentId, materialId, userPrincipal.userId());
         
         return ResponseEntity.ok(
                 ApiResponse.success("진행률 조회 성공", HttpStatus.OK, response)
@@ -64,7 +64,7 @@ public class ProgressReportController {
         Long studentId = userPrincipal.userId();
         log.info("전체 진행률 조회 요청: studentId={}", studentId);
 
-        List<ProgressReportResponse> responses = progressReportService.getAllProgressReports(studentId);
+        List<ProgressReportResponse> responses = progressReportService.getAllProgressReports(studentId, userPrincipal.userId());
         
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -89,7 +89,7 @@ public class ProgressReportController {
                 teacherId, studentId, materialId);
 
         // 선생님이 해당 자료를 공유했는지는 서비스 레이어에서 검증
-        ProgressReportResponse response = progressReportService.getProgressReport(studentId, materialId);
+        ProgressReportResponse response = progressReportService.getProgressReport(studentId, materialId, userPrincipal.userId());
         
         return ResponseEntity.ok(
                 ApiResponse.success("학생 진행률 조회 성공", HttpStatus.OK, response)
@@ -108,7 +108,7 @@ public class ProgressReportController {
         Long teacherId = userPrincipal.userId();
         log.info("학생 전체 진행률 조회 요청: teacherId={}, studentId={}", teacherId, studentId);
 
-        List<ProgressReportResponse> responses = progressReportService.getAllProgressReports(studentId);
+        List<ProgressReportResponse> responses = progressReportService.getAllProgressReports(studentId, userPrincipal.userId());
         
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -162,7 +162,7 @@ public class ProgressReportController {
         Long studentId = userPrincipal.userId();
         log.info("평균 진행률 조회 요청: studentId={}", studentId);
 
-        AverageProgressResponse response = progressReportService.getAverageProgress(studentId);
+        AverageProgressResponse response = progressReportService.getAverageProgress(studentId, userPrincipal.userId());
         
         return ResponseEntity.ok(
                 ApiResponse.success("평균 진행률 조회 성공", HttpStatus.OK, response)
@@ -186,7 +186,7 @@ public class ProgressReportController {
         Long teacherId = userPrincipal.userId();
         log.info("학생 평균 진행률 조회 요청: teacherId={}, studentId={}", teacherId, studentId);
 
-        AverageProgressResponse response = progressReportService.getAverageProgress(studentId);
+        AverageProgressResponse response = progressReportService.getAverageProgress(studentId, userPrincipal.userId());
         
         return ResponseEntity.ok(
                 ApiResponse.success("학생 평균 진행률 조회 성공", HttpStatus.OK, response)

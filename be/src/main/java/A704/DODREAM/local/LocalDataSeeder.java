@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 /** Version 1 seed: one transaction, inserted only once, never resets existing data or passwords. */
 @Component
 @Profile("local")
+@org.springframework.core.annotation.Order(0)
 @RequiredArgsConstructor
 @Slf4j
 public class LocalDataSeeder implements ApplicationRunner {

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Slf4j
 public class StudentService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
 
 	private final StudentProfileRepository studentProfileRepository;
 	private final UserRepository userRepository;
@@ -32,6 +33,7 @@ public class StudentService {
 	 * - 교사는 자신이 담당하는 반의 학생만 조회 가능
 	 */
 	public StudentDetailResponse getStudentDetail(Long studentId, Long teacherId) {
+        policy.assignedStudent(teacherId, studentId);
 		// 학생 정보 조회
 		User student = userRepository.findById(studentId)
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -70,6 +72,7 @@ public class StudentService {
 	 * 학생 본인의 정보 조회
 	 */
 	public StudentDetailResponse getMyInfo(Long studentId) {
+        policy.student(studentId);
 		User student = userRepository.findById(studentId)
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 

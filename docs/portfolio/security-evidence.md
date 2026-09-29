@@ -68,3 +68,27 @@
 약12KB Authorization 헤더는 nginx에서400으로 거부되어 애플리케이션401까지 도달하지 않는다. 첫 테스트의401 고정 기대는 레이어 구분 오류였다. 최종 검사는 기존 식별자로 정확히 nginx400/토큰 미반환을 요구하고, 두 서버의 단위 테스트에서 정상 서명·정상 claim의8192자 초과 JWT가 직접 거부되는 것도 별도로 검증한다. 허용 응답 범위를 임의로 넓혀 통과시킨 것이 아니며 첫 FAIL 기록을 보존한다.
 
 실제 명령·횟수·브라우저 범위·보장하지 않는 내용은 [05 결과](05-phase2a-results.md), 계약은 [04 설계](04-auth-security-design.md)를 따른다. 원시 JWT/RT/쿠키, DB 덤프, 기존 비밀 파일은 기록/커밋하지 않았다. 자료/RAG/정답/담당관계 수정, 실제 AI·외부 공급자 및 공개 배포는 수행하지 않았다.
+
+## 2-B 객체권한 수정과 검증 (2026-09-29)
+
+위 1차/2-A 표와 당시 FAIL은 그대로 보존한다. 2-A 체크포인트는 `ef91856cdc8a96c0e0d28a63e89f6efc8e85be3b`, 실행 범위 체크포인트는 `25466b6e2034038235bbd319871662499ecee205`다. 후속 객체 정책은 [07](07-authorization-policy.md), 최종 명령·브라우저·자원 판정은 [08](08-phase2b-results.md)에 기록한다.
+
+| 기존 식별자 | 2-A | 2-B 최종 security | 응답/의미 |
+|---|---|---|---|
+| `be_refresh_must_not_authenticate_as_access` | PASS | PASS | RT →401 |
+| `ai_refresh_must_not_authenticate_as_access` | PASS | PASS | RT →401 |
+| `access_token_kind_claim` | PASS | PASS | token_use=access |
+| `student_quiz_must_exclude_correct_answer` | FAIL | PASS | 유효 공유 학생200, correct_answer 없음 |
+| `anonymous_file_url_must_be_denied` | FAIL | PASS | 무토큰401 |
+| `unshared_file_url_must_be_denied` | FAIL | PASS | 학생의 교사용 파일 URL403 |
+| `rag_unshared_document_must_be_denied` | FAIL | PASS | 비공유404 |
+| `rag_session_document_mismatch_must_be_denied` | FAIL | PASS | 비공유 자료를 대입한 기존 검사404 |
+| `unrelated_teacher_history_must_be_denied` | FAIL | PASS | 비담당 교사404 |
+
+기존9개와 양성6개·수명1개를 유지한 security16개가 모두 PASS다. 원래 검사의 첫 실행은 목록 첫 항목을 공유 자료로 가정해 학생 퀴즈404로 FAIL이었다. 실제 공유 목록과 교사 목록의 교집합에서 합성 자료를 선택하도록 harness만 수정했다. 학생 응답200/정답 없음 기대와 기존9개 식별자·안전 기대 범위를 바꾸지 않았다. 두 자료 모두 접근 가능한 세션 교체는 추가 객체 검사에서 정확히409로 검증한다.
+
+실제 객체 HTTP188개는 교사 소유/공유 학생 양성, User/Profile ID 구분, 비담당/타학교/같은 반 비공유, 원본·편집 JSON·정답 DTO·북마크·풀이/이력·공유 회수·담당 해제·삭제 자료 초기본·작업 소유권·문서 직접 처리 경계를 포함한다. 거부 요청 전후 MySQL checksum/행 수·SQLite 행 digest·합성 객체 digest가 같았다. Spring 실제 JPA 관계 테스트와 AI DB 테스트는 서명/저장소/FCM/채점/작업예약/검색 호출이 권한 거부 전에 발생하지 않는지 별도 검사한다. DB 조회 오류도 기본 허용으로 바꾸지 않는다.
+
+확인한 범위에서 기존 지적4/5/6/7의 접근권한 조건을 수정했다. 실제 공급자 유출 공격을 수행했다는 뜻은 아니다. 운영 SSRF/redirect·전체 로그·배포 설정, LLM 품질, 서명 URL 즉시 철회는 미검증이다. 지적8(채점 트랜잭션/중복),9(임베딩 선삭제/복구),10(전체 SSRF),11(전체 로그),12(운영 설정),13(포괄 검증 부족)의 남은 부분과 모바일 저장매체/실기기는 별도 후속 작업이다. 과거 풀이 정답 버전과 원자적 업로드/발행/큐 복구도 보장하지 않는다.
+
+`SECURITY_REGRESSION_ALL`은 **실행한 회귀 검사 범위의 통과만** 뜻하며 최종 상태는 08 문서를 따른다. `KNOWN_SECURITY_FINDINGS_OPEN=true`, `REAL_AI_INTEGRATION=NOT_RUN`, `PUBLIC_DEPLOYMENT_READY=false`를 유지한다.

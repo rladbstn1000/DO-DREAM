@@ -25,12 +25,11 @@ export interface SharedMaterialsResponse {
 }
 
 /**
- * 교재 JSON의 QA(문제-정답) 구조
+ * 학생 교재 JSON의 문제 구조. 정답은 정상 제출 후 결과에서만 제공한다.
  * - type === "quiz" 인 chapter에서 사용
  */
 export interface MaterialJsonQA {
   question: string;
-  answer: string;
 }
 
 /**

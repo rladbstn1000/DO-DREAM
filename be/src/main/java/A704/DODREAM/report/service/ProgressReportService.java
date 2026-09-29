@@ -38,6 +38,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProgressReportService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
 
     private final StudentMaterialProgressRepository progressRepository;
     private final MaterialRepository materialRepository;
@@ -52,7 +53,8 @@ public class ProgressReportService {
     /**
      * 특정 학생의 특정 교재에 대한 진행률 리포트 조회
      */
-    public ProgressReportResponse getProgressReport(Long studentId, Long materialId) {
+    public ProgressReportResponse getProgressReport(Long studentId, Long materialId, Long actorId) {
+        policy.studentHistory(actorId, studentId, materialId);
         // 1. 학생 조회
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -99,7 +101,8 @@ public class ProgressReportService {
     /**
      * 특정 학생의 모든 교재에 대한 진행률 요약 조회
      */
-    public List<ProgressReportResponse> getAllProgressReports(Long studentId) {
+    public List<ProgressReportResponse> getAllProgressReports(Long studentId, Long actorId) {
+        policy.historySubject(actorId, studentId);
         // 학생 조회
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -109,12 +112,8 @@ public class ProgressReportService {
 
         List<ProgressReportResponse> reports = new ArrayList<>();
         for (MaterialShare share : shares) {
-            try {
-                ProgressReportResponse report = getProgressReport(studentId, share.getMaterial().getId());
-                reports.add(report);
-            } catch (Exception e) {
-                log.error("진행률 계산 실패: studentId={}, materialId={}",
-                        studentId, share.getMaterial().getId(), e);
+            if (policy.historyVisible(actorId, studentId, share.getMaterial())) {
+                reports.add(getProgressReport(studentId, share.getMaterial().getId(), actorId));
             }
         }
 
@@ -409,6 +408,7 @@ public class ProgressReportService {
      */
     @Transactional
     public UpdateProgressResponse updateProgress(Long studentId, Long materialId, Integer currentPage, Integer totalPages) {
+        policy.studentMaterial(studentId, materialId);
         // 1. 학생 조회
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -560,13 +560,14 @@ public class ProgressReportService {
     /**
      * 특정 학생의 모든 교재에 대한 평균 진행률 조회
      */
-    public AverageProgressResponse getAverageProgress(Long studentId) {
+    public AverageProgressResponse getAverageProgress(Long studentId, Long actorId) {
+        policy.historySubject(actorId, studentId);
         // 1. 학생 조회
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // 2. 모든 진행률 리포트 조회
-        List<ProgressReportResponse> reports = getAllProgressReports(studentId);
+        List<ProgressReportResponse> reports = getAllProgressReports(studentId, actorId);
 
         // 3. 통계 계산
         int totalMaterials = reports.size();

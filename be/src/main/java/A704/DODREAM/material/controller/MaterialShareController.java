@@ -99,4 +99,11 @@ public class MaterialShareController {
         Map<String, Object> jsonData = materialShareService.getSharedMaterialJson(studentId, materialId);
         return ResponseEntity.ok(jsonData);
     }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{materialId}/shares/{studentId}")
+    public ResponseEntity<Void> revoke(@AuthenticationPrincipal UserPrincipal principal,
+        @PathVariable Long materialId, @PathVariable Long studentId) {
+        materialShareService.revoke(principal.userId(), materialId, studentId);
+        return ResponseEntity.noContent().build();
+    }
 }

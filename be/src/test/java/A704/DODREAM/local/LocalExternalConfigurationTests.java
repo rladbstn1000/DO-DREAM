@@ -11,11 +11,12 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LocalExternalConfigurationTests {
+    @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory;
     private final LocalExternalConfiguration configuration = new LocalExternalConfiguration();
 
     @Test
     void syntheticStorageReadsOnlyTheNamedFixture() throws Exception {
-        try (var storage = configuration.s3Client();
+        try (var storage = configuration.s3Client(new LocalObjectStore(directory.toString()));
              var data = storage.getObject(GetObjectRequest.builder()
                  .bucket("local-synthetic-fixtures").key(LocalExternalConfiguration.FIXTURE_KEY).build())) {
             assertTrue(new String(data.readAllBytes(), StandardCharsets.UTF_8).contains("\"local_fixture\": true"));
@@ -26,7 +27,7 @@ class LocalExternalConfigurationTests {
 
     @Test
     void storageWritesFailInsteadOfReportingSuccess() {
-        try (var storage = configuration.s3Client()) {
+        try (var storage = configuration.s3Client(new LocalObjectStore(directory.toString()))) {
             assertThrows(ResponseStatusException.class, () -> storage.putObject(
                 PutObjectRequest.builder().bucket("local-synthetic-fixtures").key("anything").build(),
                 RequestBody.fromString("test")));

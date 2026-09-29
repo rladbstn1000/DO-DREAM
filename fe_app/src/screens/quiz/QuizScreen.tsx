@@ -38,11 +38,8 @@ import {
 } from "../../constants/dimensions";
 import { useTheme } from "../../contexts/ThemeContext";
 import { submitQuizAnswers } from "../../api/quizApi";
-import {
-  QuizAnswerRequest,
-  QuizGradingResultItem,
-  RawQuizGradingResult,
-} from "../../types/api/quizApiTypes";
+import { mergeSubmittedQuizResults } from "../../api/submittedQuizResults";
+import type { QuizAnswerRequest } from "../../types/api/quizApiTypes";
 import { asrService } from "../../services/asrService";
 
 export default function QuizScreen() {
@@ -271,32 +268,10 @@ export default function QuizScreen() {
     }));
 
     try {
-      // submitQuizAnswers가 camelCase로 변환된 결과를 반환한다고 가정하고 타입을 수정합니다.
-      const results: QuizGradingResultItem[] = await submitQuizAnswers(material.id, {
+      const results = await submitQuizAnswers(material.id, {
         answers: answersPayload,
       });
-      console.log("[QuizScreen] 채점 결과:", results);
-
-      // 백엔드 결과와 프론트엔드 질문 데이터를 병합합니다.
-      const mergedGradingResults: QuizGradingResultItem[] = questions.map((question, index) => {
-        // 'results'가 이미 QuizGradingResultItem[] 타입이므로, id로 직접 비교합니다.
-        const result = results.find(r => r.id === question.id);
-        const merged = {
-          ...question, // id, title, content, correct_answer 등 QuizQuestion의 모든 속성 포함
-          question_number: index + 1, // 질문 번호 추가
-          userAnswer: result?.userAnswer || userAnswers.get(question.id) || "",
-          isCorrect: result?.isCorrect ?? false, // isCorrect가 undefined일 경우 false를 기본값으로 설정
-          feedback: result?.feedback, // AI 피드백 추가
-        };
-        console.log(`[QuizScreen] 병합된 문제 ${index + 1}:`, {
-          id: merged.id,
-          hasTitle: !!merged.title,
-          hasContent: !!merged.content,
-          title: merged.title,
-          content: merged.content?.substring(0, 50),
-        });
-        return merged;
-      });
+      const mergedGradingResults = mergeSubmittedQuizResults(questions, results);
 
       setShowGradingModal(false);
 

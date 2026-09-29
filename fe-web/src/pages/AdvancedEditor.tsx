@@ -1,4 +1,5 @@
 import { authenticatedFetch } from '../auth/client';
+import { quizDocumentId } from '../utils/quizDocumentId';
 // src/pages/AdvancedEditor.tsx
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -621,11 +622,7 @@ export default function AdvancedEditor({
       const ragBase = (import.meta.env.VITE_RAG_BASE || '/ai').replace(/\/+$/, '');
       const url = `${ragBase}/rag/quiz/generate`;
 
-      const documentId = materialId
-        ? String(materialId)
-        : mode === 'edit'
-          ? String(pdfId)
-          : `pdf_${pdfId}`;
+      const documentId = quizDocumentId(mode, materialId, pdfId);
 
       const requestBody = {
         document_id: documentId,
@@ -662,26 +659,9 @@ export default function AdvancedEditor({
         if (response.status === 404) {
           await Swal.fire({
             icon: 'error',
-            title: 'DB에서 자료를 찾을 수 없습니다 (404)',
-            html: `
-          <div style="text-align: left; line-height: 1.7;">
-            <p style="margin-bottom: 12px;">
-              <strong>404 오류:</strong> 백엔드 DB에서 해당 자료를 찾을 수 없습니다.
-            </p>
-            <div style="padding: 12px; background: #f3f4f6; border-radius: 8px; font-family: monospace; font-size: 11px; margin-bottom: 12px;">
-              <strong>요청 정보:</strong><br/>
-              • Document ID: <strong>${documentId}</strong><br/>
-              • Material ID: ${materialId || 'null'}<br/>
-              • PDF ID: ${pdfId}<br/>
-              • Mode: ${mode}
-            </div>
-            <div style="font-size: 13px; color: #666; margin-top: 12px;">
-              💡 "<strong>직접 퀴즈 추가</strong>" 버튼을 사용하세요
-            </div>
-          </div>
-        `,
+            title: '자료에 접근할 수 없습니다',
+            text: '자료가 없거나 접근 권한이 없습니다. 자료 목록에서 다시 열어주세요.',
             confirmButtonColor: '#192b55',
-            width: '600px',
           });
           return;
         }

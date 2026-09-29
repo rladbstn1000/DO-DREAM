@@ -173,7 +173,7 @@ def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0
     if command == 'help':
-        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
+        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | authorization | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
         return 0
     settings()
     if command == 'scope-test':return run('scope-unit',[sys.executable,'-m','unittest','discover','-s','scripts/local/tests','-v']).returncode
@@ -202,6 +202,8 @@ def main():
         return int(any(r.returncode for r in results))
     if command == 'auth':
         return run('auth-regression', [sys.executable, str(ROOT / 'scripts/local/verify_auth.py')]).returncode
+    if command == 'authorization':
+        return run('authorization', [sys.executable, str(ROOT / 'scripts/local/verify_authorization.py')]).returncode
     if command == 'startup':
         return run('startup-key-regression', [sys.executable, str(ROOT / 'scripts/local/verify_startup.py')]).returncode
     if command in ('smoke', 'security', 'persistence'):

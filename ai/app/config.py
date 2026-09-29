@@ -44,3 +44,6 @@ HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 RAG_DATABASE_URL = os.getenv("RAG_DATABASE_URL", "sqlite:////app/db_data/rag.db")
 LOCAL_PROVIDER_DATA_DIR = os.getenv("LOCAL_PROVIDER_DATA_DIR", "/app/db_data/local_provider")
+# Exact object-key binding for authorized provider requests; no wildcard host.
+OBJECT_STORAGE_HOST = os.getenv("OBJECT_STORAGE_HOST", "")
+LOCAL_OBJECT_STORAGE_DIR = os.getenv("LOCAL_OBJECT_STORAGE_DIR", "/app/be-local-data/objects")

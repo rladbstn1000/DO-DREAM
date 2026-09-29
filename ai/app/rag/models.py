@@ -61,3 +61,11 @@ class ChatSessionDto(BaseModel):
 
     class Config:
         from_attributes = True
+
+class EmbeddingTask(Base):
+    """Additive ownership metadata; pre-existing Celery IDs acquire no guessed owner."""
+    __tablename__ = "embedding_tasks"
+    id = Column(String, primary_key=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    document_id = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

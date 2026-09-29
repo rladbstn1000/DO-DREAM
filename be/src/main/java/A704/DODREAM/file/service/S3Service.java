@@ -37,7 +37,7 @@ public class S3Service {
 	private long presignExpMinutes;
 
 	@Transactional
-	public PresignedUrlResponse generatePresignedUrl(PresignedUrlRequest request) {
+	public PresignedUrlResponse generatePresignedUrl(PresignedUrlRequest request, Long userId) {
 		// Generate unique S3 key
 		String s3Key = generateS3Key(request.getFileName());
 
@@ -48,7 +48,7 @@ public class S3Service {
 			.s3Bucket(bucketName)
 			.contentType(request.getContentType())
 			.ocrStatus(OcrStatus.PENDING)
-			.uploaderId(1L) // TODO: Get from authentication context
+			.uploaderId(userId)
 			.build();
 
 		UploadedFile savedFile = uploadedFileRepository.save(uploadedFile);

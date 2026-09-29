@@ -44,6 +44,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 @Service
 @Slf4j
 public class PdfService {
+    @Autowired private A704.DODREAM.authorization.AuthorizationPolicy policy;
 
 	@Autowired
 	private UploadedFileRepository uploadedFileRepository;
@@ -86,9 +87,9 @@ public class PdfService {
 	 * @param userId:   사용자 ID
 	 * @return 파싱된 결과 및 메타데이터
 	 */
-	@Transactional
 	public Map<String, Object> uploadAndParsePdfFromBytes(byte[] pdfBytes, String filename, Long userId,
 		String authorizationHeader) {
+        policy.teacher(userId);
 		try {
 			// 1. 파일 검증
 			if (pdfBytes == null || pdfBytes.length == 0) {
@@ -138,11 +139,13 @@ public class PdfService {
 			// 6. FastAPI 호출하여 파싱
 			String fastApiEndpoint = fastApiUrl + "/document/parse-pdf-from-cloudfront";
 
-			Map<String, String> request = new HashMap<>();
+			Map<String, Object> request = new HashMap<>();
 			request.put("cloudfront_url", cloudFrontUrl);
+            request.put("uploaded_file_id", savedFile.getId());
 
 			ResponseEntity<Map> response = webClient.post()
 				.uri(fastApiEndpoint)
+                .header("Authorization", authorizationHeader)
 				.bodyValue(request)
 				.retrieve()
 				.onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
@@ -184,7 +187,9 @@ public class PdfService {
 					jsonS3Key,                    // 파싱된 JSON 파일의 S3 키
 					authorizationHeader           // JWT 토큰
 				);
-			} catch (Exception e) {
+			} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 				// 임베딩 실패가 파일 업로드 전체를 실패하게 하면 안 되므로 로그만 남김
 				log.error("⚠️ 초기 임베딩 생성 요청 실패 (pdfId={}): {}", savedFile.getId(), e.getMessage());
 			}
@@ -193,7 +198,9 @@ public class PdfService {
 
 			return Map.of("pdfId", savedFile.getId(), "filename", filename, "parsedData", parsedData);
 
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			throw new RuntimeException("PDF 업로드 및 파싱 실패: " + e.getMessage());
 		}
 	}
@@ -302,7 +309,9 @@ public class PdfService {
 
 		} catch (IOException e) {
 			throw new RuntimeException("파일 업로드 실패: " + e.getMessage());
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			throw new RuntimeException("PDF 업로드 및 파싱 실패: " + e.getMessage());
 		}
 	}
@@ -392,7 +401,9 @@ public class PdfService {
 				"parsedData", parsedData  // 즉시 사용할 수 있게 전체 JSON도 반환
 			);
 
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			throw new RuntimeException("PDF 파싱 실패: " + e.getMessage());
 		}
 	}
@@ -445,6 +456,7 @@ public class PdfService {
 	 * S3에서 JSON 다운로드 (나중에 재조회할 때)
 	 */
 	public Map<String, Object> getJsonFromS3(Long pdfId, Long userId) {
+        policy.ownedFile(userId, pdfId);
 		UploadedFile uploadedFile = uploadedFileRepository.findById(pdfId)
 			.orElseThrow(() -> new RuntimeException("PDF not found"));
 
@@ -473,7 +485,9 @@ public class PdfService {
 			return Map.of("pdfId", pdfId, "filename", uploadedFile.getOriginalFileName(), "parsedAt",
 				uploadedFile.getParsedAt(), "parsedData", jsonData);
 
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			throw new RuntimeException("JSON 조회 실패: " + e.getMessage());
 		}
 	}
@@ -513,7 +527,9 @@ public class PdfService {
 			log.info("✅ CloudFront signed URL 생성 완료: {}", s3Key);
 			return signedUrl;
 
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			log.error("❌ CloudFront signed URL 생성 실패: {}", e.getMessage(), e);
 			throw new RuntimeException("CloudFront signed URL 생성 실패: " + e.getMessage());
 		}
@@ -549,6 +565,7 @@ public class PdfService {
 	 * @return CloudFront signed URL
 	 */
 	public String generateJsonSignedUrl(Long pdfId, Long userId) {
+        policy.ownedFile(userId, pdfId);
 		// 1. DB에서 PDF 조회
 		UploadedFile uploadedFile = uploadedFileRepository.findById(pdfId)
 			.orElseThrow(() -> new RuntimeException("PDF not found"));
@@ -564,7 +581,7 @@ public class PdfService {
 		}
 
 		// 4. CloudFront signed URL 생성
-		String signedUrl = generateCloudFrontSignedUrl(uploadedFile.getJsonS3Key());
+		String signedUrl = cloudFrontService.generateSignedUrl(uploadedFile.getJsonS3Key());
 
 		log.info("✅ JSON 다운로드 URL 생성 완료: pdfId={}, userId={}", pdfId, userId);
 
@@ -612,6 +629,7 @@ public class PdfService {
 	 */
 	@Transactional(readOnly = true)
 	public Map<String, Object> getConceptCheckOnly(Long pdfId, Long userId) {
+        policy.ownedFile(userId, pdfId);
 		try {
 			// 1. DB에서 PDF 정보 조회
 			UploadedFile uploadedFile = uploadedFileRepository.findById(pdfId)
@@ -658,7 +676,9 @@ public class PdfService {
 			return Map.of("pdfId", pdfId, "filename", uploadedFile.getOriginalFileName(), "conceptCheckCount",
 				conceptCheckItems.size(), "data", conceptCheckItems);
 
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			log.error("❌ 개념 Check 조회 실패: {}", e.getMessage(), e);
 			throw new RuntimeException("개념 Check 조회 실패: " + e.getMessage());
 		}
@@ -928,7 +948,9 @@ public class PdfService {
 			return Map.of("pdfId", pdfId, "filename", uploadedFile.getOriginalFileName(), "processedData",
 				processedData);
 
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			log.error("❌ 개념 Check 추출 실패: {}", e.getMessage(), e);
 			throw new RuntimeException("개념 Check 추출 실패: " + e.getMessage());
 		}
@@ -1237,7 +1259,7 @@ public class PdfService {
 
 		// 1. JSON 파일 접근을 위한 CloudFront URL 생성
 		String jsonCloudFrontUrl = cloudFrontService.generateSignedUrl(jsonS3Key);
-		log.info("📦 CloudFront URL 생성 완료: {}", jsonCloudFrontUrl);
+		log.debug("Local/remote object URL prepared for authorized embedding");
 
 		// 2. FastAPI 엔드포인트 설정 (초기 임베딩)
 		String fastApiEndpoint = fastApiUrl + "/rag/embeddings/create-initial";
@@ -1283,7 +1305,9 @@ public class PdfService {
 				// pdfFileRepository.updateEmbeddingTaskId(pdfId, taskId);
 			}
 
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			log.error("❌ FastAPI 초기 임베딩 요청 중 오류 발생 (pdfId={}): {}", pdfId, e.getMessage(), e);
 			throw e; // 상위로 예외 전파
 		}

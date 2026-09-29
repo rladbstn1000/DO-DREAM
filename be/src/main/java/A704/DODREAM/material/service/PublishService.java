@@ -38,6 +38,7 @@ import java.util.stream.Stream;
 @Slf4j
 @RequiredArgsConstructor
 public class PublishService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
 
 	private final UserRepository userRepository;
 	private final MaterialRepository materialRepository;
@@ -62,6 +63,11 @@ public class PublishService {
 		String authorizationHeader // (신규) Controller에서 JWT 토큰 수신
 	) {
 
+        policy.ownedFile(userId, pdfId);
+        if (publishRequest.getQuizzes() != null && !publishRequest.getQuizzes().isEmpty()) {
+            Long existingId = materialRepository.findByUploadedFileId(pdfId).map(Material::getId).orElse(null);
+            quizService.validateEdits(existingId, publishRequest.getQuizzes());
+        }
 		User teacher = userRepository.findById(userId)
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -193,50 +199,17 @@ public class PublishService {
 			}
 			// ===============================================================
 
-			// --- (신규) FastAPI 임베딩 생성 API 호출 ---
-			try {
-				log.info("FastAPI 임베딩 생성을 호출합니다... (Document ID: {})", material.getId());
+            // AI uses an independent DB connection, so the newly published relationship must be committed first.
+            final Long documentId = material.getId();
+            final String objectKey = uploadedFile.getJsonS3Key();
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override public void afterCommit() { enqueueEmbedding(documentId, objectKey, authorizationHeader); }
+                });
 
-				// 1. FastAPI가 다운로드할 수 있도록 JSON S3 Key에 대한 CloudFront URL 생성
-				String jsonCloudFrontUrl = cloudFrontService.generateSignedUrl(uploadedFile.getJsonS3Key());
-
-				// 2. FastAPI 엔드포인트 및 요청 바디 정의
-				String fastApiEndpoint = fastApiUrl + "/rag/embeddings/create"; // (main.py의 root_path="/ai" 기준)
-
-				Map<String, String> fastApiRequest = Map.of(
-					"document_id", material.getId().toString(),
-					"s3_url", jsonCloudFrontUrl
-				);
-
-				// 3. WebClient로 FastAPI 호출 (컨트롤러에서 받은 JWT 토큰 전달)
-				if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-					throw new RuntimeException("FastAPI 인증을 위한 JWT 토큰이 없습니다.");
-				}
-
-				ResponseEntity<Map> fastApiResponse = webClient.post().uri(fastApiEndpoint)
-					.header("Authorization", authorizationHeader) // "Bearer <token>"
-					.bodyValue(fastApiRequest)
-					.retrieve()
-					.onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-						clientResponse -> clientResponse.bodyToMono(String.class)
-							.map(errorBody -> new RuntimeException("FastAPI 에러: " + errorBody)))
-					.toEntity(Map.class)
-					.block(); // (참고) 동기식 호출입니다.
-
-				if (fastApiResponse == null || fastApiResponse.getBody() == null) {
-					throw new RuntimeException("FastAPI 응답이 비어있습니다.");
-				}
-
-				log.info("✅ FastAPI 임베딩 생성 요청 성공: {}", fastApiResponse.getBody());
-
-			} catch (Exception fastApiError) {
-				// (중요) 임베딩 실패가 '발행' 자체를 롤백해서는 안 됨.
-				// 에러를 로깅하고 관리자에게 알림을 보낼 수 있지만, 여기서는 계속 진행.
-				log.error("❗️ [WARNING] FastAPI 임베딩 생성 호출 실패: {}", fastApiError.getMessage(), fastApiError);
-				// 이 에러를 다시 throw하지 않음으로써, S3 업로드와 Material 저장은 롤백되지 않음.
-			}
-			// --- (신규) FastAPI 호출 종료 ---
-		} catch (Exception e) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+            throw denied;
+        } catch (Exception e) {
 			log.error("JSON 발행 실패: pdfId={}, error={}", pdfId, e.getMessage(), e);
 			throw new RuntimeException("JSON 발행 실패: " + e.getMessage());
 		}
@@ -307,18 +280,21 @@ public class PublishService {
 	//    }
 
 	public PublishedMaterialListResponse getPublishedMaterialList(Long userId) {
+        policy.teacher(userId);
 
 		User teacher = userRepository.findById(userId)
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
 
-		List<Material> materials = materialRepository.findAllByTeacherIdWithUploadedFile(teacher.getId());
+		List<Material> materials = materialRepository.findAllByTeacherIdWithUploadedFile(teacher.getId()).stream()
+            .filter(material -> userId.equals(material.getUploadedFile().getUploaderId())).toList();
 
         return PublishedMaterialListResponse.from(materials);
     }
 
     @Transactional
     public void updateLabel(Long materialId, Long userId, LabelColor label){
+        policy.owned(userId, materialId);
         Material material = materialRepository.findById(materialId)
                 .orElseThrow(() -> new CustomException(ErrorCode.MATERIAL_NOT_FOUND));
 
@@ -331,6 +307,7 @@ public class PublishService {
 
     @Transactional
     public void deleteMaterial(Long userId, Long materialId) {
+        policy.owned(userId, materialId);
         Material material = materialRepository.findByIdAndTeacherIdAndDeletedAtIsNull(materialId, userId)
                         .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN));
 
@@ -391,4 +368,16 @@ public class PublishService {
 
 		return quizChapters;
 	}
+
+    private void enqueueEmbedding(Long materialId, String objectKey, String authorization) {
+        try {
+            webClient.post().uri(fastApiUrl + "/rag/embeddings/create")
+                .header("Authorization", authorization)
+                .bodyValue(Map.of("document_id", materialId.toString(), "s3_url", cloudFrontService.generateSignedUrl(objectKey)))
+                .retrieve().toBodilessEntity().block();
+        } catch (Exception failure) {
+            // Publishing remains committed; no bearer, signed URL or upstream body is logged.
+            log.warn("Embedding request failed after publishing material {}", materialId);
+        }
+    }
 }
