@@ -13,12 +13,21 @@ if APP_ENV == "local" and not LOCAL_EXTERNAL_STUBS:
     raise RuntimeError("Local runtime requires LOCAL_EXTERNAL_STUBS=true")
 
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+if ALGORITHM != "HS256":
+    raise RuntimeError("JWT_ALGORITHM must be HS256")
 JWT_ISSUER = os.getenv("JWT_ISSUER", "dodream")
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "dodream-api")
+if JWT_ISSUER != "dodream" or JWT_AUDIENCE != "dodream-api":
+    raise RuntimeError("JWT issuer/audience must match the shared dodream contract")
+JWT_CLOCK_SKEW_SECONDS = 5
+JWT_ACCESS_MAX_SECONDS = 900
 SECRET_KEY_BASE64 = os.getenv("JWT_SECRET_BASE64")
 try:
     SECRET_KEY_BYTES = base64.b64decode(SECRET_KEY_BASE64 or "", validate=True)
 except (ValueError, TypeError):
     raise RuntimeError("JWT_SECRET_BASE64 must be valid base64") from None
+if base64.b64encode(SECRET_KEY_BYTES).decode("ascii") != SECRET_KEY_BASE64:
+    raise RuntimeError("JWT_SECRET_BASE64 must use canonical standard base64")
 if len(SECRET_KEY_BYTES) < 32:
     raise RuntimeError("JWT_SECRET_BASE64 must encode at least 32 bytes")
 DATABASE_URL = os.getenv("DATABASE_URL")

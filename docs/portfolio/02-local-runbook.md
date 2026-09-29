@@ -37,24 +37,28 @@ python3 scripts/local/manage.py status
 - 학생 로그인 API: `deviceId=dodream-local-student`, `deviceSecret=LOCAL_STUDENT_SECRET` 값. 실제 기기 생체인증/모바일 빌드를 의미하지 않는다.
 - 합성 교실 1개, 교사 2명, 학생 1명, 자료/퀴즈 각 2개. 자료 하나만 학생에게 공유한다. 고정 ID를 외부 데이터에 가정하지 말고 목록 API로 조회한다.
 
-HTTP 로컬에서 기존 refresh 쿠키의 `Secure` 속성은 유지했다. smoke는 쿠키를 메모리에서 명시 전달하여 서버/Redis 흐름을 검증한다. 브라우저의 자동 refresh·전체 학습 E2E를 검증한 것은 아니다. 웹 로그인 POST와 Origin 헤더를 통한 nginx/CORS 경로, 인증 GET은 실제 검증했다.
+1차에서는 Secure 쿠키를 스크립트가 메모리에서 전달했다. 2-A부터 local/test HTTP만 Secure=false이고 배포 기본은 Secure=true다. Refresh 쿠키는 HttpOnly/SameSite=Lax/Path=/api/auth이며 웹 body에 RT를 반환하지 않는다. 이전 형식 토큰은 재로그인이 필요하다. 기존 Redis 키를 지우지 말고 새 로그인으로 v2 세션을 만든다. 쿠키 login/refresh/logout POST 전 `/api/auth/csrf`를 호출하고 응답 token을 `X-XSRF-TOKEN`에 넣는다. native 전용 계약은 [04 설계](04-auth-security-design.md)를 따른다.
 
 ## 검증
 
 ```bash
 python3 scripts/local/manage.py test
+python3 scripts/local/manage.py auth
+python3 scripts/local/manage.py startup
 python3 scripts/local/manage.py smoke
 python3 scripts/local/manage.py security
 python3 scripts/local/manage.py persistence
 python3 scripts/local/manage.py isolation
 ```
 
-- `test`: 보존한 Spring `contextLoads` + 경계 테스트 4개, AI 7개, PDF 6개. Spring 테스트는 실제 MySQL/Redis, Python 단위테스트는 별도 임시 SQLite와 원래 JWT 인증을 사용한다. 실제 공유 MySQL 연결은 smoke/health에서 확인한다. 테스트용 Spring 컨테이너만 일회성으로 생성/종료/제거한다.
+- `test`: 보존한 Spring `contextLoads`와 경계 테스트에 JWT/쿠키/Redis 회귀를 추가하고, AI 기존7개에 인증17개를 추가했다. PDF 기존6개를 보존했다. Spring 테스트는 실제 MySQL/Redis, Python 단위테스트는 별도 임시 SQLite와 원래 JWT 인증을 사용한다. 실제 공유 MySQL 연결은 smoke/health에서 확인한다. 테스트용 Spring 컨테이너만 일회성으로 생성/종료/제거한다.
+- `auth`: 실제 Spring/FastAPI JWT 계약, 실제 Redis 회전·12개 독립 HTTP 클라이언트 동시성·logout 경쟁, CSRF/cookie/native 계약. 합성 계정/키만 사용한다. 마지막에는 전용 Redis만 잠시 중지해 503 오류를 검사하고 finally에서 시작한다. 다른 테스트와 동시에 실행하지 않는다.
+- `startup`: 별도 일회성 컨테이너에서 빈/오류/짧은 키의 실제 기동 실패 검사. 원문 로그/키를 저장하지 않는다.
 - `smoke`: 헬스, 합성 로그인, 웹 Origin/CORS, 정상·무토큰·위조토큰, 자료, 실제 Celery queue, 대역 채팅/SQLite, Redis refresh 흐름.
-- `security`: 안전 기대값을 검증한다. 현재 알려진 취약점 때문에 **exit1/FAIL이 예상되며 보안 통과가 아니다**. 해당 코드를 고친 다음 기준선을 PASS로 바꾼다. 실제 외부 파일/AI에 요청하지 않는다.
+- `security`: 안전 기대값을 검증한다. 2-A 인증3개와 범위 밖 객체권한6개를 분리한다. 역할별 새 로그인과 양성 대조군을 먼저 확인한다. 남은 객체권한 때문에 **exit1/FAIL이 예상되며 전체 보안 통과가 아니다**. 원래1차FAIL 증거는 그대로 보존한다. 실제 외부 파일/AI에 요청하지 않는다.
 - `persistence`: MySQL 전용 probe table과 Redis probe key를 생성하고 이번 프로젝트만 stop/up한다. 앱이 seed하지 않는 marker, 도메인 수, 기존 SQLite session과 대역 인덱스를 확인한다. 먼저 smoke가 필요하다. 세션 부재는 BLOCKED다.
 
-명령/종료코드와 민감값을 제거한 출력은 `.local/results/`에 저장한다. `commands.jsonl`은 기록 기능 도입 이후 실행 이력이고, 이전 시도는 별도 JSON/log와 결과 문서에 보존했다. 테스트 HTTP body·토큰·cookie는 저장하지 않는다. 일반 `docker compose config`는 비밀을 펼치므로 출력하지 말고 wrapper의 `config --quiet`를 쓴다. 원문 컨테이너 로그를 공유하지 않는다.
+1차 증거는 `.local/results/`에 보존한다. 현재 명령/종료코드와 민감값을 제거한 출력은 `.local/phase2a/results/`에 저장한다. `DODREAM_RESULTS_DIR`로 이후 검증의 새 증거 폴더를 지정할 수 있다. 새 폴더에서는 시작 전 `resources-before`를 기록해야 isolation 비교가 가능하다. `commands.jsonl`은 기록 기능 도입 이후 실행 이력이고, 이전 시도는 별도 JSON/log와 결과 문서에 보존했다. 테스트 HTTP body·토큰·cookie는 저장하지 않는다. 일반 `docker compose config`는 비밀을 펼치므로 출력하지 말고 wrapper의 `config --quiet`를 쓴다. 원문 컨테이너 로그를 공유하지 않는다.
 
 호스트 웹 검증(선택):
 
@@ -64,6 +68,8 @@ npm ci --ignore-scripts --no-audit --no-fund --cache /private/tmp/dodream-phase1
 npm run typecheck
 npm run build -- --mode phase1
 ```
+
+실제 Chrome 인증 검증은 `python3 scripts/local/manage.py auth-test-up` 후 `cd fe-web && npm run test:browser-auth`를 실행한다. 기존 Chrome과 Playwright가 필요하며 harness 상단의 경로/환경변수 설정을 확인한다. 별도 테스트 서버만 AT2초이며 일반 서버는900초다. 15174 포트를 다른 프로세스가 쓰면 종료하지 말고 테스트 profile 포트를 바꾼다. 이 테스트는 인증 흐름이며 전체 학습 E2E가 아니다. 장애 주입 항목은 실제 happy path와 결과에서 구분한다.
 
 `phase1`은 `local-env`만 읽고 API base를 same-origin으로 고정한다. 빌드 mode를 생략한 기존 배포 명령과 구분한다. 로컬 CSP는 원격 폰트/이미지/API를 차단한다.
 
@@ -76,7 +82,7 @@ python3 scripts/local/manage.py up
 python3 scripts/local/manage.py restart
 ```
 
-`stop`은 컨테이너만 멈추며 볼륨·네트워크·이미지를 삭제하지 않는다. `up`은 같은 데이터로 시작한다. **down -v/prune/reset/clean/기존 자원 삭제를 사용하지 않는다.**
+`stop`은 기본 서비스와 auth-test 프로필의 컨테이너만 멈추며 볼륨·네트워크·이미지를 삭제하지 않는다. `up`은 같은 데이터로 시작한다. **down -v/prune/reset/clean/기존 자원 삭제를 사용하지 않는다.**
 
 | 볼륨 | 컨테이너 위치 / 내용 |
 |---|---|

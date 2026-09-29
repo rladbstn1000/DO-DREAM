@@ -23,7 +23,7 @@ const AUTH_KEYS = {
 export const saveAccessToken = (token: string): void => {
   try {
     if (!token || token === "undefined" || typeof token !== "string") {
-      console.error("[AuthStorage] Invalid access token:", token);
+      console.error("[AuthStorage] Invalid access token");
       throw new Error("Invalid access token");
     }
 
@@ -58,6 +58,18 @@ export const removeAccessToken = (): void => {
   } catch (error) {
     console.error("[AuthStorage] Failed to remove access token:", error);
   }
+};
+
+// Native-only refresh tokens use the existing application store. This does not
+// claim OS keychain/biometric protection; that storage review is a separate step.
+export const saveRefreshToken = (token: string): void => {
+  if (typeof token !== 'string' || !token) throw new Error('Invalid refresh token');
+  storage.set(AUTH_KEYS.REFRESH_TOKEN, token);
+};
+export const getRefreshToken = (): string | null => storage.getString(AUTH_KEYS.REFRESH_TOKEN) ?? null;
+export const clearTokens = (): void => {
+  storage.delete(AUTH_KEYS.ACCESS_TOKEN);
+  storage.delete(AUTH_KEYS.REFRESH_TOKEN);
 };
 
 /**
@@ -133,7 +145,7 @@ export const removeStudentInfo = (): void => {
  */
 export const clearAuthData = (): void => {
   try {
-    removeAccessToken();
+    clearTokens();
     removeStudentInfo();
     console.log("[AuthStorage] Auth data cleared");
   } catch (error) {

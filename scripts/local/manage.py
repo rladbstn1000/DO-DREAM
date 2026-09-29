@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 1: isolated Compose operations; never deletes data or emits secret values."""
+"""Isolated local Compose operations; never deletes data or emits secret values."""
 import base64
 import datetime
 import json
@@ -15,7 +15,8 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / '.local'
-RESULTS = LOCAL / 'results'
+RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase2a' / 'results')))
+RESULTS.mkdir(parents=True, exist_ok=True)
 PROJECT = 'dodream-phase1'
 ENV_FILE = LOCAL / 'env'
 
@@ -123,7 +124,7 @@ def check():
 def snapshot(name):
     items = {}
     commands = {
-        'containers': ['docker', 'ps', '-a', '--format', '{{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}'],
+        'containers': ['docker', 'ps', '-a', '--format', '{{.ID}}\t{{.Names}}\t{{.State}}\t{{.Ports}}'],
         'volumes': ['docker', 'volume', 'ls', '--format', '{{.Name}}'],
         'networks': ['docker', 'network', 'ls', '--format', '{{.Name}}'],
     }
@@ -142,7 +143,7 @@ def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0
     if command == 'help':
-        print('init | check | config | build | up | test | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
+        print('init | check | config | build | up | auth-test-up | test | auth | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
         return 0
     settings()
     if command == 'check': return check()
@@ -154,15 +155,21 @@ def main():
     if command == 'up':
         snapshot('resources-before')
         return compose('compose-up', 'up', '-d', '--wait', '--wait-timeout', '240').returncode
+    if command == 'auth-test-up':
+        return compose('auth-test-up', '--profile', 'auth-test', 'up', '-d', '--wait', '--wait-timeout', '240', 'be-auth-short', 'web-auth-test').returncode
     if command == 'status':
         result = compose('compose-status', 'ps', '--all'); print(redact(result.stdout)); return result.returncode
-    if command == 'stop': return compose('compose-stop', 'stop').returncode
+    if command == 'stop': return compose('compose-stop', '--profile', 'auth-test', 'stop').returncode
     if command == 'restart': return compose('compose-restart', 'restart').returncode
     if command == 'test':
         results = [compose('be-tests', '--profile', 'test', 'run', '--rm', '--no-deps', 'be-test'),
                    compose('ai-tests', 'exec', '-T', 'ai', 'python', '-m', 'unittest', 'discover', '-s', 'tests', '-v'),
                    compose('pdf-tests', 'exec', '-T', 'python-service', 'python', '-m', 'unittest', 'discover', '-s', 'tests', '-v')]
         return int(any(r.returncode for r in results))
+    if command == 'auth':
+        return run('auth-regression', [sys.executable, str(ROOT / 'scripts/local/verify_auth.py')]).returncode
+    if command == 'startup':
+        return run('startup-key-regression', [sys.executable, str(ROOT / 'scripts/local/verify_startup.py')]).returncode
     if command in ('smoke', 'security', 'persistence'):
         return run(command, [sys.executable, str(ROOT / 'scripts/local/verify.py'), command]).returncode
     raise SystemExit('Unknown command. Use help.')

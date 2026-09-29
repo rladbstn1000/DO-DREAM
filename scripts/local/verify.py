@@ -25,6 +25,17 @@ def req(service, path, token=None, body=None, headers=None):
     h = {'Content-Type': 'application/json'}
     if token: h['Authorization'] = 'Bearer ' + token
     if headers: h.update(headers)
+    # The new cookie auth contract needs a CSRF cookie/header even with expired AT.
+    if body is not None and path.startswith('/api/auth/') and '/native/' not in path:
+        csrf_req = urllib.request.Request(BASE[service] + '/api/auth/csrf')
+        csrf_response = OPENER.open(csrf_req, timeout=20)
+        csrf = json.loads(csrf_response.read())
+        jar = http.cookies.SimpleCookie()
+        for value in csrf_response.headers.get_all('Set-Cookie', []): jar.load(value)
+        if jar:
+            csrf_cookies = '; '.join(k + '=' + v.value for k, v in jar.items())
+            h['Cookie'] = '; '.join(v for v in (h.get('Cookie', ''), csrf_cookies) if v)
+        h[csrf['headerName']] = csrf['token']
     request = urllib.request.Request(BASE[service] + path, headers=h,
         data=None if body is None else json.dumps(body).encode())
     try: response = OPENER.open(request, timeout=20)
@@ -80,10 +91,15 @@ def smoke():
     student, _ = credentials('student')
     check('synthetic_teacher_login', True)
     check('synthetic_student_login', True)
-    code, data, _, _ = req('web', '/api/auth/teacher/login', body={
+    code, data, web_headers, _ = req('web', '/api/auth/teacher/login', body={
         'email':'teacher@local.dodream.invalid', 'password':ENV['LOCAL_TEACHER_PASSWORD']},
         headers={'Origin':BASE['web']})
     check('web_browser_origin_login', code == 200 and bool(data.get('accessToken')), 'HTTP '+str(code)+'; browser Origin through nginx')
+    # A second login replaces this user's single session. Refresh its current RT,
+    # not the first login's now-invalid RT (same-second tokens are now unique).
+    web_cookies = http.cookies.SimpleCookie()
+    for value in web_headers.get_all('Set-Cookie', []): web_cookies.load(value)
+    if code == 200 and 'refresh' in web_cookies: rt = web_cookies['refresh'].value
     for service, path in [('be','/api/teacher/me'), ('ai','/users/users/me'), ('web','/api/teacher/me'), ('web','/ai/users/users/me')]:
         code, _, _, _ = req(service, path, teacher)
         check(service + '_authorized_api', code == 200, 'HTTP ' + str(code))
@@ -112,13 +128,19 @@ def smoke():
 
 def security():
     teacher, rt = credentials(); student, _ = credentials('student')
+    # Positive controls prove object-policy failures are not masked by invalid token contracts.
+    for who, token in [('teacher', teacher), ('student', student)]:
+        for svc, route in [('be', '/api/teacher/me' if who == 'teacher' else '/api/materials/shared'), ('ai', '/users/users/me')]:
+            code, _, _, _ = req(svc, route, token)
+            check('positive_control_' + who + '_' + svc, code == 200, 'HTTP ' + str(code))
+            if code != 200: raise RuntimeError('Positive authentication control failed')
     for service, path in [('be','/api/teacher/me'), ('ai','/users/users/me')]:
         code, _, _, _ = req(service, path, rt)
         check(service + '_refresh_must_not_authenticate_as_access', code in (401,403), 'HTTP ' + str(code))
     claim = payload(teacher)
     check('access_token_kind_claim', any(claim.get(k) == 'access' for k in ('token_use','type','typ')), 'access token needs a verifiable kind')
     ttl = claim['exp'] - claim['iat']
-    CHECKS.append({'name':'actual_access_token_lifetime','status':'PASS','detail':str(ttl)+' seconds observed; policy change deferred'})
+    CHECKS.append({'name':'actual_access_token_lifetime','status':'PASS' if ttl == 900 else 'FAIL','detail':str(ttl)+' seconds observed; phase2a policy=900'})
     materials = material_ids(teacher); doc = materials[0]['materialId']; file_id = materials[0]['uploadedFileId']
     code, quizzes, _, _ = req('be',f'/api/materials/{doc}/quizzes',student)
     leaks = isinstance(quizzes,list) and any('correct_answer' in q for q in quizzes)
@@ -147,6 +169,10 @@ def security():
     else: CHECKS.append({'name':'unshared_document_checks','status':'NOT_RUN','detail':'second fixture unavailable'})
     try:
         other,_=credentials('other-teacher')
+        for svc, route in [('be','/api/teacher/me'),('ai','/users/users/me')]:
+            status,_,_,_=req(svc,route,other)
+            check('positive_control_other_teacher_'+svc,status==200,'HTTP '+str(status))
+            if status!=200: raise RuntimeError('Other teacher positive control failed')
         sid=payload(student)['sub']
         code,data,_,_=req('ai','/rag/chat/sessions?student_id='+str(sid),other)
         check('unrelated_teacher_history_must_be_denied',code in (401,403,404),'HTTP '+str(code)+'; rows='+str(len(data) if isinstance(data,list) else 0))

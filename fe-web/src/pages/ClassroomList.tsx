@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../auth/client';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
@@ -40,7 +41,7 @@ type Material = {
 };
 
 type ClassroomListProps = {
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
   onNavigateToEditor?: () => void;
 };
 
@@ -274,7 +275,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       hasToken: !!token,
     });
 
-    const res = await fetch(url, {
+    const res = await authenticatedFetch(url, {
       method: 'POST',
       headers: {
         accept: '*/*',
@@ -390,7 +391,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
       const accessToken = localStorage.getItem('accessToken');
 
-      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+      const pdfRes = await authenticatedFetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
         method: 'GET',
         headers: {
           accept: '*/*',
@@ -709,7 +710,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       const accessToken = localStorage.getItem('accessToken');
 
       // JSON 데이터 가져오기
-      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+      const pdfRes = await authenticatedFetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
         method: 'GET',
         headers: {
           accept: '*/*',
@@ -905,7 +906,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
   // 발행 자료 목록 조회
   useEffect(() => {
-    if (!API_BASE) return;
 
     const fetchPublishedMaterials = async () => {
       try {
@@ -915,7 +915,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           console.warn('accessToken 이 없습니다. 로그인 상태를 확인해 주세요.');
         }
 
-        const res = await fetch(`${API_BASE}/api/documents/published`, {
+        const res = await authenticatedFetch(`${API_BASE}/api/documents/published`, {
           method: 'GET',
           headers: {
             accept: '*/*',
@@ -1014,7 +1014,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
   // 담당 반 / 학생 목록 조회
   useEffect(() => {
-    if (!API_BASE) return;
 
     const fetchClassesAndStudents = async () => {
       try {
@@ -1025,7 +1024,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         };
 
         // 1) 내 담당 반 목록
-        const classesRes = await fetch(`${API_BASE}/api/classes/teacher`, {
+        const classesRes = await authenticatedFetch(`${API_BASE}/api/classes/teacher`, {
           method: 'GET',
           headers: commonHeaders,
           credentials: 'include',
@@ -1063,7 +1062,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           .map((id) => `classroomIds=${encodeURIComponent(String(id))}`)
           .join('&');
 
-        const studentsRes = await fetch(
+        const studentsRes = await authenticatedFetch(
           `${API_BASE}/api/classes/students?${query}`,
           {
             method: 'GET',
@@ -1223,7 +1222,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       };
 
-      const res = await fetch(`${API_BASE}/api/documents/label`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/documents/label`, {
         method: 'PATCH',
         headers,
         credentials: 'include',
@@ -1280,7 +1279,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     classroomIds: string[],
     material: Material,
   ) => {
-    if (!API_BASE) return;
 
     try {
       const accessToken = localStorage.getItem('accessToken');
@@ -1325,7 +1323,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         didOpen: () => Swal.showLoading(),
       });
 
-      const res = await fetch(`${API_BASE}/api/materials/share`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/materials/share`, {
         method: 'POST',
         headers,
         credentials: 'include',
@@ -1425,7 +1423,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       };
 
-      const res = await fetch(`${API_BASE}/api/documents/${materialId}`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/documents/${materialId}`, {
         method: 'DELETE',
         headers,
         credentials: 'include',
@@ -1490,12 +1488,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     });
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/teacher/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!res.ok) throw new Error('로그아웃 실패');
+      await onLogout();
 
       await Swal.close();
       await Swal.fire({
@@ -1507,7 +1500,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         showConfirmButton: false,
       });
 
-      onLogout?.();
       navigate('/', { replace: true });
     } catch (err: any) {
       await Swal.close();

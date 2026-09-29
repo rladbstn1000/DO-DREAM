@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../auth/client';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
@@ -52,7 +53,7 @@ export default function ChatHistory() {
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         };
 
-        const chatRes = await fetch(
+        const chatRes = await authenticatedFetch(
           `${RAG_BASE}/rag/chat/sessions/${sessionId}/messages?student_id=${studentId}`,
           { method: 'GET', headers, credentials: 'include' },
         );

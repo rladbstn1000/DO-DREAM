@@ -41,3 +41,30 @@
 | `npm run build -- --mode phase1` | 0 / PASS | 1,767 modules 변환. 기존 대형 chunk 경고는 남음 (오류 아님). |
 
 `phase1` Vite 모드는 새 `fe-web/local-env/`만 envDir로 사용하여 기존 `.env*`를 읽지 않는다. `/api`와 `/ai`를 같은 origin으로 사용하고 `nginx.local.conf`가 Spring/FastAPI로 전달한다. local nginx와 local 개발 서버의 CSP는 외부 API·폰트·이미지 접속을 막는다. 따라서 로컬에서는 원격 폰트 대신 기존 CSS의 fallback 글꼴이 사용될 수 있다. UI 개편·모바일 설치/네이티브 빌드는 수행하지 않았다.
+
+
+## 2-A 인증 수정과 실제 재검증 (2026-09-29)
+
+위 1차 정적 근거와 `SECURITY_BASELINE=FAIL`은 당시 결과 그대로 보존한다. 체크포인트 `8414eec66d7acb5d37794b6f0fcb6f31d3acb48c` 이후 2-A 결과는 아래와 같고, 현재 전체 상태는 **SECURITY_REGRESSION_ALL=FAIL**이다.
+
+| 기존 검사 식별자 | 1차 | 2-A | 실제 결과 |
+|---|---|---|---|
+| `be_refresh_must_not_authenticate_as_access` | FAIL | PASS | 새 RT로 Spring 보호 API →401 |
+| `ai_refresh_must_not_authenticate_as_access` | FAIL | PASS | 새 RT로 FastAPI 보호 API →401 |
+| `access_token_kind_claim` | FAIL | PASS | 새 AT의 token_use=access |
+| `student_quiz_must_exclude_correct_answer` | FAIL | FAIL | 학생 응답200, correct_answer 존재 |
+| `anonymous_file_url_must_be_denied` | FAIL | FAIL | 무토큰 파일 URL200 |
+| `unshared_file_url_must_be_denied` | FAIL | FAIL | 비공유 파일 URL200 |
+| `rag_unshared_document_must_be_denied` | FAIL | FAIL | 비공유 자료 RAG200, local provider |
+| `rag_session_document_mismatch_must_be_denied` | FAIL | FAIL | 세션/자료 불일치 RAG200, local provider |
+| `unrelated_teacher_history_must_be_denied` | FAIL | FAIL | 비담당 교사 이력 조회200 |
+
+교사·학생·비담당 교사는 각각 **새 로그인**한 AT로 Spring/FastAPI 정상 접근 양성 대조군6개가 모두200이다. 잘못된 인증 때문에 객체권한 검사가 모두401인 결과를 개선으로 취급하지 않았다. 기존9개의 안전 기대값은 그대로이며, cookie POST에 CSRF bootstrap/header를 추가했다. 보조 수명 관측은86400→900초다. 기존3개 인증PASS, 남은6개FAIL, 양성대조6개PASS, 수명검사1개PASS로 security 실행 전체16개 중10PASS/6FAIL, exit1이다.
+
+새 검증은 실제 JWT 파서/실제 Redis를 사용한다. HS256·키/claim 형식·issuer/audience·AT/RT 구분·5초 오차·jti, RT의 SHA256 v2 저장과 Lua 원자 회전, 12개 독립 HTTP 클라이언트×3라운드(매번200 한 개/401 열한 개), logout/refresh 경쟁3라운드, Redis 장애 시503/성공토큰 미반환, 유효하지 않은 비밀번호401, 쿠키/CSRF를 확인했다. 별도 Lettuce 클라이언트 두 개를 쓰는 Redis 통합 테스트도 포함한다. Web의 늦은401/로그아웃 경쟁과 native 오류의 RT 원문 전파를 회귀 테스트로 막았다.
+
+검토 중 raw URI로 CSRF 경로를 비교하면 percent-encoded refresh/logout이 쿠키만으로200이 되는 새 구현 문제를 실제 재현했다. 최종 코드는 servlet의 decoded path로 CSRF/AT 필터 예외를 일치시켰고, 교사·학생 login/refresh/logout 인코딩 경로6개는 CSRF 없이403, 유효 CSRF가 있는 인코딩 refresh는200으로 재검증했다. 첫 실패 로그는 시각별 파일로 보존했다.
+
+약12KB Authorization 헤더는 nginx에서400으로 거부되어 애플리케이션401까지 도달하지 않는다. 첫 테스트의401 고정 기대는 레이어 구분 오류였다. 최종 검사는 기존 식별자로 정확히 nginx400/토큰 미반환을 요구하고, 두 서버의 단위 테스트에서 정상 서명·정상 claim의8192자 초과 JWT가 직접 거부되는 것도 별도로 검증한다. 허용 응답 범위를 임의로 넓혀 통과시킨 것이 아니며 첫 FAIL 기록을 보존한다.
+
+실제 명령·횟수·브라우저 범위·보장하지 않는 내용은 [05 결과](05-phase2a-results.md), 계약은 [04 설계](04-auth-security-design.md)를 따른다. 원시 JWT/RT/쿠키, DB 덤프, 기존 비밀 파일은 기록/커밋하지 않았다. 자료/RAG/정답/담당관계 수정, 실제 AI·외부 공급자 및 공개 배포는 수행하지 않았다.

@@ -18,6 +18,8 @@ spring:
     redis:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
+      timeout: 2s
+      connect-timeout: 2s
   servlet:
     multipart:
       max-file-size: 10MB
@@ -34,8 +36,7 @@ management:
       show-details: always
 jwt:
   secret: ${JWT_SECRET}
-  # Preserve the existing access-token lifetime for the phase 1 security baseline.
-  access-exp-seconds: 86400
+  access-exp-seconds: ${JWT_ACCESS_EXP_SECONDS:900}
   refresh-exp-seconds: 1209600
 fastapi:
   url: ${AI_BASE_URL:http://ai:8000}
@@ -72,3 +73,7 @@ springdoc:
     path: /api/swagger-ui
     url: /api/v3/api-docs
     config-url: /api/v3/api-docs/swagger-config
+
+auth:
+  cookie:
+    secure: false

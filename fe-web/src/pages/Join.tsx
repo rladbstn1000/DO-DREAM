@@ -1,3 +1,4 @@
+import { authSession } from '../auth/client';
 // src/pages/Join.tsx
 import { useEffect, useState, useCallback } from 'react';
 import Swal from 'sweetalert2';
@@ -67,42 +68,8 @@ export default function Join({ onLoginSuccess }: JoinProps) {
     setIsLoggingIn(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/teacher/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-
-      let payload: any = null;
-      try {
-        payload = await res.json();
-      } catch {}
-
-      if (!res.ok) {
-        const msg = payload?.message || '이메일 또는 비밀번호를 확인해주세요';
-        throw new Error(msg);
-      }
-
-      // ✅ Access Token 저장 (여러 가능한 구조 지원)
-      const token =
-        payload?.data?.accessToken || payload?.accessToken || payload?.token;
-
-      if (token) {
-        localStorage.setItem('accessToken', token);
-      } else {
-        console.warn('No access token found in login response');
-      }
-
-      // 사용자 정보 저장
-      const teacherName =
-        payload?.data?.teacherName || payload?.teacherName || payload?.name;
-
-      if (teacherName) {
-        localStorage.setItem('teacherName', teacherName);
-      }
-
-      localStorage.setItem('isLoggedIn', 'true');
+      await authSession.login(email, password);
+      onLoginSuccess();
 
       await Swal.close();
       await Swal.fire({
@@ -114,7 +81,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         showConfirmButton: false,
       });
 
-      onLoginSuccess();
     } catch (err: any) {
       await Swal.close();
       showErrorToast(err?.message || '로그인 중 오류가 발생했습니다');

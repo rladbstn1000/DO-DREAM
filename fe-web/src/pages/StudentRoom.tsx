@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../auth/client';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
@@ -155,7 +156,7 @@ export default function StudentRoom() {
 
   // ✅ 특정 학생에게 공유된 학습자료 / 진행률 불러오기
   useEffect(() => {
-    if (!student || !API_BASE) return;
+    if (!student) return;
 
     const fetchStudentData = async () => {
       try {
@@ -168,7 +169,7 @@ export default function StudentRoom() {
         };
 
         // 1) 이 학생에게 공유된 학습 자료 조회
-        const sharedRes = await fetch(
+        const sharedRes = await authenticatedFetch(
           `${API_BASE}/api/materials/shared/student/${student.id}`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -204,7 +205,7 @@ export default function StudentRoom() {
           { progressPercent: number; completedAt: string | null }
         >();
 
-        const progressRes = await fetch(
+        const progressRes = await authenticatedFetch(
           `${API_BASE}/api/progress/students/${student.id}/all`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -261,7 +262,7 @@ export default function StudentRoom() {
         }
 
         // 4) 학생 통계 조회 (평균 정답률)
-        const statsRes = await fetch(
+        const statsRes = await authenticatedFetch(
           `${API_BASE}/api/stats/student/${student.id}/overall`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -292,7 +293,7 @@ export default function StudentRoom() {
         }
 
         // 5) 자료별 퀴즈 성적 조회
-        const quizRes = await fetch(
+        const quizRes = await authenticatedFetch(
           `${API_BASE}/api/stats/student/${student.id}/materials`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -328,7 +329,7 @@ export default function StudentRoom() {
           setQuizResults([]);
         }
 
-        const qaRes = await fetch(
+        const qaRes = await authenticatedFetch(
           `${RAG_BASE}/rag/chat/sessions?student_id=${student.id}`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -430,7 +431,7 @@ export default function StudentRoom() {
       });
 
       const accessToken = localStorage.getItem('accessToken');
-      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+      const pdfRes = await authenticatedFetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
         method: 'GET',
         headers: {
           accept: '*/*',

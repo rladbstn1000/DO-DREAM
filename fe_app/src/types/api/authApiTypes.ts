@@ -44,5 +44,6 @@ export interface VerifyResponse {
  */
 export interface AuthResponse {
   accessToken: string;
-  // refreshToken은 HttpOnly 쿠키로 전달됨
+  // Native 전용 응답. 웹의 cookie 로그인 응답에는 포함되지 않음.
+  refreshToken: string;
 }

@@ -7,6 +7,8 @@
     "dev": "vite --config vite.config.ts",
     "dev:local": "vite --config vite.config.ts --mode phase1 --host 127.0.0.1",
     "typecheck": "tsc -b",
+    "test:auth": "node --experimental-strip-types --test tests/auth-session.test.ts tests/native-contract.test.ts",
+    "test:browser-auth": "node tests/browser-auth.mjs",
     "build": "tsc -b && vite build --config vite.config.ts",
     "lint": "eslint .",
     "preview": "vite preview --config vite.config.ts"

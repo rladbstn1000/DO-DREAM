@@ -1,6 +1,8 @@
 // src/App.tsx
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Swal from 'sweetalert2';
+import { authSession, AUTH_STATE_EVENT } from './auth/client';
 import { MemoProvider } from './contexts/MemoContext';
 import Join from './pages/Join';
 import ClassroomList from './pages/ClassroomList';
@@ -13,37 +15,30 @@ import './index.css';
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     const stored = localStorage.getItem('isLoggedIn');
-    return stored === 'true';
+    return stored === 'true' && !!localStorage.getItem('accessToken');
   });
 
   const navigate = useNavigate();
-  const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+  useEffect(() => {
+    const changed = (event: Event) => {
+      const { authenticated, reason } = (event as CustomEvent).detail;
+      setIsLoggedIn(authenticated);
+      if (!authenticated) navigate('/', { replace: true });
+      if (reason === 'expired') {
+        void Swal.fire({ icon: 'info', title: '다시 로그인해주세요',
+          text: '로그인이 만료되었거나 인증 서비스를 사용할 수 없습니다.' });
+      }
+    };
+    window.addEventListener(AUTH_STATE_EVENT, changed);
+    return () => window.removeEventListener(AUTH_STATE_EVENT, changed);
+  }, [navigate]);
 
   const handleLogin = () => {
     setIsLoggedIn(true);
   };
 
   const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('accessToken');
-
-      await fetch(`${API_BASE}/api/auth/teacher/logout`, {
-        method: 'POST',
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error('로그아웃 요청 실패:', error);
-    } finally {
-      localStorage.removeItem('isLoggedIn');
-      localStorage.removeItem('teacherName');
-      localStorage.removeItem('accessToken');
-
-      setIsLoggedIn(false);
-      navigate('/');
-    }
+    await authSession.logout();
   };
 
   return (

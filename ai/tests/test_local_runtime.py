@@ -1,16 +1,10 @@
 """Local provider/real JWT+SQL unit checks; MySQL/Redis integration is in root smoke."""
-import base64
 import os
-from pathlib import Path
-import secrets
 import subprocess
 import sys
-import tempfile
 import unittest
 from unittest.mock import patch
-
-TEMP = tempfile.TemporaryDirectory(prefix="dodream-ai-unit-")
-os.environ.update(APP_ENV="test", LOCAL_EXTERNAL_STUBS="true", JWT_SECRET_BASE64=base64.b64encode(secrets.token_bytes(64)).decode(), DATABASE_URL=f"sqlite:///{TEMP.name}/users.db", RAG_DATABASE_URL=f"sqlite:///{TEMP.name}/rag.db", LOCAL_PROVIDER_DATA_DIR=f"{TEMP.name}/provider")
+from runtime_fixture import access_claims
 
 from fastapi.testclient import TestClient
 from jose import jwt
@@ -30,8 +24,7 @@ class LocalRuntimeTests(unittest.TestCase):
             db.add(User(id=101, name="Synthetic unit student", role=RoleEnum.STUDENT))
             db.commit()
         cls.client = TestClient(app)
-        import time
-        cls.token = jwt.encode({"sub": "101", "iss": JWT_ISSUER, "exp": int(time.time()) + 60, "role": "STUDENT"}, SECRET_KEY_BYTES, algorithm="HS256")
+        cls.token = jwt.encode(access_claims(), SECRET_KEY_BYTES, algorithm="HS256")
 
     def test_real_jwt_and_database_lookup(self):
         result = self.client.get("/users/users/me", headers={"Authorization": f"Bearer {self.token}"})

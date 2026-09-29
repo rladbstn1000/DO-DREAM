@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../auth/client';
 // src/pages/AdvancedEditor.tsx
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -640,7 +641,7 @@ export default function AdvancedEditor({
         requestBody,
       });
 
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1062,7 +1063,7 @@ export default function AdvancedEditor({
       const url = `${API_BASE}/api/documents/${pdfId}/publish`;
       const method = 'POST';
 
-      const res = await fetch(url, {
+      const res = await authenticatedFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -1083,20 +1084,6 @@ export default function AdvancedEditor({
       await Swal.close();
 
       if (!res.ok) {
-        if (res.status === 403 || res.status === 401) {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('isLoggedIn');
-          Swal.fire({
-            icon: 'error',
-            title: '인증이 만료되었습니다',
-            text: '다시 로그인해주세요.',
-            confirmButtonColor: '#192b55',
-          }).then(() => {
-            window.location.href = '/';
-          });
-          return;
-        }
-
         if (res.status === 500) {
           Swal.fire({
             icon: 'error',

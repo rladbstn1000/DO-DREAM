@@ -38,6 +38,9 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET: ${JWT_SECRET_BASE64}
+      JWT_ISSUER: dodream
+      JWT_AUDIENCE: dodream-api
+      JWT_CLOCK_SKEW_SECONDS: '5'
       AI_BASE_URL: http://ai:8000
       LOCAL_TEACHER_PASSWORD: ${LOCAL_TEACHER_PASSWORD}
       LOCAL_STUDENT_SECRET: ${LOCAL_STUDENT_SECRET}
@@ -81,6 +84,8 @@ services:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
       JWT_SECRET_BASE64: ${JWT_SECRET_BASE64}
       JWT_ISSUER: dodream
+      JWT_AUDIENCE: dodream-api
+      JWT_CLOCK_SKEW_SECONDS: '5'
       CELERY_BROKER_URL: redis://redis:6379/1
       RAG_DATABASE_URL: sqlite:////app/db_data/rag.db
       LOCAL_PROVIDER_DATA_DIR: /app/db_data/local_provider
@@ -139,6 +144,37 @@ services:
       ai: {condition: service_healthy}
     cpus: 0.5
     mem_limit: 128m
+  be-auth-short:
+    profiles: [auth-test]
+    image: dodream-phase1-be
+    environment:
+      <<: *be-env
+      JWT_ACCESS_EXP_SECONDS: '2'
+    depends_on:
+      mysql: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD-SHELL, 'curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null']
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 20
+    cpus: 2.0
+    mem_limit: 1024m
+  web-auth-test:
+    profiles: [auth-test]
+    image: dodream-phase1-web
+    volumes:
+      - ./scripts/local/nginx.auth-test.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - '127.0.0.1:15174:80'
+    networks: [default, gateway]
+    depends_on:
+      be-auth-short: {condition: service_healthy}
+      ai: {condition: service_healthy}
+    cpus: 0.5
+    mem_limit: 128m
+
 networks:
   gateway:
   default:

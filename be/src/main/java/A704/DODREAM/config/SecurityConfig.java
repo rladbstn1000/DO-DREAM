@@ -14,12 +14,16 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 
 import A704.DODREAM.auth.filter.JwtAuthFilter;
+import A704.DODREAM.auth.util.CookieUtil;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+	private final CookieUtil cookies;
 	private final JwtAuthFilter jwtAuthFilter; // 분리한 필터 주입
 
 	@Bean
@@ -40,11 +44,31 @@ public class SecurityConfig {
 		return source;
 	}
 
+    public static boolean isCookieAuthMutation(jakarta.servlet.http.HttpServletRequest request) {
+        // Match the servlet's decoded routing path, not its potentially percent-encoded raw URI.
+        return "POST".equals(request.getMethod()) && request.getServletPath().matches(
+            "/api/auth/(teacher|student)/(login|refresh|logout)");
+    }
+
+    @Bean
+    CookieCsrfTokenRepository csrfRepository() {
+        CookieCsrfTokenRepository repository = new CookieCsrfTokenRepository();
+        repository.setCookieCustomizer(cookie -> cookie.httpOnly(true).secure(cookies.secure())
+            .path("/api/auth").sameSite("Lax"));
+        return repository;
+    }
+
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
 			.cors(c -> c.configurationSource(corsConfigurationSource()))
-			.csrf(cs -> cs.disable())
+			.csrf(cs -> cs
+                .csrfTokenRepository(csrfRepository())
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                .requireCsrfProtectionMatcher(SecurityConfig::isCookieAuthMutation))
+            .exceptionHandling(errors -> errors
+                .authenticationEntryPoint((request, response, exception) -> response.sendError(401))
+                .accessDeniedHandler((request, response, exception) -> response.sendError(403)))
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
