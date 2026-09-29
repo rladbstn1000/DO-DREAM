@@ -5,13 +5,16 @@ import re
 import subprocess
 import sys
 from manage import RESULTS, PROJECT, compose_args, clean_env, settings, snapshot
+import scope_guard
 
 snapshot('resources-after')
 before=json.loads((RESULTS/'resources-before.json').read_text())
 after=json.loads((RESULTS/'resources-after.json').read_text())
 old_all={line.split('\t')[0]:line.split('\t')[1:] for line in before['containers']}
-old={i:v for i,v in old_all.items() if not v[0].startswith(PROJECT+'-')}
-project_start={v[0]:v[1] for v in old_all.values() if v[0].startswith(PROJECT+'-')}
+scope_guard.require('container_metadata' in before,'A fresh labelled before snapshot is required')
+own_ids={r['id'][:12] for r in before['container_metadata'] if r['project']==PROJECT and r['service'] in scope_guard.SERVICES}
+old={i:v for i,v in old_all.items() if i not in own_ids}
+project_start={v[0]:v[1] for i,v in old_all.items() if i in own_ids}
 new={line.split('\t')[0]:line.split('\t')[1:] for line in after['containers']}
 new_by_name={v[0]:(identifier,v[1]) for identifier,v in new.items()}
 external_identity_changes=[{'name':value[0],'before_id':identifier,
@@ -45,7 +48,21 @@ checks['runtime_logs_no_jwt']=not bool(re.search(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9
 checks['runtime_logs_no_generated_secret']=not any(v in logs.stdout for k,v in settings().items() if any(w in k for w in ('PASSWORD','SECRET')))
 checks['project_start_states_restored']=all(states.get(name)==state for name,state in project_start.items())
 checks['new_test_services_stopped']=all(state=='exited' for name,state in states.items() if name not in project_start)
-result={'checks':checks,'original_containers':len(old),'original_running':sum(v[1]=='running' for v in old.values()),'project_start_states':project_start,
+from manage import ROOT, ENV_FILE
+base=['docker','compose','--project-directory',str(ROOT),'--env-file',str(ENV_FILE),'-p',PROJECT,'-f',str(ROOT/'compose.local.yml')]
+try:
+    scope_guard.gate(['config','--quiet'],base,ROOT,clean_env(),RESULTS)
+    target_scope='PASS'
+except scope_guard.ScopeError:
+    target_scope='BLOCKED'
+checks['current_target_scope_validated']=target_scope=='PASS'
+persistence=json.loads((RESULTS/'persistence-checks.json').read_text()) if (RESULTS/'persistence-checks.json').exists() else None
+own_data=scope_guard.preservation_status(checks['original_project_volumes_preserved'],persistence)
+result={'checks':checks,'CURRENT_MUTATION_SCOPE':target_scope,
+        'CURRENT_EXTERNAL_ID_STABILITY':'PASS' if checks['all_original_container_ids_preserved'] else 'FAIL',
+        'EXTERNAL_CHANGE_ATTRIBUTION':'UNVERIFIED' if external_identity_changes else 'NOT_APPLICABLE',
+        'OWN_DATA_PRESERVATION':own_data,
+        'original_containers':len(old),'original_running':sum(v[1]=='running' for v in old.values()),'project_start_states':project_start,
         'external_identity_changes':external_identity_changes,
         'new_volumes':sorted(set(after['volumes'])-set(before['volumes'])),
         'new_networks':sorted(set(after['networks'])-set(before['networks'])),

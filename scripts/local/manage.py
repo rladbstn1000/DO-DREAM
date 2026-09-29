@@ -12,10 +12,11 @@ import socket
 import subprocess
 import sys
 import time
+import scope_guard
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / '.local'
-RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase2a' / 'results')))
+RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase2b' / 'results')))
 RESULTS.mkdir(parents=True, exist_ok=True)
 PROJECT = 'dodream-phase1'
 ENV_FILE = LOCAL / 'env'
@@ -49,9 +50,36 @@ def redact(text):
     text = re.sub(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', '[JWT REDACTED]', text)
     return text
 
+def compose_base():
+    return ['docker', 'compose', '--project-directory', str(ROOT), '--env-file', str(ENV_FILE),
+            '-p', PROJECT, '-f', str(ROOT / 'compose.local.yml')]
+
 def compose_args(*args):
-    return ['docker', 'compose', '--env-file', str(ENV_FILE), '-p', PROJECT,
-            '-f', str(ROOT / 'compose.local.yml'), *args]
+    args=list(args)
+    # Every one-off run is identifiable by labels as well as a unique task name.
+    at=0
+    while at<len(args) and args[at] in ('--profile','--progress'):at+=2
+    if at<len(args) and args[at]=='run':
+        at+=1
+        if '--name' not in args:args[at:at]=['--name','dodream-phase2b-test-'+secrets.token_hex(6)]
+        args[at:at]=['--label',scope_guard.RUN_LABEL]
+    base=compose_base()
+    operation,_=scope_guard.command_scope(args)
+    if operation in scope_guard.MUTATIONS:
+        scope_guard.gate(args,base,ROOT,clean_env(),RESULTS)
+    return [*base,*args]
+
+def stop_owned_test(name):
+    # Revalidate local endpoint and full resource scope even on a timeout path.
+    scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
+    rows=scope_guard.read_metadata(clean_env())
+    row=next((r for r in rows if r['name']==name),None)
+    scope_guard.require(row and row['project']==PROJECT and row['service'] in scope_guard.SERVICES
+                        and row['task']=='phase2b' and name.startswith('dodream-phase2b-'),
+                        'One-off cleanup target is not owned by this task')
+    # Use the inspected immutable ID; never target an unverified name.
+    return subprocess.run(['docker','stop','--time','5',row['id']],capture_output=True,text=True,
+                          env=clean_env(),timeout=15)
 
 def record(name, command, result, started):
     RESULTS.mkdir(parents=True, exist_ok=True)
@@ -132,6 +160,8 @@ def snapshot(name):
         result = subprocess.run(args, capture_output=True, text=True)
         if result.returncode: raise SystemExit(redact(result.stderr))
         items[key] = result.stdout.splitlines()
+    # New snapshots classify ownership by exact Compose labels, not a name prefix.
+    items['container_metadata']=scope_guard.read_metadata(clean_env())
     target = RESULTS / (name + '.json')
     if target.exists() and name == 'resources-before':
         print('Existing first snapshot preserved:', target); return
@@ -143,9 +173,13 @@ def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0
     if command == 'help':
-        print('init | check | config | build | up | auth-test-up | test | auth | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
+        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
         return 0
     settings()
+    if command == 'scope-test':return run('scope-unit',[sys.executable,'-m','unittest','discover','-s','scripts/local/tests','-v']).returncode
+    if command == 'scope':
+        scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
+        print('Current target metadata validated.');return 0
     if command == 'check': return check()
     if command == 'isolation': return run('isolation', [sys.executable, str(ROOT / 'scripts/local/check_resources.py')]).returncode
     if command.startswith('resources-') and command in ('resources-before', 'resources-after'):
@@ -175,4 +209,6 @@ def main():
     raise SystemExit('Unknown command. Use help.')
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:sys.exit(main())
+    except scope_guard.ScopeError as error:
+        print('BLOCKED:',str(error));sys.exit(2)

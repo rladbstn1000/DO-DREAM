@@ -3,7 +3,7 @@
 import json
 import secrets
 import subprocess
-from manage import compose_args, clean_env, RESULTS
+from manage import compose_args, clean_env, RESULTS, stop_owned_test
 
 KEY_ERRORS = {
     'ai': {
@@ -33,8 +33,7 @@ def cleanup_test_container(name, timed_out):
     try:
         if timed_out and container_present(name):
             result['stop_requested'] = True
-            stop = subprocess.run(['docker', 'stop', '--time', '5', name],
-                                  capture_output=True, text=True, env=clean_env(), timeout=15)
+            stop = stop_owned_test(name)
             result['stop_exit_code'] = stop.returncode
         result['container_removed'] = not container_present(name)
         result['status'] = 'PASS' if result['container_removed'] else 'BLOCKED'
@@ -48,7 +47,7 @@ def main():
     rows = []
     for service, variable in [('ai', 'JWT_SECRET_BASE64'), ('be', 'JWT_SECRET')]:
         for case, value in [('missing', ''), ('malformed', 'deliberately-not-base64'), ('too_short', 'c2hvcnQ=')]:
-            name = 'dodream-phase2a-keycheck-' + service + '-' + secrets.token_hex(4)
+            name = 'dodream-phase2b-keycheck-' + service + '-' + secrets.token_hex(4)
             args = compose_args('run', '--rm', '--no-deps', '--name', name, '-e', variable + '=' + value, service)
             if service == 'ai':
                 args += ['python', '-c', 'import app.main']
