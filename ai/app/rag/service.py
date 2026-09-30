@@ -285,7 +285,9 @@ class VersionedRagChain:
         docs = retrieve(self.pointer,request['input'],limit=5)
         if LOCAL_EXTERNAL_STUBS:
             from app.local_providers import MARKER
-            return {'answer':MARKER+' '+docs[0].page_content[:300]}
+            # The explicit local provider uses only this first chunk's prefix.
+            # Never present unused retrieval candidates as answer references.
+            return {'answer':MARKER+' '+docs[0].page_content[:300], 'context':docs[:1]}
         if llm is None:
             raise ValueError('Answer provider unavailable')
         prompt = ChatPromptTemplate.from_messages([
@@ -293,7 +295,7 @@ class VersionedRagChain:
             MessagesPlaceholder(variable_name='chat_history'),('user','{input}')])
         response = await (prompt | llm).ainvoke({'context':'\n'.join(doc.page_content for doc in docs),
             'input':request['input'],'chat_history':request.get('chat_history',[])})
-        return {'answer':response.content}
+        return {'answer':response.content,'context':docs}
 
 
 def get_rag_chain(pointer):

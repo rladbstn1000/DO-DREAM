@@ -117,7 +117,7 @@ class AuthorizationDatabaseTests {
         var repo = context.getBean(A704.DODREAM.material.repository.MaterialShareRepository.class);
         var storage = org.mockito.Mockito.mock(software.amazon.awssdk.services.s3.S3Client.class);
         var notifications = org.mockito.Mockito.mock(A704.DODREAM.fcm.service.FcmService.class);
-        var service = new A704.DODREAM.material.service.MaterialShareService(policy, repo,
+        var service = new A704.DODREAM.material.service.MaterialShareService(policy, context.getBean(A704.DODREAM.indexing.IndexingStore.class), repo,
             context.getBean(A704.DODREAM.material.repository.MaterialRepository.class),
             context.getBean(A704.DODREAM.user.repository.UserRepository.class),
             context.getBean(A704.DODREAM.user.repository.ClassroomRepository.class),

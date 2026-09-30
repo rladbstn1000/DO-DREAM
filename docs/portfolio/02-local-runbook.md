@@ -180,7 +180,7 @@ python3 scripts/local/manage.py isolation
 
 ## 3-B 실제 Chroma·영속 색인 작업
 
-현재 증거 기본 경로는 `.local/phase3b/results/`다. 이전 단계의 결과를 덮어쓰지 않는다. 시작 HEAD는 `705c2a440e6e2d84fb26effc792e4ddd733f23d4`, 작업 브랜치는 `codex/dodream-phase3b-indexing`이다. 설계는 [11](11-indexing-reliability-design.md), 실제 실행 판정은 [12](12-phase3b-results.md)를 따른다.
+3-B 당시 증거 기본 경로는 `.local/phase3b/results/`였다. 현재 4단계 기본 경로는 아래 절을 따른다. 이전 단계의 결과를 덮어쓰지 않는다. 3-B 시작 HEAD는 `705c2a440e6e2d84fb26effc792e4ddd733f23d4`, 작업 브랜치는 `codex/dodream-phase3b-indexing`이다. 설계는 [11](11-indexing-reliability-design.md), 실제 실행 판정은 [12](12-phase3b-results.md)를 따른다.
 
 Compose에 `chroma`와 `index-dispatcher`, 전용 `dodream-phase1_chroma-data` 볼륨을 추가했다. Chroma는 내부 HTTP8000만 사용하며 호스트 포트가 없다. AI/워커에는 Chroma 파일 경로를 마운트하지 않는다. 기존 네 볼륨은 그대로 유지한다. 최초 생성이 확인된 Chroma 볼륨의 이름·생성 시각도 고정해 이후 사라진 볼륨을 조용히 재생성하지 않는다. 모든 작업은 기존 고정 project/file/directory와 metadata gate를 거친다.
 
@@ -230,3 +230,47 @@ python3 scripts/local/manage.py isolation
 마지막에는 시작 snapshot의 **실제 서비스별 상태**로 복구하고 새 서비스는 중지한다. 시작 상태가 모두 중지가 아니라면 무조건 전체 `stop`하지 않는다. 원래 행의 모든 컬럼과 기존 객체 digest, 과거 SQLite 인덱스 행을 대조한다. `indexing_retention.py`는 상태·이름·해시 파일명만 읽는 보존 검토용 dry-run이며 삭제 모드가 없다. 미참조 후보·객체의 분류가 삭제 안전성 보증은 아니다.
 
 실제 외부 AI, 외부 저장소·OCR·알림, 공개 배포는 실행하지 않는다. 과거 ETCH와 3-A 외부 변화의 FAIL/UNVERIFIED는 유지하고 이번 before/after 판정은 별도로 기록한다.
+
+## 4단계 학생 웹 체험
+
+3-B의 검증된 서버 기능에 학생 웹을 연결한 개인 개선이다. 이번 기본 증거 디렉터리는 `.local/phase4/results/`, Chrome 실행별 준비 파일·원본 캡처는 `.local/phase4/browser-ui/`다. 위 단계별 기록의 과거 기본 디렉터리는 당시 증거 위치이며 현재 명령은 4단계 디렉터리를 사용한다. 이전 실패·후속 실행·보존 증거를 덮어쓰지 않는다. 설계는 [13](13-student-web-design.md), 이번 실제 결과는 [14](14-phase4-results.md), 화면별 시연은 [15](15-demo-walkthrough.md)를 따른다.
+
+보존된 로컬 환경에서 아래 명령을 저장소 루트에서 실행한다. 처음 환경을 만드는 경우 앞 절의 생성·추가형 migration 절차를 먼저 따른다. 소스를 변경했다면 시작 전에 `build`로 해당 이미지를 갱신한다.
+
+```bash
+cd /Users/yoonsu/Desktop/projects/DO-DREAM
+python3 scripts/local/manage.py check
+python3 scripts/local/manage.py config
+python3 scripts/local/manage.py build
+python3 scripts/local/manage.py demo-up
+python3 scripts/local/manage.py demo-prepare
+python3 scripts/local/manage.py status
+```
+
+접속 경로는 [학생 체험 /demo](http://127.0.0.1:15173/demo), [기존 교사 로그인](http://127.0.0.1:15173/)이다. 기본 웹 포트는 15173이며 기존 `.local/env`의 `WEB_PORT`를 바꾼 경우 그 포트를 사용한다. `demo-up`이 `DODREAM_DEMO_ENABLED=true`를 명시적으로 설정한다. 서버 `local` 프로필과 이 opt-in이 모두 필요하며 일반 `up`의 기본값은 체험 비활성이다. 프런트엔드 flag나 요청 주소가 서버 기능을 켜지 않는다. 체험용 비밀을 기존 `.env`에서 가져오거나 JS 번들에 넣지 않는다.
+
+`demo-prepare`는 전용 합성 교사로 실제 인증한 뒤 준비 API를 호출한다. 직접 작성한 **물의 여행**, **생활 속 분리배출**과 각 2문제는 `student-web-v1` 버전으로 준비된다. 실제 발행·작업 원장·Celery·Chroma를 거쳐 현재 원본을 읽을 수 있어야 준비가 완료된다. 같은 버전의 준비를 두 번 호출해 식별자와 논리 개수가 바뀌지 않는지 확인한다. 기존 발행본을 삭제하거나 SQL로 ACTIVE 포인터를 조작하지 않는다. 준비 결과의 `student-demo-plan.json`은 비밀·정답을 포함하지 않는 자동 검사 입력이다.
+
+독립 브라우저 방문자는 각각 새 합성 학생을 배정받고, 같은 visitor는 기존 학생을 재사용한다. 샘플 본문을 함께 읽어도 대화·풀이·진도는 다른 사용자와 공유하지 않는다. 현재 로그인은 자동 교체하지 않는다. 교사·학생 동시 시연은 독립 context를 사용하고 역할 전환은 명시적으로 로그아웃한 뒤 한다. 이것은 공개 가능한 게스트 인증이나 실제 학생 등록·생체 인증의 검증이 아니다.
+
+학생 웹 전체 흐름의 재현 명령은 다음과 같다. 짧은 AT용 자체 서비스만 별도 설정하며 일반 서비스의 토큰 수명을 변경하지 않는다.
+
+```bash
+DODREAM_DEMO_ENABLED=true python3 scripts/local/manage.py auth-test-up
+python3 scripts/local/manage.py student-web
+```
+
+`student-web`은 앞선 `demo-prepare`의 plan을 읽어 독립 Chrome context에서 시작 버튼·교재 선택·본문/단원·질문/참고 자료·퀴즈·결과/새로고침·교사 결과 화면을 실제 조작한다. 준비용 API/DB 확인, 서비스 장애, 응답 유실·오류 주입은 정상 화면 흐름과 구분한다. 시작/종료 앱 소스 해시가 같아야 하며 실패 원본을 보존한 뒤 수정 시 새로운 전체 실행으로 시작한다. 실행별 `phase4-acceptance-<runId>.json`과 Chrome 결과를 확인하며 다른 실행의 부분 PASS 수를 합산하지 않는다. `npm run test:browser-student` 하네스만 준비 없이 직접 실행하지 않는다. API 전용 검사 `python3 scripts/local/manage.py demo-api`도 UI E2E 결과와 구분한다.
+
+웹 단위검사는 기존 auth/authorization/grading/indexing과 함께 `npm --prefix fe-web run test:student`, 타입 검사는 `npm --prefix fe-web run typecheck`, 빌드는 `npm --prefix fe-web run build -- --mode phase1`로 수행한다. 실제 서비스 장애·인증·채점·Chrome 검사는 같은 합성 계정이나 서비스 상태가 겹치지 않도록 순차 실행한다. 기존 3-B 전체 명령의 FAIL과 후속 coverage PASS를 이번 결과로 다시 집계하지 않는다.
+
+로컬 대역 답변·8차원 로컬 임베딩·로컬 채점은 로그인 후 서버의 `/rag/mode` 응답으로 표시한다. 실제 외부 AI·OCR·저장소·음성 서비스는 호출하지 않는다. 로컬 한국어 voice가 없는 브라우저는 안내 후 텍스트 학습을 계속한다. **TTS_AUDIBLE_CHECK=NOT_RUN**, **SCREEN_READER_MANUAL=NOT_RUN**이며 합성 speech 단위검사와 브라우저 API 관측으로 실제 청취·VoiceOver·접근성 인증을 주장하지 않는다. **REAL_AI_INTEGRATION=NOT_RUN**, **PUBLIC_DEPLOYMENT_READY=false**다. 공개 데모 URL은 없고 배포·터널·다음 모델 연결에는 착수하지 않는다.
+
+시연을 종료할 때는 다음 명령을 사용한다.
+
+```bash
+python3 scripts/local/manage.py stop
+python3 scripts/local/manage.py isolation
+```
+
+이번 4단계처럼 시작 시 자체 서비스가 모두 중지였을 때의 종료 명령이다. 이미 실행 중인 자체 서비스가 있었다면 시작 snapshot에 맞춰 이번에 시작한 서비스만 원래 상태로 돌린다. 다른 프로젝트 자원은 변경하지 않는다. 새 샘플·합성 학생 기록·영속 볼륨은 보존하며 `down -v`, prune, DB/Chroma reset을 사용하지 않는다. 재체험은 `demo-up` → `demo-prepare` → `/demo` 순서다.

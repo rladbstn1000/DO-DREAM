@@ -30,8 +30,10 @@ export function createAuthSession(options: Options) {
   let csrf: { token: string; headerName: string } | null = null;
   let csrfFlight: { epoch: number; promise: Promise<typeof csrf> } | null = null;
   let refreshFlight: { epoch: number; promise: Promise<string> } | null = null;
+  let demoFlight: Promise<TokenResponse> | null = null;
   const controllers = new Set<AbortController>();
   const token = () => options.storage.getItem('accessToken');
+  const role = () => options.storage.getItem('authRole') === 'STUDENT' ? 'student' : 'teacher';
   const assertCurrent = (expected: number) => {
     if (epoch !== expected) throw new AuthSessionError('인증 상태가 변경되었습니다.');
   };
@@ -42,7 +44,7 @@ export function createAuthSession(options: Options) {
     refreshFlight = null;
     csrfFlight = null;
     csrf = null;
-    for (const key of ['accessToken', 'isLoggedIn', 'teacherName']) options.storage.removeItem(key);
+    for (const key of ['accessToken', 'isLoggedIn', 'teacherName', 'authRole']) options.storage.removeItem(key);
     options.onChange?.(false, reason);
     return epoch;
   };
@@ -54,11 +56,14 @@ export function createAuthSession(options: Options) {
     if (request.signal.aborted) abort();
     else request.signal.addEventListener('abort', abort, { once: true });
     controllers.add(controller);
+    let timer: ReturnType<typeof setTimeout>;
     try {
-      const response = await options.fetch(new Request(request, { signal: controller.signal }));
+      const response = await Promise.race([options.fetch(new Request(request, { signal: controller.signal })),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new AuthSessionError('요청 대기 시간이 끝났습니다.', 504)); }, 20000); })]);
       assertCurrent(expected);
       return response;
     } finally {
+      clearTimeout(timer!);
       controllers.delete(controller);
       request.signal.removeEventListener('abort', abort);
     }
@@ -88,10 +93,10 @@ export function createAuthSession(options: Options) {
     finally { if (csrfFlight === flight) csrfFlight = null; }
   }
 
-  async function authPost(action: string, body: unknown, expected: number) {
+  async function authPost(action: string, body: unknown, expected: number, kind = role()) {
     const protection = await getCsrf(expected);
     assertCurrent(expected);
-    return send(new Request(new URL(`${apiBase}/api/auth/teacher/${action}`, options.origin), {
+    return send(new Request(new URL(`${apiBase}/api/auth/${kind}/${action}`, options.origin), {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json', [protection!.headerName]: protection!.token },
       body: JSON.stringify(body),
@@ -177,6 +182,7 @@ export function createAuthSession(options: Options) {
     assertCurrent(expected);
     options.storage.setItem('accessToken', data.accessToken);
     options.storage.setItem('isLoggedIn', 'true');
+    options.storage.setItem('authRole', 'TEACHER');
     if (data.teacherName) options.storage.setItem('teacherName', data.teacherName);
     options.onChange?.(true);
     return data;
@@ -185,11 +191,36 @@ export function createAuthSession(options: Options) {
   async function logout() {
     // Invalidate immediately; even a late successful refresh cannot restore local state.
     // Server logout revokes the user's current Redis session using the presented RT.
+    const kind = role();
     const expected = transition('logout');
-    const response = await authPost('logout', {}, expected);
+    const response = await authPost('logout', {}, expected, kind);
     if (!response.ok) throw new AuthSessionError(
       '이 기기에서 로그아웃했습니다. 서버 세션 폐기는 확인하지 못했습니다.', response.status);
   }
 
-  return { authenticatedFetch, login, logout, clear: () => transition('expired'), getToken: token, getEpoch: () => epoch };
+  /** Local demo credentials and refresh tokens are exclusively HttpOnly cookies. */
+  function startStudentDemo(recover = false): Promise<TokenResponse> {
+    if (demoFlight) return demoFlight;
+    if (token()) return Promise.reject(new AuthSessionError('먼저 현재 계정에서 로그아웃해주세요.', 409));
+    const expected = epoch;
+    const promise = (async () => {
+      if (!recover) {
+        const bootstrap = await authPost('bootstrap', {}, expected, 'demo');
+        if (!bootstrap.ok) throw new AuthSessionError('체험 준비를 완료하지 못했습니다.', bootstrap.status);
+      }
+      const response = await authPost(recover ? 'refresh' : 'start', {}, expected, recover ? 'student' : 'demo');
+      const data = await readToken(response, expected);
+      assertCurrent(expected);
+      options.storage.setItem('authRole', 'STUDENT');
+      options.storage.setItem('accessToken', data.accessToken);
+      options.storage.setItem('isLoggedIn', 'true');
+      options.onChange?.(true);
+      return data;
+    })();
+    demoFlight = promise;
+    void promise.finally(() => { if (demoFlight === promise) demoFlight = null; }).catch(() => {});
+    return promise;
+  }
+
+  return { authenticatedFetch, login, logout, startStudentDemo, clear: () => transition('expired'), getToken: token, getEpoch: () => epoch };
 }

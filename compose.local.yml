@@ -44,6 +44,8 @@ services:
       AI_BASE_URL: http://ai:8000
       LOCAL_TEACHER_PASSWORD: ${LOCAL_TEACHER_PASSWORD}
       LOCAL_STUDENT_SECRET: ${LOCAL_STUDENT_SECRET}
+      LOCAL_DEMO_ENABLED: ${DODREAM_DEMO_ENABLED:-false}
+      LOCAL_DEMO_MAX_VISITORS: '100'
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
     volumes:
       - be-data:/app/local-data
@@ -128,6 +130,10 @@ services:
       PERSIST_DIRECTORY: /chroma/chroma
       ANONYMIZED_TELEMETRY: 'FALSE'
       ALLOW_RESET: 'FALSE'
+      # 0.6.3 accounts persistent segment disk sizes, not total process RSS.
+      # Bound retained segments when auditing many preserved old collections.
+      CHROMA_SEGMENT_CACHE_POLICY: LRU
+      CHROMA_MEMORY_LIMIT_BYTES: '8388608'
     volumes:
       - chroma-data:/chroma/chroma
     healthcheck:

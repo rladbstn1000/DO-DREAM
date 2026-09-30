@@ -170,7 +170,7 @@ def main():
         return self_test()
     if sys.argv[1:]:
         raise SystemExit('Only --self-test or read-only inventory with no arguments is supported')
-    from manage import ROOT, source_identity
+    from manage import RESULTS, source_identity
     started = datetime.now(timezone.utc)
     report = {'mode': 'READ_ONLY_DRY_RUN', 'deleteSupported': False, 'action': 'retain_all',
               'safeToDelete': False, 'startedAt': started.isoformat(), 'source': source_identity(),
@@ -186,7 +186,7 @@ def main():
         report.update(status='FAIL', errorType=type(error).__name__)
         code = 1
     report.update(completedAt=datetime.now(timezone.utc).isoformat(), exitCode=code)
-    output = ROOT / '.local/phase3b/results'
+    output = RESULTS
     output.mkdir(parents=True, exist_ok=True)
     name = 'index-retention-dry-run-' + started.strftime('%Y%m%dT%H%M%S%fZ') + '-' + uuid.uuid4().hex[:8] + '.json'
     text = json.dumps(report, ensure_ascii=False, indent=2) + '\n'

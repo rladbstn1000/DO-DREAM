@@ -134,7 +134,7 @@ async function studentLogout(page) {
     return response.status;
   });
 }
-const lessonTitle = process.env.DODREAM_AUTHZ_BROWSER_TITLE || '[AUTHZ 3B] editable';
+const lessonTitle = process.env.DODREAM_AUTHZ_BROWSER_TITLE || '[AUTHZ 4] editable';
 let lesson;
 let original;
 
@@ -307,7 +307,7 @@ try {
   if (browser) await browser.close();
   const report = { browser: 'Chrome ' + version, origin, checks, externalRequestsBlocked: blockedExternal,
     nativeDeviceExecution: 'NOT_RUN', counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase3b/results/browser-authorization-checks.json');
+  const output = path.join(root, '.local/phase4/results/browser-authorization-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');

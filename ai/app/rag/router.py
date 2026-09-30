@@ -1,5 +1,6 @@
 from datetime import datetime
 import asyncio
+import json
 from typing import Optional, List
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,7 +12,8 @@ from app.rag.tasks import create_embedding_task, create_initial_embedding_task
 from app.rag.service import get_rag_chain
 from app.rag.database import get_rag_db
 from app.rag import models as rag_models
-from app.rag.models import ChatSessionDetailDto, ChatSessionDto
+from app.rag.models import ChatSessionDetailDto, ChatSessionDto, ChatMessageDto
+from app.rag.provenance import SourceReference, RuntimeMode, runtime_mode, source_references
 from app.rag.quiz_service import generate_quiz_with_rag, grade_quiz_answers
 from app.rag.grading_contract import (BatchGradingRequest, GradingResultResponse,
     load_grading_snapshot, validate_results, GRADING_TIMEOUT_SECONDS)
@@ -21,7 +23,8 @@ from app.security.authorization import (
     teacher_only, require_document, require_file, require_object_url, document_json_key,
     require_history_subject, require_history_material, require_quizzes, document_ref,
 )
-from app.common.db_session import get_db
+from app.common.db_session import get_db, SessionLocal
+from app.common.database import get_user_from_db
 from app.indexing import store as index_store
 from app.indexing.source import INDEX_SPEC
 from app.rag.service import download_json_from_cloudfront
@@ -45,13 +48,19 @@ class EmbeddingRequest(RequestModel):
 
 class ChatRequest(RequestModel):
     document_id: str
-    question: str
+    question: str = Field(min_length=1,max_length=4000)
     session_id: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
     answer: str
     session_id: str
+    message_id: int
+    document_id: str
+    source_revision: int
+    source_hash: str
+    sources: List[SourceReference]
+    mode: RuntimeMode
 
 
 class GenerateQuizRequest(RequestModel):
@@ -74,6 +83,11 @@ class GenerateQuizResponse(BaseModel):
 
 
 router = APIRouter(prefix="/rag", tags=["RAG"])
+
+
+@router.get('/mode',response_model=RuntimeMode)
+def get_runtime_mode(current_user: User = Depends(get_current_user)):
+    return runtime_mode()
 
 
 async def accept_embedding(request, current_user, common_db, document_id):
@@ -125,7 +139,8 @@ async def api_chat_with_rag(
     request: ChatRequest, rag_db: Session = Depends(get_rag_db),
     current_user: User = Depends(get_current_user), common_db: Session = Depends(get_db),
 ):
-    require_document(common_db, current_user, request.document_id)
+    material = require_document(common_db, current_user, request.document_id)
+    material_title = getattr(material,'title',None)
     session = None
     messages = []
     if request.session_id is not None:
@@ -157,15 +172,47 @@ async def api_chat_with_rag(
                for m in messages if m.role in {"user", "ai"}]
     try:
         chain = get_rag_chain(pointer)
-        result = await chain.ainvoke({"input": request.question, "chat_history": history})
+        result = await asyncio.wait_for(chain.ainvoke({"input": request.question, "chat_history": history}),timeout=15)
         answer = result["answer"]
-        rag_db.add(rag_models.ChatMessage(session_id=session.id, role="ai", content=answer))
+        if not isinstance(answer,str) or not answer.strip():
+            raise ValueError('Answer provider returned invalid text')
+        sources=source_references(pointer,result.get('context'),material_title)
+        mode=runtime_mode()
+        # Provider waiting must not retain a previous permission grant. Resolve
+        # current authority in a new DB session, never the closed/expired one.
+        revalidate_answer_source(current_user.id,request.document_id,pointer)
+        message=rag_models.ChatMessage(session_id=session.id, role="ai", content=answer)
+        rag_db.add(message)
+        rag_db.flush()
+        rag_db.add(rag_models.ChatMessageSources(message_id=message.id,
+            sources_json=json.dumps([source.model_dump() for source in sources],ensure_ascii=False),
+            mode_json=mode.model_dump_json()))
         rag_db.commit()
-        return ChatResponse(answer=answer, session_id=session.id)
+        return ChatResponse(answer=answer,session_id=session.id,message_id=message.id,
+            document_id=request.document_id,source_revision=pointer['source_revision'],
+            source_hash=pointer['source_hash'],sources=sources,mode=mode)
     except HTTPException:
+        rag_db.rollback()
         raise
     except Exception:
+        rag_db.rollback()
         raise HTTPException(503, "RAG processing unavailable") from None
+
+
+def revalidate_answer_source(user_id,document_id,selected):
+    with SessionLocal() as fresh_db:
+        principal=get_user_from_db(fresh_db,user_id)
+        if principal is None:raise HTTPException(404,'Object not found')
+        try:
+            current=index_store.resolve_active(fresh_db,principal,document_id)
+        except HTTPException as error:
+            if error.status_code==409:
+                raise HTTPException(409,{'code':'RAG_SOURCE_CHANGED'}) from None
+            raise
+    # A same-source spec/candidate replacement is safe. Do not switch the answer
+    # to that candidate or run retrieval again after the model used selected.
+    if any(current[key]!=selected[key] for key in ('resource_kind','resource_id','source_revision','source_hash')):
+        raise HTTPException(409,{'code':'RAG_SOURCE_CHANGED'})
 
 
 @router.post("/quiz/generate", response_model=GenerateQuizResponse)
@@ -251,4 +298,39 @@ async def get_student_chat_session_history(
         raise
     messages = rag_db.query(rag_models.ChatMessage).filter(
         rag_models.ChatMessage.session_id == session.id).order_by(rag_models.ChatMessage.created_at.asc()).all()
-    return ChatSessionDetailDto(session_id=session.id, material_title=material.title, messages=messages)
+    version=rag_db.get(rag_models.ChatSessionIndex,session.id)
+    return ChatSessionDetailDto(session_id=session.id,document_id=session.document_id,
+        material_title=material.title,source_revision=version.source_revision if version else None,
+        source_hash=version.source_hash if version else None,
+        messages=[message_with_sources(rag_db,message) for message in messages])
+
+
+def message_with_sources(rag_db,message):
+    record=rag_db.get(rag_models.ChatMessageSources,message.id)
+    return ChatMessageDto(id=message.id,role=message.role,content=message.content,created_at=message.created_at,
+        sources=[SourceReference.model_validate(value) for value in json.loads(record.sources_json)] if record else [],
+        mode=RuntimeMode.model_validate_json(record.mode_json) if record else None)
+
+
+@router.get('/chat/sessions/{session_id}/messages/{message_id}/sources/{source_index}',response_model=SourceReference)
+def get_chat_source(session_id: str,message_id: int,source_index: int,student_id: int = Query(...),
+    current_user: User = Depends(get_current_user),rag_db: Session = Depends(get_rag_db),
+    common_db: Session = Depends(get_db)):
+    require_history_subject(common_db,current_user,student_id)
+    session=rag_db.query(rag_models.ChatSession).filter(rag_models.ChatSession.id==session_id,
+        rag_models.ChatSession.user_id==student_id).first()
+    if session is None:raise HTTPException(404,'Object not found')
+    require_history_material(common_db,current_user,student_id,session.document_id)
+    message=rag_db.query(rag_models.ChatMessage).filter(rag_models.ChatMessage.id==message_id,
+        rag_models.ChatMessage.session_id==session.id,rag_models.ChatMessage.role=='ai').first()
+    if message is None:raise HTTPException(404,'Object not found')
+    pointer=index_store.resolve_active(common_db,current_user,session.document_id)
+    version=rag_db.get(rag_models.ChatSessionIndex,session.id)
+    if version is None or version.source_revision!=pointer['source_revision'] or version.source_hash!=pointer['source_hash']:
+        raise HTTPException(409,{'code':'RAG_SOURCE_CHANGED'})
+    sources=message_with_sources(rag_db,message).sources
+    if source_index<0 or source_index>=len(sources):raise HTTPException(404,'Object not found')
+    source=sources[source_index]
+    if source.document_id!=session.document_id or source.source_revision!=version.source_revision or source.source_hash!=version.source_hash:
+        raise HTTPException(409,{'code':'RAG_SOURCE_CHANGED'})
+    return source

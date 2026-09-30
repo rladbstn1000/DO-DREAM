@@ -76,6 +76,18 @@ async function run(name, action) {
     if (name === 'browser_login_cookie_csrf_logout') throw error;
   }
 }
+async function enterClassroomBeforeExpiry(page, counts) {
+  // A full reload now verifies /api/session/me before mounting teacher screens,
+  // so it refreshes serially and no longer creates the old concurrent-401 race.
+  // Real SPA navigation keeps that verified provider mounted. Returning through
+  // the existing button remounts ClassroomList's independent document/class
+  // fetch effects with the same expired AT and the actual shared auth client.
+  await page.locator('.cl-classroom-card').first().click();
+  await page.waitForURL(/\/classroom\/[1-9][0-9]*$/);
+  await page.waitForLoadState('networkidle');
+  await page.getByRole('button', { name: '목록으로', exact: true }).waitFor();
+  assert.equal(counts().refreshes, 0, 'Classroom entry must finish before the short AT expires');
+}
 try {
   browser = await playwright.chromium.launch({
     executablePath: process.env.DODREAM_CHROME_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -119,9 +131,19 @@ try {
   await run('browser_concurrent_expiration', async () => {
     const { context, page, counts } = await fresh();
     try {
+      await enterClassroomBeforeExpiry(page, counts);
       await delay(8000);
-      await page.reload();
-      await page.waitForLoadState('networkidle');
+      // SPA navigation does not reset the document's load-state history.
+      // Register the actual expired/replayed responses before the UI action,
+      // then wait for both independent requests and their single refresh.
+      const responses = Promise.all([
+        ['/api/documents/published', 401], ['/api/classes/teacher', 401],
+        ['/api/auth/teacher/refresh', 200],
+        ['/api/documents/published', 200], ['/api/classes/teacher', 200],
+      ].map(([suffix, status]) => page.waitForResponse(r => r.url().endsWith(suffix) && r.status() === status)));
+      await page.getByRole('button', { name: '목록으로', exact: true }).click();
+      await page.waitForURL('**/classrooms');
+      await responses;
       check('browser_concurrent_expiration_single_refresh', counts().expiredRequests >= 2 && counts().refreshes === 1, JSON.stringify(counts()));
       const status = await page.evaluate(async () => (await fetch('/api/teacher/me', { headers: { Authorization: 'Bearer ' + localStorage.getItem('accessToken') } })).status);
       check('browser_refreshed_protected_api_success', status === 200 && page.url().endsWith('/classrooms'), 'HTTP ' + status);
@@ -130,6 +152,7 @@ try {
   await run('browser_late_401_reuses_refreshed_token', async () => {
     const { context, page, counts } = await fresh();
     try {
+      await enterClassroomBeforeExpiry(page, counts);
       await delay(8000);
       let release; const gate = new Promise(resolve => { release = resolve; });
       let intercepted = false;
@@ -137,12 +160,17 @@ try {
         if (intercepted) return route.continue();
         intercepted = true;
         const response = await route.fetch();
+        assert.equal(response.status(), 401, 'The delayed document response must be a real expired-AT rejection');
         await gate;
         await route.fulfill({ response });
       });
       const refreshed = page.waitForResponse(r => r.url().endsWith('/api/auth/teacher/refresh') && r.status() === 200);
-      await page.reload({ waitUntil: 'domcontentloaded' });
+      const replayedClass = page.waitForResponse(r => r.url().endsWith('/api/classes/teacher') && r.status() === 200);
+      await page.getByRole('button', { name: '목록으로', exact: true }).click();
       await refreshed;
+      // The successful class replay proves the client saved and used the new AT
+      // before the older document 401 reaches that same client.
+      await replayedClass;
       release();
       await page.waitForLoadState('networkidle');
       check('browser_late_401_no_second_refresh', counts().refreshes === 1 && await page.evaluate(() => !!localStorage.getItem('accessToken')), JSON.stringify(counts()));
@@ -169,6 +197,7 @@ try {
   await run('browser_logout_refresh_race', async () => {
     const { context, page, counts } = await fresh();
     try {
+      await enterClassroomBeforeExpiry(page, counts);
       await delay(8000);
       let arrived; const seen = new Promise(resolve => { arrived = resolve; });
       let release; const gate = new Promise(resolve => { release = resolve; });
@@ -178,7 +207,7 @@ try {
         arrived(); await gate;
         await route.fulfill({ response }).catch(() => {}); // logout may abort delivery.
       });
-      await page.reload({ waitUntil: 'domcontentloaded' }); await within(seen);
+      await page.getByRole('button', { name: '목록으로', exact: true }).click(); await within(seen);
       await page.getByRole('button', { name: '로그아웃', exact: true }).click();
       const ended = page.waitForResponse(r => r.url().endsWith('/api/auth/teacher/logout'));
       await page.getByRole('button', { name: '로그아웃', exact: true }).last().click();
@@ -200,7 +229,7 @@ try {
   if (browser) await browser.close();
   const report = { browser: 'Chrome ' + version, origin, checks, externalRequestsBlocked: blockedExternal,
     nativeDeviceExecution: 'NOT_RUN', counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase3b/results/browser-checks.json');
+  const output = path.join(root, '.local/phase4/results/browser-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');

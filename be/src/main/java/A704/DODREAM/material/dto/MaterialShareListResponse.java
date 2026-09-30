@@ -28,6 +28,7 @@ public class MaterialShareListResponse {
 	@AllArgsConstructor
 	public static class SharedMaterialInfo {
 		private Long shareId;
+        @lombok.Setter private A704.DODREAM.indexing.StudentIndexingSummary indexing;
 		private Long materialId;
 		private String materialTitle;
 

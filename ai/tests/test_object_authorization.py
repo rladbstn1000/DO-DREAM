@@ -16,7 +16,7 @@ from app.common.models import (User, RoleEnum, TeacherProfile, StudentProfile, C
     UploadedFile, Material, MaterialShare, Quiz, GradingAttempt, GradingAttemptItem)
 from grading_fixture import make_attempt
 from app.rag.database import SessionLocal as RagSession
-from app.rag.models import ChatSession, ChatMessage, EmbeddingTask, ChatSessionIndex
+from app.rag.models import ChatSession, ChatMessage, EmbeddingTask, ChatSessionIndex, ChatMessageSources
 from app.rag.service import extract_data_from_json, _get_collection_name
 from indexing_fixture import seed_index as create_and_store_embeddings, enable, clear_resources
 from app.indexing.models import IndexResource, IndexJob, IndexExecution
@@ -40,6 +40,8 @@ class ObjectAuthorizationTests(unittest.TestCase):
         clear_resources(list(range(5101,5106))+list(range(4101,4106)))
         with RagSession() as db:
             ids = [r.id for r in db.query(ChatSession).filter(ChatSession.user_id.in_([OWNER, OTHER, OUTSIDE, STUDENT, PEER, OTHER_CLASS, SECOND])).all()]
+            message_ids=[r.id for r in db.query(ChatMessage).filter(ChatMessage.session_id.in_(ids)).all()]
+            db.query(ChatMessageSources).filter(ChatMessageSources.message_id.in_(message_ids)).delete(synchronize_session=False)
             db.query(ChatSessionIndex).filter(ChatSessionIndex.session_id.in_(ids)).delete(synchronize_session=False)
             db.query(ChatMessage).filter(ChatMessage.session_id.in_(ids)).delete(synchronize_session=False)
             db.query(ChatSession).filter(ChatSession.id.in_(ids)).delete(synchronize_session=False)

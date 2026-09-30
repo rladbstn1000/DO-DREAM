@@ -159,6 +159,12 @@ public class IndexingStore {
         var rows=db.queryForList("SELECT j.* FROM index_resources r JOIN index_jobs j ON j.id=r.latest_job_id AND j.resource_pk=r.id WHERE r.resource_kind=? AND r.resource_id=?",kind,id);
         return rows.isEmpty()?IndexingSummary.none():summary(rows.get(0));
     }
+    public StudentIndexingSummary studentResource(long actor,long id) {
+        if(TransactionSynchronizationManager.isActualTransactionActive()) {
+            policy.studentMaterial(actor,id);return StudentIndexingSummary.from(resourceSummary("MATERIAL",id));
+        }
+        return transaction(s->{policy.studentMaterial(actor,id);return StudentIndexingSummary.from(resourceSummary("MATERIAL",id));});
+    }
     public IndexingSummary job(long actor,String id) { return transaction(s->summary(authorizedJob(actor,id,false))); }
     public IndexingSummary retry(long actor,String id,int expectedGeneration) {
         return transaction(s->{

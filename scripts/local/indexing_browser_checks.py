@@ -41,7 +41,7 @@ def browser(r):
         raise
 
     run_id = str(uuid.uuid4())
-    directory = ROOT / '.local/phase3b/browser-ui'
+    directory = RESULTS.parent / 'browser-ui'
     directory.mkdir(parents=True, exist_ok=True)
     plan = {'runId': run_id, 'publishTitle': publish['title'], 'firstFailureTitle': first['title'],
             'reindexFailureTitle': reindex['title']}
@@ -139,7 +139,7 @@ def browser(r):
     if error is not None:
         check('index_ui_orchestration_completed', False, {'errorType': type(error).__name__, 'cleanupErrors': cleanup_errors})
     check('index_ui_owned_child_and_dispatcher_restored', not cleanup_errors, cleanup_errors)
-    report = json.loads((ROOT / '.local/phase3b/results/browser-indexing-checks.json').read_text())
+    report = json.loads((RESULTS / 'browser-indexing-checks.json').read_text())
     counts = report.get('counts', {})
     check('actual_chrome_indexing_ui_14_checks', process.returncode == 0 and complete.get('exitCode') == 0
           and counts == {'PASS': 14, 'FAIL': 0, 'BLOCKED': 0} and complete.get('counts') == counts

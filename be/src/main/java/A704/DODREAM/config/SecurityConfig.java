@@ -47,7 +47,7 @@ public class SecurityConfig {
     public static boolean isCookieAuthMutation(jakarta.servlet.http.HttpServletRequest request) {
         // Match the servlet's decoded routing path, not its potentially percent-encoded raw URI.
         return "POST".equals(request.getMethod()) && request.getServletPath().matches(
-            "/api/auth/(teacher|student)/(login|refresh|logout)");
+            "/api/auth/((teacher|student)/(login|refresh|logout)|demo/(bootstrap|start))");
     }
 
     @Bean

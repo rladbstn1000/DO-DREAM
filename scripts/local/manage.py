@@ -17,7 +17,7 @@ import scope_guard
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / '.local'
-RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase3b' / 'results')))
+RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase4' / 'results')))
 RESULTS.mkdir(parents=True, exist_ok=True)
 PROJECT = 'dodream-phase1'
 ENV_FILE = LOCAL / 'env'
@@ -49,6 +49,7 @@ def redact(text):
             if any(word in key for word in ('PASSWORD', 'SECRET')) and value:
                 text = text.replace(value, '[REDACTED]')
     text = re.sub(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+', '[JWT REDACTED]', text)
+    text = re.sub(r'(Using generated security password:)\s*\S+', r'\1 [REDACTED]', text)
     return text
 
 def compose_base():
@@ -244,7 +245,7 @@ def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0
     if command == 'help':
-        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | authorization | grading | grading-migrate | indexing | indexing-migrate | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
+        print('init | check | config | scope | scope-test | build | up | demo-up | demo-prepare | demo-api | student-web | auth-test-up | test | auth | authorization | grading | grading-migrate | indexing | indexing-migrate | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
         return 0
     settings()
     if command == 'scope-test':return run('scope-unit',[sys.executable,'-m','unittest','discover','-s','scripts/local/tests','-v']).returncode
@@ -260,6 +261,15 @@ def main():
     if command == 'up':
         snapshot('resources-before')
         return compose('compose-up', 'up', '-d', '--wait', '--wait-timeout', '240').returncode
+    if command == 'demo-up':
+        # Opt-in is deliberate and server-side; never infer it from browser flags.
+        os.environ['DODREAM_DEMO_ENABLED']='true'
+        snapshot('resources-before')
+        return compose('demo-up','up','-d','--wait','--wait-timeout','240').returncode
+    if command in ('demo-prepare','demo-api','student-web'):
+        script={'demo-prepare':'student_demo_prepare.py','demo-api':'verify_student_demo.py',
+                'student-web':'verify_student_web.py'}[command]
+        return run(command,[sys.executable,str(ROOT/'scripts/local'/script),*sys.argv[2:]]).returncode
     if command == 'auth-test-up':
         return compose('auth-test-up', '--profile', 'auth-test', 'up', '-d', '--wait', '--wait-timeout', '240', 'be-auth-short', 'web-auth-test').returncode
     if command == 'status':

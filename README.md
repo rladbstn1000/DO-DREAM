@@ -1,5 +1,7 @@
 # 📱 DO:DREAM - AI 기반 시각장애인 음성 학습 플랫폼
 
+> 개인 개선 로컬 데모: 기존 팀 구현을 보존하고 학생 웹 체험을 추가했습니다. `python3 scripts/local/manage.py demo-up` → `python3 scripts/local/manage.py demo-prepare`로 준비한 뒤 [학생 체험](http://127.0.0.1:15173/demo)에 접속합니다. 최초 빌드와 자세한 절차는 [시연 안내](docs/portfolio/15-demo-walkthrough.md), 검사 범위와 한계는 [4단계 결과](docs/portfolio/14-phase4-results.md)를 참고하세요. 실제 서버·DB·Chroma를 사용하며 답변·임베딩·채점은 명시적인 로컬 대역입니다. 공개 배포·실제 AI 품질·VoiceOver 인증을 의미하지 않습니다. 아래 팀 소개와 기존 성과는 팀 구현 당시 기록입니다.
+
 ![web-main](./img/DODREAM_main_page.png)
 ![app-main](./img/DODREAM_app_library.jpg)|![app-main](./img/DODREAM_app_player.jpg)
 ---|---|

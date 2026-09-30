@@ -45,6 +45,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 @Transactional
 public class MaterialShareService {
     private final A704.DODREAM.authorization.AuthorizationPolicy policy;
+    private final A704.DODREAM.indexing.IndexingStore indexing;
 	private final MaterialShareRepository materialShareRepository;
 	private final MaterialRepository materialRepository;
 	private final UserRepository userRepository;
@@ -306,7 +307,8 @@ public class MaterialShareService {
 					"materialTitle", material.getTitle(),
 					"filename", uploadedFile.getOriginalFileName(),
 					"parsedAt", uploadedFile.getParsedAt() != null ? uploadedFile.getParsedAt() : LocalDateTime.now(),
-					"chapters", chapters
+					"chapters", chapters,
+                    "indexing", indexing.studentResource(studentId, materialId)
 			);
 
 		} catch (Exception e) {
@@ -325,7 +327,11 @@ public class MaterialShareService {
 	private List<MaterialShareListResponse.SharedMaterialInfo> toInfoList(
 		List<MaterialShare> shares) {
 		return shares.stream()
-			.map(MaterialShareListResponse.SharedMaterialInfo::from)
+			.map(share -> {
+                var info=MaterialShareListResponse.SharedMaterialInfo.from(share);
+                info.setIndexing(indexing.studentResource(share.getStudent().getId(), share.getMaterial().getId()));
+                return info;
+            })
 			.collect(Collectors.toList());
 	}
 }
