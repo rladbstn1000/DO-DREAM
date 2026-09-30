@@ -8,7 +8,8 @@ import uuid
 
 TEMP = tempfile.TemporaryDirectory(prefix="dodream-ai-unit-")
 os.environ.update(
-    APP_ENV="test", LOCAL_EXTERNAL_STUBS="true", JWT_ALGORITHM="HS256",
+    APP_ENV="test", LOCAL_EXTERNAL_STUBS="true", DODREAM_AI_MODE="LOCAL_FAKE",
+    LIVE_API_AUTHORIZED="false", JWT_ALGORITHM="HS256",
     JWT_ISSUER="dodream", JWT_AUDIENCE="dodream-api",
     JWT_SECRET_BASE64=base64.b64encode(secrets.token_bytes(64)).decode(),
     DATABASE_URL=f"sqlite:///{TEMP.name}/users.db",

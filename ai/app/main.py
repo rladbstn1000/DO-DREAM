@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import text
 from redis import Redis
-from app.config import APP_ENV, LOCAL_EXTERNAL_STUBS, CELERY_BROKER_URL
+from app.config import APP_ENV, LOCAL_EXTERNAL_STUBS, CELERY_BROKER_URL, AI_MODE
 from app.common.db_session import engine as user_engine
 from fastapi.middleware.cors import CORSMiddleware
 from app.rag import models as rag_models
@@ -50,7 +50,8 @@ app.include_router(rag_router)
 # 서버가 살아있는지 확인하는 헬스 체크용 엔드포인트
 @app.get("/")
 def read_root():
-    return {"message": "FastAPI RAG 서버가 실행 중입니다.", "environment": APP_ENV, "external_provider": "local_stub" if LOCAL_EXTERNAL_STUBS else "configured"}
+    return {"message": "FastAPI RAG 서버가 실행 중입니다.", "environment": APP_ENV,
+        "external_provider": "local_stub" if AI_MODE == 'LOCAL_FAKE' else "live_openai_files_local"}
 
 
 
@@ -58,7 +59,7 @@ def read_root():
 async def mark_local_providers(request, call_next):
     response = await call_next(request)
     if LOCAL_EXTERNAL_STUBS:
-        response.headers["X-DO-DREAM-External-Provider"] = "local_stub"
+        response.headers["X-DO-DREAM-External-Provider"] = "local_stub" if AI_MODE == 'LOCAL_FAKE' else 'live_openai_files_local'
     return response
 
 
@@ -73,7 +74,8 @@ def health():
             client.ping()
     except Exception:
         raise HTTPException(status_code=503, detail="A local database or queue dependency is unavailable") from None
-    return {"status": "ok", "mysql": "connected", "rag_database": "connected", "redis": "connected", "external_provider": "local_stub" if LOCAL_EXTERNAL_STUBS else "configured"}
+    return {"status": "ok", "mysql": "connected", "rag_database": "connected", "redis": "connected",
+        "external_provider": "local_stub" if AI_MODE == 'LOCAL_FAKE' else "live_openai_files_local"}
 
 # --- 서버 실행 (참고용) ---
 # 이 파일(main.py)을 직접 python app/main.py로 실행할 경우 uvicorn을 구동합니다.

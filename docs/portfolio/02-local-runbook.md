@@ -233,7 +233,7 @@ python3 scripts/local/manage.py isolation
 
 ## 4단계 학생 웹 체험
 
-3-B의 검증된 서버 기능에 학생 웹을 연결한 개인 개선이다. 이번 기본 증거 디렉터리는 `.local/phase4/results/`, Chrome 실행별 준비 파일·원본 캡처는 `.local/phase4/browser-ui/`다. 위 단계별 기록의 과거 기본 디렉터리는 당시 증거 위치이며 현재 명령은 4단계 디렉터리를 사용한다. 이전 실패·후속 실행·보존 증거를 덮어쓰지 않는다. 설계는 [13](13-student-web-design.md), 이번 실제 결과는 [14](14-phase4-results.md), 화면별 시연은 [15](15-demo-walkthrough.md)를 따른다.
+3-B의 검증된 서버 기능에 학생 웹을 연결한 개인 개선이다. 4단계 당시 기본 증거 디렉터리는 `.local/phase4/results/`, Chrome 실행별 준비 파일·원본 캡처는 `.local/phase4/browser-ui/`였다. 현재 5단계 명령의 경로·새 합성 자료는 아래 절을 따른다. 이전 실패·후속 실행·보존 증거를 덮어쓰지 않는다. 설계는 [13](13-student-web-design.md), 당시 실제 결과는 [14](14-phase4-results.md), 화면별 시연은 [15](15-demo-walkthrough.md)를 따른다.
 
 보존된 로컬 환경에서 아래 명령을 저장소 루트에서 실행한다. 처음 환경을 만드는 경우 앞 절의 생성·추가형 migration 절차를 먼저 따른다. 소스를 변경했다면 시작 전에 `build`로 해당 이미지를 갱신한다.
 
@@ -274,3 +274,49 @@ python3 scripts/local/manage.py isolation
 ```
 
 이번 4단계처럼 시작 시 자체 서비스가 모두 중지였을 때의 종료 명령이다. 이미 실행 중인 자체 서비스가 있었다면 시작 snapshot에 맞춰 이번에 시작한 서비스만 원래 상태로 돌린다. 다른 프로젝트 자원은 변경하지 않는다. 새 샘플·합성 학생 기록·영속 볼륨은 보존하며 `down -v`, prune, DB/Chroma reset을 사용하지 않는다. 재체험은 `demo-up` → `demo-prepare` → `/demo` 순서다.
+
+## 5단계 공급자·평가 준비와 승인 후 재개
+
+현재 증거 기본 경로는 `.local/phase5/results/`, 고정 평가 출력은 `.local/phase5/evaluation/`다. **LIVE_API_AUTHORIZED=false, 실제 공급자 요청0회, REAL_AI_INTEGRATION=NOT_RUN, PUBLIC_DEPLOYMENT_READY=false**다. 실제 호출 승인과 전용 키가 없어 유료 연동·모델 품질·실제 비용은 미실행이다. 오프라인 계약 PASS를 실제 모델 통과로 해석하지 않는다. 설계·결과는 [16](16-live-ai-and-evaluation-design.md), [17](17-phase5-results.md)를 따른다.
+
+기존 보존 기준선을 새로 확보한 뒤 일반 `demo-up`·`demo-prepare`로 준비하는 로컬 체험 자료의 버전은 `student-web-phase5-v1`, 합성 교사는 `demo-phase5-v1@local.dodream.invalid`다. 4단계 교재·학생 기록을 덮어쓰지 않는다. 아래 명령은 키와 외부 요청 없이 고정 평가셋·양식·신규 평가 자료만 준비한다. `phase5_prepare.py`는 준비된 로컬 체험 서버가 필요하며 전용 합성 학생 한 명을 재사용한다.
+
+```bash
+python3 scripts/evaluation/phase5.py validate
+python3 -m unittest discover -s scripts/evaluation/tests -v
+python3 scripts/evaluation/phase5.py export
+python3 scripts/evaluation/phase5.py review
+python3 scripts/local/live_ai.py template
+DODREAM_PHASE5_PREPARE_ENABLED=true python3 scripts/local/manage.py demo-up
+python3 scripts/local/manage.py demo-prepare
+python3 scripts/local/phase5_prepare.py
+```
+
+새 자료4개는 기존 직접 작성 교재의 스모크 복사본2개와 평가 교재2개다. 서버의 실제 초기 준비·발행·색인 원장을 사용하며 live 작업은 승인 전 소비하지 않는다. 준비 영수증은 `.local/phase5/results/phase5-prepared.json`에 자료/문제/작업 ID와 원본 hash를 기록한다. **준비 접수는 실제1536차원 임베딩 저장 성공이 아니다.** SQL로 ACTIVE를 바꾸지 않는다. 평가 자료는 각8개 본문 구간, 질문24개와 채점답안16개이며 gold는 evaluator에만 남는다. [평가 도구 설명](../../scripts/evaluation/README.md)을 참고한다.
+
+키 없는 양식은 `.local/phase5/live/provider-live.env.example`, 승인 양식은 같은 폴더의 `manifest.template.json`이다. 기존 파일을 덮어쓰지 않는다. 전용 키 파일 `~/.config/dodream/provider-live.env`는 사용자만 로컬에서 준비하고 권한0600으로 둔다. 허용 변수는 `OPENAI_API_KEY` 하나이며 스크립트로 실행하지 않는다. 키를 대화·명령 인자·브라우저·VITE·`.local/env`에 넣지 않는다. 런처는 전용 파일의 존재·권한만 확인하고 필요한 AI 프로세스에 읽기 전용 파일로 연결한다.
+
+아래는 **사용자가 이번 실행을 명시적으로 승인하고 예산·요청 수·모델·신규 자료/사용자 범위를 지정한 이후에만** 쓰는 재개 명령이다. 현재 실행하라는 지시나 승인 문구가 아니다. 사용자가 승인 양식을 `.local/phase5/live/manifest.json`으로 완성해야 한다. 모델은 `text-embedding-3-small`1536차원과 `gpt-4.1-mini-2025-04-14`로 고정한다. manifest에는 고정 dataset hash, 준비 영수증의 허용 자료·원본·합성 사용자, 현재 소스와 일치하는 `live-offline-contract.json` 증거 hash, 만료 시각, 양수 예산/요청 상한이 필요하다. 코드나 고정 자료가 바뀌면 기존 검증 영수증을 재사용하지 않는다. `open`은 검증 영수증의 AI·Spring·웹 이미지 ID와 실행 중 이미지, 새 AI 실행에 쓸 태그의 이미지 ID까지 대조한다.
+
+```bash
+LIVE_API_AUTHORIZED=true python3 scripts/local/live_ai.py preflight
+LIVE_API_AUTHORIZED=true python3 scripts/local/live_ai.py open
+LIVE_API_AUTHORIZED=true python3 scripts/local/live_ai.py job '<승인한 준비 영수증의 job_id>'
+```
+
+`job`은 해당 작업 하나만 실행한다. 각 작업 결과와 후보 검증·활성 전환을 확인한 뒤 다음 승인 작업을 선택하며 반복 루프로 자동 소비하지 않는다. `open`은 기존 local worker·dispatcher를 중지하고 key를 가진 AI를 순차 실행한다. 별도 live broker 소비자는 없으며 승인 자료/source/spec/사용자를 벗어나면 공급자 전에 거부한다. 공통 영속 예산은 CLI·API·작업과 실패·스모크·UI 요청을 모두 세며 재시작해도 초기화하지 않는다.
+
+모든 승인 자료의 실제 색인을 확인한 뒤 `app-smoke`로 두 스모크 복사본에서 정상·후속·답 없음 질문과 간단한 채점을 실제 앱 경로로 확인한다. 이 영수증을 통과해야 후속 평가를 시작할 수 있다. `phase5_evaluate.py smoke`는 추가 평가 교재의 R01-A/G01 두 문항을 확인하는 **작은 평가 실행 gate**이며 두 복사본 앱 스모크와 구분한다. 실제 학생 웹의 작은 정상 흐름은 별도 수동 검증이며 이번에는 NOT_RUN이다. 같은 원인의 실패가 나오면 후속 평가를 계속하지 않는다.
+
+```bash
+LIVE_API_AUTHORIZED=true python3 scripts/local/phase5_evaluate.py app-smoke
+LIVE_API_AUTHORIZED=true python3 scripts/local/phase5_evaluate.py smoke
+LIVE_API_AUTHORIZED=true python3 scripts/local/phase5_evaluate.py development
+LIVE_API_AUTHORIZED=true python3 scripts/local/phase5_evaluate.py final
+LIVE_API_AUTHORIZED=true python3 scripts/local/phase5_evaluate.py report
+python3 scripts/local/live_ai.py close
+```
+
+개발·최종 분리와 고정 대화를 유지하고 A/B의 유일한 차이는 대화가 있는 경우의 검색 질문 재작성이다. 성공한 기존 문항은 재사용하고 실패·중단 문항은 자동 재요청하지 않는다. 관측·시작 marker·usage는 실행 ID별로 보존한다. RAG CLI는 문항마다 새 프로세스의 cold 실행이며 공급자·Chroma cache까지 초기화됐다는 뜻은 아니다. 채점 서버의 cold/warm을 관측하지 못하면 null/unknown으로 남기고 warm으로 추정하지 않는다. `report`는 열린 승인 세션에서 사용하며, 닫은 뒤에는 `python3 scripts/evaluation/phase5.py review --records '<저장된 실행별 observations JSON>'`으로 외부 요청 없이 다시 검토한다. 구조/ID·고정 판정 일치와 자연어 의미 검토를 구분하고 사람이 보지 않은 항목은 사람 평가 NOT_RUN으로 남긴다. 청구 확인은 프로그램 계산 비용과 별개다.
+
+`close`는 승인 만료나 키 부재와 관계없이 live AI 중지를 먼저 시도하고, 검증된 local 상태로 복원한다. 복원 단계가 차단되면 기록을 보존하고 임의 새 컨테이너를 시작하지 않는다. 키 마운트나 외부 연결이 남아 있는 AI에서는 기존 local 회귀와 local AI 실행이 거부된다. 키 없는 상태를 확인한 뒤 앞 절의 인증·권한·채점·학생 웹 회귀, 새 데이터/물리 색인 보존 대조, retention dry-run, 시작 상태 복구와 isolation을 수행한다. 기존55개 장애 suite 전체를 live로 돌리지 않는다. OCR·TTS·파일 저장소의 실제 외부 연동과 공개 배포는 계속 미실행이다.

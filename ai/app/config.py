@@ -1,16 +1,25 @@
 """Runtime settings. Local provider doubles require an explicit local/test profile."""
 import base64
 import os
-from dotenv import load_dotenv
 
 APP_ENV = os.getenv("APP_ENV", "production").lower()
-if APP_ENV not in {"local", "test"}:
-    load_dotenv()
+# Configuration is injected by the guarded launcher. Never discover/source .env
+# files or select a paid provider merely because a key happens to exist.
+AI_MODE = os.getenv('DODREAM_AI_MODE', 'LOCAL_FAKE')
+if AI_MODE not in {'LOCAL_FAKE', 'LIVE_OPENAI'}:
+    raise RuntimeError('Unsupported DODREAM_AI_MODE')
 LOCAL_EXTERNAL_STUBS = os.getenv("LOCAL_EXTERNAL_STUBS", "false").lower() == "true"
 if LOCAL_EXTERNAL_STUBS and APP_ENV not in {"local", "test"}:
     raise RuntimeError("LOCAL_EXTERNAL_STUBS is permitted only in local/test")
 if APP_ENV == "local" and not LOCAL_EXTERNAL_STUBS:
     raise RuntimeError("Local runtime requires LOCAL_EXTERNAL_STUBS=true")
+if AI_MODE == 'LIVE_OPENAI' and (APP_ENV not in {'local', 'test'} or not LOCAL_EXTERNAL_STUBS):
+    raise RuntimeError('Phase 5 live AI requires isolated local file/OCR providers')
+if AI_MODE == 'LOCAL_FAKE' and not LOCAL_EXTERNAL_STUBS:
+    raise RuntimeError('LOCAL_FAKE requires explicit local provider isolation')
+RAG_RETRIEVAL_VARIANT = os.getenv('DODREAM_RAG_VARIANT', 'A')
+if RAG_RETRIEVAL_VARIANT not in {'A', 'B'}:
+    raise RuntimeError('Unsupported RAG retrieval variant')
 
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 if ALGORITHM != "HS256":
@@ -35,8 +44,6 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is required")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GMS_KEY = os.getenv("GMS_KEY")
-if not LOCAL_EXTERNAL_STUBS and (not OPENAI_API_KEY or not GMS_KEY):
-    raise RuntimeError("OPENAI_API_KEY and GMS_KEY are required outside local doubles")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")

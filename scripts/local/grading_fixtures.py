@@ -11,7 +11,7 @@ def clone_statement(table,where,replacements):
     cols=columns(table)
     return 'INSERT INTO '+ident(table)+' ('+','.join(map(ident,cols))+') SELECT '+','.join(replacements.get(c,ident(c)) for c in cols)+' FROM '+ident(table)+' WHERE '+where+';'
 def clone_material(source,title,namespace="phase3a"):
-    if namespace not in ("phase3a","phase3b","phase4"):raise ValueError("Unknown fixture phase")
+    if namespace not in ("phase3a","phase3b","phase4","phase5"):raise ValueError("Unknown fixture phase")
     found=sql('SELECT id FROM materials WHERE title='+literal(title)+';')
     if found:return int(found)
     rows=sql(f'SELECT m.uploaded_file_id,f.jsons3key FROM materials m JOIN uploaded_files f ON f.id=m.uploaded_file_id WHERE m.id={int(source)};').split('\t')

@@ -24,6 +24,6 @@ try{
   const version=browser?.version();if(browser)await browser.close();
   const report={status:passed?'PASS':'FAIL',mode:'ACTUAL_DISABLED_SERVER_UI',browser:'Chrome '+version,origin,external,errorType};
   const encoded=JSON.stringify(report,null,2)+'\n';
-  for(const name of ['student-disabled-ui-'+Date.now()+'.json','student-disabled-ui.json'])await fs.writeFile(path.join(root,'.local/phase4/results',name),encoded);
+  for(const name of ['student-disabled-ui-'+Date.now()+'.json','student-disabled-ui.json'])await fs.writeFile(path.join(root,'.local/phase5/results',name),encoded);
   console.log(JSON.stringify(report));process.exitCode=passed?0:1;
 }

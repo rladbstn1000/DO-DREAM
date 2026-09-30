@@ -1,0 +1,142 @@
+{
+  "dataset_version": "phase5-eval-v1",
+  "access": "server_preparation_only_not_retrieval",
+  "materials": [
+    {
+      "material_id": "water-lab-v1",
+      "quizzes": [
+        {
+          "evaluation_case_id": "G01",
+          "question": "하늘에서 내린 비의 양을 재는 도구는 무엇인가요?",
+          "correct_answer": "우량계",
+          "chapter_source_id": "water-lab-v1-01"
+        },
+        {
+          "evaluation_case_id": "G02",
+          "question": "차가운 컵 바깥 물방울은 공기 중 무엇이 식어 생기나요?",
+          "correct_answer": "공기 중 수증기",
+          "chapter_source_id": "water-lab-v1-03"
+        },
+        {
+          "evaluation_case_id": "G03",
+          "question": "물 고인 곳을 발견하면 어디서 무엇을 기록하고 누구에게 알려야 하나요?",
+          "correct_answer": "안전한 위치에서 사진과 위치를 기록하고 선생님께 알립니다.",
+          "chapter_source_id": "water-lab-v1-05"
+        },
+        {
+          "evaluation_case_id": "G04",
+          "question": "방류 예고 때 비가 안 오는 하류 하천에는 들어가도 되나요?",
+          "correct_answer": "들어가지 않고 대피 안내를 따릅니다.",
+          "chapter_source_id": "water-lab-v1-07"
+        },
+        {
+          "evaluation_case_id": "G09",
+          "question": "수건의 물이 공기 중으로 나가는 현상을 무엇이라고 하나요?",
+          "correct_answer": "증발",
+          "chapter_source_id": "water-lab-v1-02"
+        },
+        {
+          "evaluation_case_id": "G10",
+          "question": "흙의 물 스며듦 실험에서 따로 기록하는 시간과 양은 무엇인가요?",
+          "correct_answer": "표면에 물이 남은 시간과 아래로 나온 물의 양",
+          "chapter_source_id": "water-lab-v1-04"
+        },
+        {
+          "evaluation_case_id": "G11",
+          "question": "맑고 냄새 없는 우물물이라는 관찰만으로 안전하다고 말할 수 있나요?",
+          "correct_answer": "아니요. 정해진 수질 검사가 필요합니다.",
+          "chapter_source_id": "water-lab-v1-06"
+        },
+        {
+          "evaluation_case_id": "G12",
+          "question": "수위 자를 세 번 읽었을 때 어떤 값을 대표값으로 쓰나요?",
+          "correct_answer": "가운데 값",
+          "chapter_source_id": "water-lab-v1-08"
+        }
+      ]
+    },
+    {
+      "material_id": "reuse-lab-v1",
+      "quizzes": [
+        {
+          "evaluation_case_id": "G05",
+          "question": "기름이 깊게 밴 종이는 말리면 깨끗한 종이가 되나요?",
+          "correct_answer": "아니요",
+          "chapter_source_id": "reuse-lab-v1-01"
+        },
+        {
+          "evaluation_case_id": "G06",
+          "question": "여러 겹 과자 포장의 표시가 지워져 판단이 어렵다면 누구에게 문의하나요?",
+          "correct_answer": "수거 담당자",
+          "chapter_source_id": "reuse-lab-v1-03"
+        },
+        {
+          "evaluation_case_id": "G07",
+          "question": "잘게 자른 비닐은 학교 퇴비 관찰통의 재료가 될 수 있나요?",
+          "correct_answer": "아니요",
+          "chapter_source_id": "reuse-lab-v1-05"
+        },
+        {
+          "evaluation_case_id": "G08",
+          "question": "다회용 컵을 반납하면 무엇을 돌려받나요?",
+          "correct_answer": "보증 표 한 장",
+          "chapter_source_id": "reuse-lab-v1-07"
+        },
+        {
+          "evaluation_case_id": "G13",
+          "question": "이번 행사에서 색 있는 페트병을 투명 병 전용 자루에 넣나요?",
+          "correct_answer": "아니요",
+          "chapter_source_id": "reuse-lab-v1-02"
+        },
+        {
+          "evaluation_case_id": "G14",
+          "question": "부풀거나 손상된 충전지를 학생이 발견하면 누구에게 알려야 하나요?",
+          "correct_answer": "선생님",
+          "chapter_source_id": "reuse-lab-v1-04"
+        },
+        {
+          "evaluation_case_id": "G15",
+          "question": "반납한 공유 우산은 정리하기 전에 어떻게 하나요?",
+          "correct_answer": "펼쳐서 물기를 말립니다.",
+          "chapter_source_id": "reuse-lab-v1-06"
+        },
+        {
+          "evaluation_case_id": "G16",
+          "question": "병 분리배출을 준비할 때 내용물과 분리 가능한 라벨은 어떻게 하나요?",
+          "correct_answer": "내용물을 비우고 라벨을 떼어 냅니다.",
+          "chapter_source_id": "reuse-lab-v1-08"
+        }
+      ]
+    },
+    {
+      "material_id": "live-smoke-water-v1",
+      "quizzes": [
+        {
+          "question": "물이 충분히 차가워지면 무엇이 되나요?",
+          "correct_answer": "얼음",
+          "chapter_source_id": "live-smoke-water-v1-01"
+        },
+        {
+          "question": "액체인 물이 기체로 바뀌는 일을 무엇이라고 하나요?",
+          "correct_answer": "증발",
+          "chapter_source_id": "live-smoke-water-v1-02"
+        }
+      ]
+    },
+    {
+      "material_id": "live-smoke-recycling-v1",
+      "quizzes": [
+        {
+          "question": "음료 용기를 분리배출하기 전에 내용물을 먼저 어떻게 해야 하나요?",
+          "correct_answer": "비웁니다",
+          "chapter_source_id": "live-smoke-recycling-v1-01"
+        },
+        {
+          "question": "분리배출 방법이 헷갈릴 때는 거주 지역의 무엇을 확인하나요?",
+          "correct_answer": "분리배출 안내",
+          "chapter_source_id": "live-smoke-recycling-v1-03"
+        }
+      ]
+    }
+  ]
+}

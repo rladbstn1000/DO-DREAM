@@ -93,7 +93,7 @@ async function recoverThroughUi(page, row, kind, expectedReadable) {
 try {
   const manifestPath = process.env.DODREAM_INDEX_BROWSER_PLAN;
   if (!manifestPath) throw new Error('Synthetic UI plan required');
-  const allowedDirectory = await fs.realpath(path.join(root, '.local/phase4/browser-ui'));
+  const allowedDirectory = await fs.realpath(path.join(root, '.local/phase5/browser-ui'));
   const realPlan = await fs.realpath(manifestPath);
   assert.ok(realPlan.startsWith(allowedDirectory + path.sep));
   plan = JSON.parse(await fs.readFile(realPlan, 'utf8'));
@@ -180,7 +180,7 @@ try {
   const exitCode = checks.some(row => row.status !== 'PASS') ? 1 : 0;
   const report = { browser: 'Chrome ' + version, origin, mode: 'ACTUAL_TEACHER_UI_REAL_INDEXING_SERVICES',
     nativeDeviceExecution: 'NOT_RUN', externalRequestsBlocked, checks, counts, activation: completedActivation, recoveries: observations };
-  const output = path.join(root, '.local/phase4/results/browser-indexing-checks.json');
+  const output = path.join(root, '.local/phase5/results/browser-indexing-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   const content = JSON.stringify(report, null, 2) + '\n';
   await fs.writeFile(output, content); await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), content);

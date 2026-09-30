@@ -74,7 +74,7 @@ def payload(token):
 def material_ids(token):
     code, data, _, _ = req('be', '/api/documents/published', token)
     if code != 200 or not data.get('materials'): raise RuntimeError('No synthetic material')
-    return [m for m in data['materials'] if m.get('title','').startswith('[AUTHZ 4] ')]
+    return [m for m in data['materials'] if m.get('title','').startswith('[AUTHZ 5] ')]
 
 def embed(token, doc):
     code, data, _, _ = req('ai', '/rag/embeddings/create', token,
@@ -310,8 +310,8 @@ def persistence():
         evidence_path.write_text(text);(RESULTS/'persistence-session.json').write_text(text)
     save_evidence()
     marker=secrets.token_hex(16)
-    sql('CREATE TABLE IF NOT EXISTS phase1_persistence_probe (id INT PRIMARY KEY, marker VARCHAR(64) NOT NULL);\nINSERT INTO phase1_persistence_probe VALUES (400000000,"'+marker+'") ON DUPLICATE KEY UPDATE marker=VALUES(marker);')
-    docker_exec('redis',['redis-cli','SET','phase4:persistence',marker])
+    sql('CREATE TABLE IF NOT EXISTS phase1_persistence_probe (id INT PRIMARY KEY, marker VARCHAR(64) NOT NULL);\nINSERT INTO phase1_persistence_probe VALUES (500000000,"'+marker+'") ON DUPLICATE KEY UPDATE marker=VALUES(marker);')
+    docker_exec('redis',['redis-cli','SET','phase5:persistence',marker])
     before=sql('SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM materials;')
     result=subprocess.run(compose_args('stop',*MAIN),capture_output=True,text=True,env=clean_env(),timeout=120)
     check('compose_stop',result.returncode==0,'exit '+str(result.returncode))
@@ -337,9 +337,9 @@ def persistence():
     same=persistence_identity(after_containers)==persistence_identity(containers)
     check('persistence_same_container_ids_and_images',same,'all nine primary containers')
     if not healthy or not same:return
-    check('mysql_new_marker_persisted',sql('SELECT marker FROM phase1_persistence_probe WHERE id=400000000;')==marker,'probe is not seeded by application')
+    check('mysql_new_marker_persisted',sql('SELECT marker FROM phase1_persistence_probe WHERE id=500000000;')==marker,'probe is not seeded by application')
     check('mysql_domain_counts_preserved',sql('SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM materials;')==before,'synthetic user/material counts match')
-    check('redis_new_marker_persisted',docker_exec('redis',['redis-cli','GET','phase4:persistence'])==marker,'probe is not seeded by application')
+    check('redis_new_marker_persisted',docker_exec('redis',['redis-cli','GET','phase5:persistence'])==marker,'probe is not seeded by application')
     teacher,_=credentials('index-owner')
     code,data,_,_=req('ai','/rag/chat/sessions?student_id='+str(saved['student_id']),teacher)
     check('rag_sqlite_session_persisted',code==200 and isinstance(data,list) and any(s['id']==saved['session_id'] for s in data),'same fresh session ID after restart')

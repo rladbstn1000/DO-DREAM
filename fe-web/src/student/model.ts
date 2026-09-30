@@ -3,7 +3,9 @@ export type StudentIndex = { state: string; readable: boolean; activeCurrent: bo
 export type Material = { materialId: number; materialTitle: string; teacherName: string; indexing: StudentIndex | null };
 export type Chapter = { id: string; title: string; text: string };
 export type Question = { id: number; version: number; content: string; question_number: number; title: string };
-export type Mode = { environment: string; answer_provider: string; embedding_provider: string; grading_provider: string };
+export type Mode = { environment: string; answer_provider: string; embedding_provider: string; grading_provider: string;
+  configured_mode?: 'LOCAL_FAKE' | 'LIVE_OPENAI'; embedding_model?: string; answer_model?: string; grading_model?: string;
+  index_spec?: string; real_ai_verified?: boolean };
 export type Source = { document_id: string; source_revision: number; source_hash: string; chunk_position: number;
   content_hash: string; material_title: string; excerpt: string };
 export type ChatMessage = { id: number; role: string; content: string; sources?: Source[]; mode?: Mode; document_id?: string };
@@ -68,7 +70,13 @@ export function source(value: unknown, materialId: number): Source {
 }
 export function modeLabel(mode?: Mode | null) {
   if (mode?.answer_provider === 'local_stub' && mode.embedding_provider === 'local_hash8') return '로컬 대역 답변 · 8차원 로컬 임베딩 · 실제 자료 검색';
+  if (mode) return `${mode.answer_provider === 'live_openai' ? 'OpenAI 답변 설정' : mode.answer_provider === 'local_stub' ? '로컬 대역 답변' : '답변 모드 확인 필요'} · ${mode.embedding_provider === 'live_openai' ? 'OpenAI 1536차원 임베딩 설정' : mode.embedding_provider === 'local_hash8' ? '8차원 로컬 임베딩' : '임베딩 모드 확인 필요'} · 품질 평가 별도`;
   return '실행 모드 확인 필요 · 실제 AI 품질은 검증하지 않았습니다';
+}
+export function gradingModeLabel(mode?: Mode | null) {
+  if (mode?.grading_provider === 'local_stub') return '로컬 대역 채점 · 실제 서버 제출 및 결과 저장';
+  if (mode?.grading_provider === 'live_openai') return 'OpenAI 채점 설정 · 저장된 제출 기준 사용 · 품질 평가 별도';
+  return '채점 실행 모드 확인 필요 · 실제 AI 품질은 검증하지 않았습니다';
 }
 export function readiness(value: StudentIndex | null) {
   if (!value) return '준비 상태 확인 필요';

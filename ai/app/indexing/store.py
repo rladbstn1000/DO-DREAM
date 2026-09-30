@@ -16,7 +16,8 @@ from app.common.database import get_user_from_db
 from app.security.authorization import (teacher_only, require_document, document_ref,
     document_json_key, require_object_url, fail_closed)
 from app.indexing.models import IndexResource, IndexJob, IndexExecution
-from app.indexing.source import INDEX_SPEC, INDEX_SPECS, normalize_source
+from app.indexing.source import INDEX_SPEC, INDEX_SPECS, LOCAL_INDEX_SPECS, LIVE_SPEC, normalize_source
+from app.config import AI_MODE
 
 LEASE_SECONDS = 30
 MAX_DELIVERIES = 5
@@ -219,8 +220,11 @@ def recover_one(db, resource, job, clock):
 
 
 def claim_deliveries():
+    if AI_MODE != 'LOCAL_FAKE':
+        raise RuntimeError('Live jobs require the single-job manual worker')
     with SessionLocal() as db:
-        ids = [row.job_id for row in db.query(IndexJob).filter(IndexJob.state.in_(('QUEUED','PROCESSING')))
+        ids = [row.job_id for row in db.query(IndexJob).filter(IndexJob.state.in_(('QUEUED','PROCESSING')),
+            IndexJob.index_spec.in_(LOCAL_INDEX_SPECS))
             .order_by(IndexJob.next_delivery_at, IndexJob.id).limit(BATCH_JOBS).all()]
     claimed = []
     for job_id in ids:
@@ -260,9 +264,20 @@ def delivery_result(job_id, token, sent):
             _terminal(job, 'FAILED', 'DELIVERY_LIMIT', clock)
 
 
-def claim_execution(job_id):
+def claim_execution(job_id, *, manual_live=False):
     with SessionLocal.begin() as db:
         resource, job = _job_locked(db, job_id)
+        # Reject a misrouted message BEFORE recovery, claim, state or lease writes.
+        if AI_MODE == 'LOCAL_FAKE':
+            if manual_live or job.index_spec not in LOCAL_INDEX_SPECS:
+                return None
+        else:
+            if not manual_live or job.index_spec != LIVE_SPEC:
+                return None
+            from app.indexing.runtime import authorize_pointer
+            authorize_pointer({'resource_kind':resource.resource_kind,'resource_id':resource.resource_id,
+                'user_id':resource.owner_id,'spec':job.index_spec,'source_revision':job.source_revision,
+                'source_hash':job.source_hash}, 'index', 'worker')
         clock = now(db)
         recover_one(db, resource, job, clock)
         if job.state != 'QUEUED' or not _permission_or_terminal(db, resource, job, clock):
@@ -283,7 +298,8 @@ def claim_execution(job_id):
         return {'job_id':job.job_id,'execution_id':execution.id,'token':token,
             'generation':execution.generation,'candidate':candidate, 'source_json':job.snapshot_json,
             'source_hash':job.source_hash,'source_bytes':job.snapshot_bytes,'source_revision':job.source_revision,
-            'spec':job.index_spec,'resource_kind':resource.resource_kind,'resource_id':resource.resource_id}
+            'spec':job.index_spec,'resource_kind':resource.resource_kind,'resource_id':resource.resource_id,
+            'user_id':resource.owner_id}
 
 
 def _execution(db, ctx):
@@ -362,7 +378,7 @@ def resolve_active(db, user, document_id):
         raise HTTPException(409, {'code':'INDEX_NOT_READY'})
     pointer = {'candidate':execution.candidate_name,'source_revision':job.source_revision,
         'source_hash':job.source_hash,'spec':job.index_spec,'job_id':job.job_id,
-        'resource_kind':kind,'resource_id':object_id,'generation':execution.generation}
+        'resource_kind':kind,'resource_id':object_id,'generation':execution.generation,'user_id':user.id}
     db.rollback()
     db.close()
     return pointer

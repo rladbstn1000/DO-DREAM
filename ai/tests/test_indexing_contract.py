@@ -362,7 +362,7 @@ class IndexingContractTests(unittest.TestCase):
             self.assertEqual(adapter._server._session.timeout.read,5)
             raise httpx.ReadTimeout('synthetic stalled Chroma response')
         with patch.object(chroma,'client',return_value=adapter),patch.object(adapter._server._session,'request',side_effect=timeout) as request:
-            with self.assertRaises(HTTPException) as caught:chroma.retrieve({'candidate':'idx_transport_contract'},'query')
+            with self.assertRaises(HTTPException) as caught:chroma.retrieve({'candidate':'idx_transport_contract','spec':'local-hash8-content-v1'},'query')
         self.assertEqual(caught.exception.status_code,503)
         self.assertEqual(caught.exception.detail,{'code':'INDEX_STORAGE_UNAVAILABLE'})
         self.assertEqual(request.call_count,1)

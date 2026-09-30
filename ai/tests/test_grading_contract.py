@@ -266,20 +266,22 @@ class GradingContractTests(unittest.TestCase):
 
     def test_production_provider_exception_is_not_converted_into_wrong_answer(self):
         async def execute():
-            with patch("app.rag.quiz_service.LOCAL_EXTERNAL_STUBS", False), \
-                    patch("app.rag.quiz_service._grade_one", new=AsyncMock(side_effect=TimeoutError)) as provider:
+            with patch("app.rag.quiz_service.AI_MODE", 'LIVE_OPENAI'), \
+                    patch("app.rag.quiz_service._grade_batch", new=AsyncMock(side_effect=TimeoutError)) as provider:
                 with self.assertRaises(TimeoutError):
-                    await grade_quiz_answers([{"id": 1}], [{"question_id": 1, "student_answer": "x"}])
+                    await grade_quiz_answers([{"id": 1}], [{"question_id": 1, "student_answer": "x"}],
+                                            execution={"attempt_id": "00000000-0000-4000-8000-000000000001"})
                 self.assertEqual(provider.await_count, 1)
         asyncio.run(execute())
 
     def test_production_malformed_payload_is_confirmed_failure_not_unknown(self):
         from fastapi import HTTPException
         async def execute():
-            with patch("app.rag.quiz_service.LOCAL_EXTERNAL_STUBS", False), \
-                    patch("app.rag.quiz_service._grade_one", new=AsyncMock(side_effect=GradingResponseError)):
+            with patch("app.rag.quiz_service.AI_MODE", 'LIVE_OPENAI'), \
+                    patch("app.rag.quiz_service._grade_batch", new=AsyncMock(side_effect=GradingResponseError)):
                 with self.assertRaises(HTTPException) as failure:
-                    await grade_quiz_answers([{"id": 1}], [{"question_id": 1, "student_answer": "x"}])
+                    await grade_quiz_answers([{"id": 1}], [{"question_id": 1, "student_answer": "x"}],
+                                            execution={"attempt_id": "00000000-0000-4000-8000-000000000001"})
                 self.assertEqual(failure.exception.status_code, 502)
         asyncio.run(execute())
 

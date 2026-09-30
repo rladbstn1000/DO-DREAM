@@ -9,6 +9,7 @@ from sqlalchemy import func
 
 from app.common.models import GradingAttempt, GradingAttemptItem
 from app.security.authorization import fail_closed, student_only, require_material, require_quizzes
+from app.config import AI_MODE
 
 MAX_QUESTIONS = 50
 MAX_ANSWER_CHARS = 2000
@@ -72,6 +73,12 @@ def load_grading_snapshot(db, user, request):
     answers = [{"question_id": item.quiz_id, "student_answer": item.student_answer} for item in items]
     context = {"attempt_id": attempt.attempt_id, "submission_key": attempt.idempotency_key,
                "generation": attempt.execution_generation, "material_title": material.title}
+    if AI_MODE == 'LIVE_OPENAI':
+        from app.indexing.store import resolve_active
+        from app.indexing.runtime import authorize_pointer
+        pointer = resolve_active(db,user,str(attempt.material_id))
+        authorize_pointer(pointer,'grading')
+        context['pointer'] = pointer
     # Material/user/snapshots are plain values now. No connection/transaction is retained
     # while waiting for the provider, including the authentication dependency's session.
     db.rollback()

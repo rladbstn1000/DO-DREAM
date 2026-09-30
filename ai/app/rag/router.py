@@ -28,6 +28,7 @@ from app.common.database import get_user_from_db
 from app.indexing import store as index_store
 from app.indexing.source import INDEX_SPEC
 from app.rag.service import download_json_from_cloudfront
+from app.config import AI_MODE
 
 
 class RequestModel(BaseModel):
@@ -61,6 +62,10 @@ class ChatResponse(BaseModel):
     source_hash: str
     sources: List[SourceReference]
     mode: RuntimeMode
+    cited_source_ids: Optional[List[str]] = None
+    abstained: Optional[bool] = None
+    retrieval_variant: Optional[str] = None
+    stage_latency_ms: Optional[dict[str,float]] = None
 
 
 class GenerateQuizRequest(RequestModel):
@@ -154,6 +159,11 @@ async def api_chat_with_rag(
         messages = rag_db.query(rag_models.ChatMessage).filter(
             rag_models.ChatMessage.session_id == session.id).order_by(rag_models.ChatMessage.created_at).all()
     pointer = index_store.resolve_active(common_db,current_user,request.document_id)
+    from app.indexing.runtime import authorize_pointer
+    try:
+        authorize_pointer(pointer,'query')
+    except (ValueError, RuntimeError):
+        raise HTTPException(503, {'code':'AI_SCOPE_NOT_AUTHORIZED'}) from None
     if session is not None:
         version = rag_db.get(rag_models.ChatSessionIndex,session.id)
         if version is None or version.source_revision != pointer['source_revision'] or version.source_hash != pointer['source_hash']:
@@ -172,12 +182,13 @@ async def api_chat_with_rag(
                for m in messages if m.role in {"user", "ai"}]
     try:
         chain = get_rag_chain(pointer)
-        result = await asyncio.wait_for(chain.ainvoke({"input": request.question, "chat_history": history}),timeout=15)
+        result = await asyncio.wait_for(chain.ainvoke({"input": request.question, "chat_history": history}),
+            timeout=28 if AI_MODE == 'LIVE_OPENAI' else 15)
         answer = result["answer"]
         if not isinstance(answer,str) or not answer.strip():
             raise ValueError('Answer provider returned invalid text')
         sources=source_references(pointer,result.get('context'),material_title)
-        mode=runtime_mode()
+        mode=runtime_mode(pointer['spec'])
         # Provider waiting must not retain a previous permission grant. Resolve
         # current authority in a new DB session, never the closed/expired one.
         revalidate_answer_source(current_user.id,request.document_id,pointer)
@@ -190,7 +201,9 @@ async def api_chat_with_rag(
         rag_db.commit()
         return ChatResponse(answer=answer,session_id=session.id,message_id=message.id,
             document_id=request.document_id,source_revision=pointer['source_revision'],
-            source_hash=pointer['source_hash'],sources=sources,mode=mode)
+            source_hash=pointer['source_hash'],sources=sources,mode=mode,
+            cited_source_ids=result.get('cited_source_ids'),abstained=result.get('abstained'),
+            retrieval_variant=result.get('variant'),stage_latency_ms=result.get('stage_latency_ms'))
     except HTTPException:
         rag_db.rollback()
         raise

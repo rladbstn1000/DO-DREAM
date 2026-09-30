@@ -6,13 +6,13 @@ import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const directory = path.join(root, '.local/phase4/browser-ui');
+const directory = path.join(root, '.local/phase5/browser-ui');
 const planPath = path.resolve(process.env.DODREAM_STUDENT_BROWSER_PLAN || '');
 assert.equal(path.dirname(planPath), directory);
 const plan = JSON.parse(await fs.readFile(planPath, 'utf8'));
 assert.match(plan.runId, /^[a-f0-9-]{36}$/);
 const origin = 'http://127.0.0.1:15173';
-const resultsDir = path.join(root, '.local/phase4/results');
+const resultsDir = path.join(root, '.local/phase5/results');
 const screenshots = path.join(directory, plan.runId + '.screenshots');
 await fs.mkdir(screenshots, { recursive: true });
 const settings = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n')

@@ -12,7 +12,8 @@ public final class IndexingSource {
     private IndexingSource() {}
     public static final int MAX_BYTES=2*1024*1024;
     public static final String DEFAULT_SPEC="local-hash8-content-v1";
-    public static final Set<String> SPECS=Set.of(DEFAULT_SPEC,"local-hash8-content-v2");
+    public static final String LIVE_SPEC="openai-text-embedding-3-small-1536-l2-content-v1";
+    public static final Set<String> SPECS=Set.of(DEFAULT_SPEC,"local-hash8-content-v2",LIVE_SPEC);
     public static final ObjectMapper JSON=new ObjectMapper(JsonFactory.builder()
         .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build())
         .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);

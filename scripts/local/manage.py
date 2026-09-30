@@ -17,7 +17,7 @@ import scope_guard
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / '.local'
-RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase4' / 'results')))
+RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase5' / 'results')))
 RESULTS.mkdir(parents=True, exist_ok=True)
 PROJECT = 'dodream-phase1'
 ENV_FILE = LOCAL / 'env'
@@ -140,6 +140,7 @@ def compose(name, *args):
     return run(name, compose_args(*args))
 
 def unit_tests():
+    scope_guard.require_keyless_local(scope_guard.read_metadata(clean_env()))
     # The real-DB indexing suite creates new synthetic ledger rows and requires
     # the dispatcher to remain stopped while it asserts transaction state.
     def dispatcher():
@@ -252,6 +253,8 @@ def main():
     if command == 'scope':
         scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
         print('Current target metadata validated.');return 0
+    if command in ('test','auth','authorization','grading','indexing','startup','smoke','security','persistence','demo-api','student-web'):
+        scope_guard.require_keyless_local(scope_guard.read_metadata(clean_env()))
     if command == 'check': return check()
     if command == 'isolation': return run('isolation', [sys.executable, str(ROOT / 'scripts/local/check_resources.py')]).returncode
     if command.startswith('resources-') and command in ('resources-before', 'resources-after'):

@@ -1,0 +1,16 @@
+{
+  "dataset_version": "phase5-eval-v1",
+  "files_sha256": {
+    "corpus.json": "41a4eb27a2fd8a96f5ca0d90771731e37530c61b3c5df8b7680ffb3831140989",
+    "rag_gold.json": "4f4a0770ee590a982bb472534306ed12e522dc281a3311e3babc950ee2367cc5",
+    "grading_gold.json": "4da0505b222aca83befe2aade2ad2b976a92505b40d2154a09a80706aacdd383",
+    "smoke_manifest.json": "70d3261cf783adcae8883f283fdd4c66e64f47d911d628b7521a3f0c3e7f306a",
+    "server_quizzes.json": "910e859f8b0c4f6bd509ed441154edbdc40f7e7fe248b2ece8f6b391dc1080de",
+    "plan.json": "6c245125202654e3d25ed23a20389fcd07e7583567ebe3903ccf6b95542ad6d2"
+  },
+  "dataset_sha256": "952e8d97eb5dee5b1f226bd1836de106d712bf41b6bdaac8316c3e935de27fa7",
+  "outputs_observed_before_freeze": false,
+  "frozen_at_utc": "2026-09-30T08:45:54.529466+00:00",
+  "semantic_human_review": "NOT_RUN",
+  "provider_requests": 0
+}

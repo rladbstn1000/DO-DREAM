@@ -44,7 +44,21 @@ def port_available(port):
         sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         try:sock.bind(('127.0.0.1',port))
         except OSError:return False
-    return True
+        return True
+
+
+def live_bind(source, destination, service, read_only, root):
+    """Two fixed read-only files on the AI service; no generic secret mounts."""
+    if service != 'ai' or not read_only or not root:
+        return False
+    source = Path(source)
+    if source.is_symlink():
+        return False
+    pairs = {
+        '/run/dodream-live/manifest.json': Path(root).resolve()/'.local/phase5/live/manifest.json',
+        '/run/secrets/dodream-provider-live.env': Path.home()/'.config/dodream/provider-live.env',
+    }
+    return destination in pairs and source.absolute() == pairs[destination] and source.resolve() == pairs[destination]
 
 
 def command_scope(args):
@@ -117,9 +131,19 @@ def validate_plan(plan, root):
                 require(mount['source'] in ('mysql-data','redis-data','be-data','ai-data','chroma-data'),'Unexpected volume reference')
                 if mount['source']=='chroma-data':require(name=='chroma' and mount.get('target')=='/chroma/chroma','Chroma storage belongs only to its server')
                 if name=='chroma':require(mount['source']=='chroma-data','Chroma cannot mount existing application data')
-            elif mount['type']=='bind':require(Path(mount['source']).resolve()==root/'scripts/local/nginx.auth-test.conf' and mount.get('read_only') is True,'Unreviewed bind mount')
+            elif mount['type']=='bind':require(
+                (Path(mount['source']).resolve()==root/'scripts/local/nginx.auth-test.conf' and mount.get('read_only') is True)
+                or live_bind(mount['source'],mount.get('target'),name,mount.get('read_only'),root),'Unreviewed bind mount')
             else:raise ScopeError('Unreviewed mount type')
-        require(set(service.get('networks',{}))<=({'default','gateway'} if name.startswith('web') else {'default'}),'Unexpected network membership')
+        live = name=='ai' and service.get('environment',{}).get('DODREAM_AI_MODE')=='LIVE_OPENAI'
+        if live:
+            require(str(service['environment'].get('LIVE_API_AUTHORIZED')).lower()=='true','Live authorization is not enabled')
+            require({m.get('target') for m in service.get('volumes',[]) if m['type']=='bind'}=={'/run/dodream-live/manifest.json','/run/secrets/dodream-provider-live.env'},'Live configuration must have the two fixed mounts')
+        elif name in ('ai','worker','index-dispatcher'):
+            require(service.get('environment',{}).get('DODREAM_AI_MODE','LOCAL_FAKE')=='LOCAL_FAKE'
+                and str(service.get('environment',{}).get('LIVE_API_AUTHORIZED','false')).lower()=='false'
+                and not any(m['type']=='bind' for m in service.get('volumes',[])), 'Local runtime must stay keyless and unauthorized')
+        require(set(service.get('networks',{}))<=({'default','gateway'} if name.startswith('web') or live else {'default'}),'Unexpected network membership')
         for port in service.get('ports',[]):
             require(port.get('host_ip')=='127.0.0.1' and name in ('web','web-auth-test'),'Only loopback nginx publishing is allowed')
             ports.append((name,int(port['published'])))
@@ -138,7 +162,8 @@ def validate_inventory(rows, build_images=(), root=None):
                     require(m['name'] in VOLUMES,'Owned container uses unexpected volume')
                     if m['name'] in NEW_VOLUMES:require(row['service']=='chroma' and m['destination']=='/chroma/chroma','Shared Chroma filesystem refused')
                     if row['service']=='chroma':require(m['name'] in NEW_VOLUMES,'Chroma cannot mount existing application data')
-                elif m['type']=='bind':require(root and Path(m['source']).resolve()==Path(root).resolve()/'scripts/local/nginx.auth-test.conf' and not m['rw'],'Owned container has an unreviewed bind')
+                elif m['type']=='bind':require((root and Path(m['source']).resolve()==Path(root).resolve()/'scripts/local/nginx.auth-test.conf' and not m['rw'])
+                    or live_bind(m['source'],m.get('destination'),row['service'],not m['rw'],root),'Owned container has an unreviewed bind')
                 else:raise ScopeError('Owned container has an unreviewed mount type')
         else:
             require(not set(row['networks'])&NETWORKS,'Another project references our network')
@@ -147,6 +172,13 @@ def validate_inventory(rows, build_images=(), root=None):
             if root:
                 require(not any(m['type']=='bind' and (Path(m['source']).resolve()==Path(root).resolve() or Path(root).resolve() in Path(m['source']).resolve().parents or Path(m['source']).resolve() in Path(root).resolve().parents) for m in row['mounts']),'Another project bind-mounts this workspace or an ancestor')
     return owned
+
+
+def require_keyless_local(rows):
+    ai=[row for row in rows if row['project']==PROJECT and row['service']=='ai']
+    require(len(ai)==1 and not any(m['type']=='bind' for m in ai[0]['mounts'])
+        and set(ai[0]['networks']) <= {PROJECT+'_default'},
+        'Local regression refused while AI has live mounts or egress')
 
 
 def read_metadata(env):
@@ -199,6 +231,8 @@ def _gate(args,base,root,env):
         owner=_read(['docker','network','inspect','--format','{{index .Labels "com.docker.compose.project"}}',network],env).strip()
         require(owner==PROJECT,'Existing network ownership is unverified')
     rows=read_metadata(env);owned=validate_inventory(rows,builds,root)
+    if operation=='exec' and targets==['ai'] and config['services']['ai'].get('environment',{}).get('DODREAM_AI_MODE','LOCAL_FAKE')=='LOCAL_FAKE':
+        require_keyless_local(rows)
     if operation in ('exec','start','stop','restart'):
         require(set(targets)<={r['service'] for r in owned},'Target container not found with matching project/service labels')
     if operation in ('up','run'):

@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import socket
 import time
-from app.config import APP_ENV, LOCAL_EXTERNAL_STUBS, LOCAL_PROVIDER_DATA_DIR
+from app.config import APP_ENV, LOCAL_EXTERNAL_STUBS, LOCAL_PROVIDER_DATA_DIR, AI_MODE
 from app.indexing.store import identity
 
 GATES = frozenset(('after_partial','before_activation','after_activation','after_send','before_write'))
@@ -19,7 +19,7 @@ def directory():
 def control(ctx):
     identity(ctx['job_id'])
     source = ctx.get('source_json', ctx.get('snapshot_json',''))
-    if not (LOCAL_EXTERNAL_STUBS and APP_ENV in ('local','test') and '[INDEX LOCAL]' in source):
+    if not (AI_MODE == 'LOCAL_FAKE' and LOCAL_EXTERNAL_STUBS and APP_ENV in ('local','test') and '[INDEX LOCAL]' in source):
         return {}
     path = directory() / (ctx['job_id']+'.json')
     if not path.exists():
@@ -41,7 +41,7 @@ def control(ctx):
 
 def event(ctx, name, **counts):
     source = ctx.get('source_json',ctx.get('snapshot_json',''))
-    if not (LOCAL_EXTERNAL_STUBS and APP_ENV in ('local','test') and '[INDEX LOCAL]' in source):
+    if not (AI_MODE == 'LOCAL_FAKE' and LOCAL_EXTERNAL_STUBS and APP_ENV in ('local','test') and '[INDEX LOCAL]' in source):
         return
     path = directory()
     path.mkdir(parents=True,exist_ok=True)

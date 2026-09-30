@@ -4,6 +4,9 @@ from app.indexing import store,hooks
 
 
 def dispatch_once():
+    from app.config import AI_MODE
+    if AI_MODE != 'LOCAL_FAKE':
+        raise RuntimeError('Live dispatch is manual only')
     from app.celery_config import celery_app
     claimed = store.claim_deliveries()
     for row in claimed:

@@ -68,10 +68,10 @@ def embed(who,doc,url,initial=False):
 
 def run():
     ids={who:login(who) for who in ('owner','other','remote','shared','unshared','class','other-student','remote-student')}
-    rows=sql("SELECT m.id,m.title,m.uploaded_file_id,f.jsons3key FROM materials m JOIN uploaded_files f ON f.id=m.uploaded_file_id WHERE m.title LIKE '[AUTHZ 4] %' AND m.deleted_at IS NULL;")
+    rows=sql("SELECT m.id,m.title,m.uploaded_file_id,f.jsons3key FROM materials m JOIN uploaded_files f ON f.id=m.uploaded_file_id WHERE m.title LIKE '[AUTHZ 5] %' AND m.deleted_at IS NULL;")
     docs={}
     for line in rows.splitlines():
-        mid,title,fid,key=line.split('\t');docs[title.replace('[AUTHZ 4] ','')]={'id':int(mid),'file':int(fid),'url':'https://local-fixture.invalid/'+key}
+        mid,title,fid,key=line.split('\t');docs[title.replace('[AUTHZ 5] ','')]={'id':int(mid),'file':int(fid),'url':'https://local-fixture.invalid/'+key}
     required={'editable','second-shared','class-shared','private','draft','other-owned','remote-owned'}
     if not required<=docs.keys():raise RuntimeError('Synthetic authorization fixtures missing')
     m=docs['editable'];mid=m['id'];fid=m['file'];second=docs['second-shared'];private=docs['private']

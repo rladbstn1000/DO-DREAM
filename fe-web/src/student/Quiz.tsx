@@ -4,7 +4,7 @@ import { authSession } from '../auth/client';
 import { LearningLayout, Notice } from './Layout';
 import { useStudentSession } from './Session';
 import { denied, studentJson, studentRequest } from './api';
-import { canonicalId, isUuid, modeLabel, questions, type Mode, type Question } from './model';
+import { canonicalId, isUuid, modeLabel, gradingModeLabel, questions, type Mode, type Question } from './model';
 import { createStudentSubmission, parseResults, type View, type Result } from './submission';
 
 const initial: View = { state: 'IDLE', busy: false, retryable: false };
@@ -35,7 +35,7 @@ function Results({ results }: { results: Result[] }) {
 function GradingMode() {
   const [mode, setMode] = useState<Mode | null>(null);
   useEffect(() => { const abort = new AbortController(); studentJson('/rag/mode', { signal: abort.signal }).then(value => { if (!abort.signal.aborted) setMode(value); }).catch(() => {}); return () => abort.abort(); }, []);
-  return <p className="learn-mode">{mode?.grading_provider === 'local_stub' ? '로컬 대역 채점 · 실제 서버 제출 및 결과 저장' : '채점 실행 모드 확인 필요 · 실제 AI 품질은 검증하지 않았습니다'}<span className="learn-sr-only">{modeLabel(mode)}</span></p>;
+  return <p className="learn-mode">{gradingModeLabel(mode)}<span className="learn-sr-only">{modeLabel(mode)}</span></p>;
 }
 export function QuizPage() {
   const { materialId: raw } = useParams(); const materialId = canonicalId(raw);

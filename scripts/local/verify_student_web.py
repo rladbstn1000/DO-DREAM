@@ -102,7 +102,7 @@ def main():
         summary={'runId':run_id,'status':'FAIL' if code else 'PASS','exitCode':code,
                  'applicationSourceBefore':before,'applicationSourceAfter':app_digest(),
                  'errorType':error,'startedAt':started,'finishedAt':datetime.now(timezone.utc).isoformat()}
-        for target in (RESULTS/('phase4-acceptance-'+run_id+'.json'),RESULTS/'phase4-acceptance.json'):
+        for target in (RESULTS/('phase5-acceptance-'+run_id+'.json'),RESULTS/'phase5-acceptance.json'):
             target.write_text(json.dumps(summary,indent=2)+'\n')
         print(json.dumps(summary))
     return code

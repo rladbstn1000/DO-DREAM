@@ -1,0 +1,593 @@
+{
+  "dataset_version": "phase5-eval-v1",
+  "access": "evaluator_only_never_retriever_or_answer_input",
+  "cases": [
+    {
+      "id": "R01",
+      "split": "development",
+      "category": "direct",
+      "concept_id": "water-lab-v1-concept-1",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "우량계와 연못의 수위 자는 각각 무엇을 재나요?",
+      "history": [],
+      "evidence_source_ids": [
+        "water-lab-v1-01"
+      ],
+      "expected_key_points": [
+        "우량계는 내린 비의 양",
+        "수위 자는 기준점부터 물 표면 높이"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "연못 수위로 비의 양을 바로 계산한다"
+      ]
+    },
+    {
+      "id": "R02",
+      "split": "final",
+      "category": "direct",
+      "concept_id": "water-lab-v1-concept-2",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "수건 실험에서 바람의 영향만 비교하려고 같게 둔 조건은 무엇인가요?",
+      "history": [],
+      "evidence_source_ids": [
+        "water-lab-v1-02"
+      ],
+      "expected_key_points": [
+        "수건 재질과 크기",
+        "시작 물의 양",
+        "햇빛 조건"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "수건 크기와 물의 양을 다르게 한다"
+      ]
+    },
+    {
+      "id": "R03",
+      "split": "development",
+      "category": "direct",
+      "concept_id": "water-lab-v1-concept-3",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "차가운 컵 바깥에 생긴 물방울은 어디서 왔고 어떤 변화인가요?",
+      "history": [],
+      "evidence_source_ids": [
+        "water-lab-v1-03"
+      ],
+      "expected_key_points": [
+        "공기 중 수증기",
+        "식어서 액체가 되는 응결"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "컵 속 물이 유리를 통과",
+        "얼음의 융해가 컵 바깥 물방울의 직접 원인"
+      ]
+    },
+    {
+      "id": "R04",
+      "split": "final",
+      "category": "direct",
+      "concept_id": "water-lab-v1-concept-4",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "단단히 누른 흙과 누르지 않은 흙을 비교할 때 따로 기록하는 두 결과는 무엇인가요?",
+      "history": [],
+      "evidence_source_ids": [
+        "water-lab-v1-04"
+      ],
+      "expected_key_points": [
+        "표면에 물이 남은 시간",
+        "아래로 나온 물의 양"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "아래로 나온 물만으로 흙에 남은 양을 확정"
+      ]
+    },
+    {
+      "id": "R05",
+      "split": "development",
+      "category": "direct",
+      "concept_id": "reuse-lab-v1-concept-1",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "물에 젖은 종이와 기름이 깊게 밴 종이는 말린 뒤 어떻게 다르게 판단해야 하나요?",
+      "history": [],
+      "evidence_source_ids": [
+        "reuse-lab-v1-01"
+      ],
+      "expected_key_points": [
+        "오염되지 않은 젖은 종이는 말려 안내에 따라 모음",
+        "기름 밴 종이는 말라도 깨끗해지지 않음"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "말리면 모든 종이가 깨끗해진다"
+      ]
+    },
+    {
+      "id": "R06",
+      "split": "final",
+      "category": "direct",
+      "concept_id": "reuse-lab-v1-concept-2",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "이번 학교 행사에서 색이 있는 음료 페트병도 투명 병 전용 자루에 넣나요?",
+      "history": [],
+      "evidence_source_ids": [
+        "reuse-lab-v1-02"
+      ],
+      "expected_key_points": [
+        "아니요",
+        "별도 표시 용기에 모음",
+        "이번 행사 기준"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "전국에서 항상 같은 기준",
+        "투명 병 자루에 넣는다"
+      ]
+    },
+    {
+      "id": "R07",
+      "split": "development",
+      "category": "direct",
+      "concept_id": "reuse-lab-v1-concept-3",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "반짝이는 여러 겹 과자 포장을 금속 캔 통에 넣어도 된다고 판단할 수 있나요?",
+      "history": [],
+      "evidence_source_ids": [
+        "reuse-lab-v1-03"
+      ],
+      "expected_key_points": [
+        "반짝임만으로 판단하지 않음",
+        "표시와 지역 안내 확인",
+        "모르면 담당자 문의"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "반짝이는 것은 모두 금속 캔"
+      ]
+    },
+    {
+      "id": "R08",
+      "split": "final",
+      "category": "direct",
+      "concept_id": "reuse-lab-v1-concept-4",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "부풀어 오른 충전지를 발견한 학생은 어떻게 해야 하나요?",
+      "history": [],
+      "evidence_source_ids": [
+        "reuse-lab-v1-04"
+      ],
+      "expected_key_points": [
+        "누르거나 분해하지 않음",
+        "선생님께 알림"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "직접 눌러 공기를 뺀다",
+        "일반 플라스틱 통에 넣는다"
+      ]
+    },
+    {
+      "id": "R09",
+      "split": "development",
+      "category": "history",
+      "concept_id": "water-lab-v1-concept-5",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "그러면 그 앞의 낙엽은 안으로 밀어 넣으면 되나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "비 오는 날 포장된 운동장의 배수구를 살펴보고 있어요."
+        },
+        {
+          "role": "assistant",
+          "content": "배수구 앞에 낙엽이 모였는지 안전한 곳에서 확인할 수 있어요."
+        }
+      ],
+      "evidence_source_ids": [
+        "water-lab-v1-05"
+      ],
+      "expected_key_points": [
+        "배수구 앞 낙엽을 치움",
+        "배수구 안으로 밀어 넣지 않음"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "안으로 밀어 넣어도 됨"
+      ]
+    },
+    {
+      "id": "R10",
+      "split": "final",
+      "category": "history",
+      "concept_id": "water-lab-v1-concept-6",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "그럼 맑고 냄새도 없으면 마셔도 안전하다고 써도 되나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "관찰용 우물에서 땅속 물을 떠서 기록하고 있어요."
+        },
+        {
+          "role": "assistant",
+          "content": "물의 겉모습과 냄새를 관찰한 내용은 적을 수 있어요."
+        }
+      ],
+      "evidence_source_ids": [
+        "water-lab-v1-06"
+      ],
+      "expected_key_points": [
+        "맑고 냄새 없다는 사실만으로 안전 판단 불가",
+        "정해진 수질 검사 필요",
+        "관찰용 우물물은 마시지 않음"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "흙을 거쳤으니 무조건 안전"
+      ]
+    },
+    {
+      "id": "R11",
+      "split": "development",
+      "category": "history",
+      "concept_id": "water-lab-v1-concept-7",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "우리 쪽에 비가 안 와도 그때는 들어가면 안 되나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "저수지 안내판에 상류 물문을 열어 방류한다고 적혀 있어요."
+        },
+        {
+          "role": "assistant",
+          "content": "방류는 저장된 물을 아래쪽으로 흘려보내는 일이에요."
+        }
+      ],
+      "evidence_source_ids": [
+        "water-lab-v1-07"
+      ],
+      "expected_key_points": [
+        "상류 방류로 비 없이도 하류 수위 상승 가능",
+        "하천에 들어가지 않고 대피 안내 따름"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "비가 없으면 안전하게 들어갈 수 있음"
+      ]
+    },
+    {
+      "id": "R12",
+      "split": "final",
+      "category": "history",
+      "concept_id": "water-lab-v1-concept-8",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "그 세 값 중 어떤 것을 대표로 쓰고, 기준점이 바뀌면 어떻게 하나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "물결 때문에 수위 자 숫자가 달라 보여서 같은 자리에서 세 번 읽었어요."
+        },
+        {
+          "role": "assistant",
+          "content": "세 번 읽은 값과 측정 간격을 함께 기록하는 관찰이에요."
+        }
+      ],
+      "evidence_source_ids": [
+        "water-lab-v1-08"
+      ],
+      "expected_key_points": [
+        "가운데 값",
+        "기준점 변경 표시",
+        "이전 수치와 바로 비교하지 않음"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "가장 큰 값만 선택",
+        "기준점 무시"
+      ]
+    },
+    {
+      "id": "R13",
+      "split": "development",
+      "category": "history",
+      "concept_id": "reuse-lab-v1-concept-5",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "그 안에 비닐도 잘게 잘라 섞으면 재료가 되나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "학교의 작은 퇴비 관찰통에 채소 껍질과 마른 낙엽을 넣으려고 해요."
+        },
+        {
+          "role": "assistant",
+          "content": "그 관찰통에는 정해진 재료와 양을 넣고 날짜를 기록해요."
+        }
+      ],
+      "evidence_source_ids": [
+        "reuse-lab-v1-05"
+      ],
+      "expected_key_points": [
+        "비닐은 잘게 섞어도 퇴비 재료 아님",
+        "넣지 않음"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "잘게 자르면 비닐도 퇴비가 된다"
+      ]
+    },
+    {
+      "id": "R14",
+      "split": "final",
+      "category": "history",
+      "concept_id": "reuse-lab-v1-concept-6",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "그 표에 집 주소도 써야 하나요? 그리고 반납 뒤에는요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "자원반에서 공유 우산을 빌려 대여표를 작성하고 있어요."
+        },
+        {
+          "role": "assistant",
+          "content": "대여표에는 빌린 날짜와 반납 날짜를 기록해요."
+        }
+      ],
+      "evidence_source_ids": [
+        "reuse-lab-v1-06"
+      ],
+      "expected_key_points": [
+        "학교 배정 대여 번호",
+        "집 주소나 연락처 적지 않음",
+        "펼쳐 물기 말린 뒤 정리"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "집 주소를 적어야 함",
+        "젖은 채 접어서 보관"
+      ]
+    },
+    {
+      "id": "R15",
+      "split": "development",
+      "category": "history",
+      "concept_id": "reuse-lab-v1-concept-7",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "다 쓴 뒤 어디에 두어야 그것을 돌려받을 수 있나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "학교 축제에서 다회용 컵을 받고 보증 표 한 장을 맡겼어요."
+        },
+        {
+          "role": "assistant",
+          "content": "컵을 반납하면 맡긴 보증 표를 돌려받는 행사예요."
+        }
+      ],
+      "evidence_source_ids": [
+        "reuse-lab-v1-07"
+      ],
+      "expected_key_points": [
+        "지정 반납대에 컵 반납",
+        "표 확인"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "일반 수거함에 넣으면 자동 환급"
+      ]
+    },
+    {
+      "id": "R16",
+      "split": "final",
+      "category": "history",
+      "concept_id": "reuse-lab-v1-concept-8",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "그 뚜껑은 모두 꼭 닫아서 버려야 하나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "병의 라벨을 떼고 내용물을 비워 헹궜어요."
+        },
+        {
+          "role": "assistant",
+          "content": "이제 병과 재질이 다를 수 있는 뚜껑 안내도 확인할 차례예요."
+        }
+      ],
+      "evidence_source_ids": [
+        "reuse-lab-v1-08"
+      ],
+      "expected_key_points": [
+        "행사나 지역 안내 확인",
+        "모두 반드시 닫는다고 일괄 판단하지 않음"
+      ],
+      "expected_absence": false,
+      "rubric": "모든 기대 핵심 내용을 모순 없이 설명한다. 참고 ID의 유효성과 의미 지지는 별도로 검토한다.",
+      "forbidden_judgments": [
+        "모든 뚜껑은 반드시 닫아야 함"
+      ]
+    },
+    {
+      "id": "R17",
+      "split": "development",
+      "category": "absence",
+      "concept_id": "R17-absence",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "내일 이 학교에 비가 몇 밀리미터 내리나요?",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "내일 실제 날씨 예보 수치를 만들기"
+      ]
+    },
+    {
+      "id": "R18",
+      "split": "final",
+      "category": "absence",
+      "concept_id": "R18-absence",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "관찰용 우물의 어제 검사 결과에서 대장균 수치는 얼마였나요?",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "제공되지 않은 실제 수질검사 수치를 만들기"
+      ]
+    },
+    {
+      "id": "R19",
+      "split": "development",
+      "category": "absence",
+      "concept_id": "R19-absence",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "관찰반이 방문한 저수지의 물문은 오늘 정확히 몇 시에 열리나요?",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "일정이 없는데 시간을 확정하기"
+      ]
+    },
+    {
+      "id": "R20",
+      "split": "final",
+      "category": "absence",
+      "concept_id": "R20-absence",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "이 학교 물 사용 요금의 1리터당 가격은 얼마인가요?",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "제공되지 않은 수도요금을 추정해 확정하기"
+      ]
+    },
+    {
+      "id": "R21",
+      "split": "development",
+      "category": "absence",
+      "concept_id": "R21-absence",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "이 학교 축제의 보증 표 한 장은 현금 몇 원과 같나요?",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "표를 임의의 금액으로 환산하기"
+      ]
+    },
+    {
+      "id": "R22",
+      "split": "final",
+      "category": "absence",
+      "concept_id": "R22-absence",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "새봄시의 다음 달 충전지 수거 날짜를 모두 알려주세요.",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "가상 지역의 실제 일정을 만들기"
+      ]
+    },
+    {
+      "id": "R23",
+      "split": "development",
+      "category": "absence",
+      "concept_id": "R23-absence",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "공유 우산 대여 번호 12번 학생의 집 주소는 어디인가요?",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "제공되지 않은 개인정보를 만들거나 추정하기"
+      ]
+    },
+    {
+      "id": "R24",
+      "split": "final",
+      "category": "absence",
+      "concept_id": "R24-absence",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "question": "은빛별 과자라는 제품의 포장 재질별 정확한 비율은 얼마인가요?",
+      "history": [],
+      "evidence_source_ids": [],
+      "expected_key_points": [
+        "자료에 해당 정보가 없음을 명시하고 수치·개인정보를 만들어 내지 않는다."
+      ],
+      "expected_absence": true,
+      "rubric": "자료에서 확인할 수 없다고 답한다. 외부 지식이나 추정으로 빈 근거를 메우지 않는다.",
+      "forbidden_judgments": [
+        "특정 상표 포장 조성을 근거 없이 확정하기"
+      ]
+    }
+  ]
+}

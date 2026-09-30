@@ -131,14 +131,14 @@ class Client:
         self.token=None
         self.user=None
 
-    def call(self,path,body=None,token=None,headers=None,service='be'):
+    def call(self,path,body=None,token=None,headers=None,service='be',timeout=20):
         if service not in ('be','ai') or not path.startswith('/') or path.startswith('//'):
             raise ValueError('Only reviewed local service paths allowed')
         h={'Content-Type':'application/json',**(headers or {})}
         if token:h['Authorization']='Bearer '+token
         request=urllib.request.Request(self.bases[service]+path,headers=h,
             data=None if body is None else json.dumps(body).encode())
-        try:response=self.opener.open(request,timeout=20)
+        try:response=self.opener.open(request,timeout=timeout)
         except urllib.error.HTTPError as error:response=error
         with response:
             raw=response.read(2*1024*1024+1)
@@ -263,8 +263,9 @@ class Runner:
 
     def modes(self,client):
         mode,_=self.expect('server_mode',client.call('/rag/mode',token=client.token,service='ai'),200)
-        self.check('server_explicit_local_mode',mode=={'environment':'local','answer_provider':'local_stub',
-            'embedding_provider':'local_hash8','grading_provider':'local_stub'})
+        self.check('server_explicit_local_mode',all(mode.get(k)==v for k,v in {'environment':'local','answer_provider':'local_stub',
+            'embedding_provider':'local_hash8','grading_provider':'local_stub','configured_mode':'LOCAL_FAKE',
+            'real_ai_verified':False}.items()))
         return mode
 
     def chat(self,client,material,mode,label):

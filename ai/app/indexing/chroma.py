@@ -3,9 +3,10 @@ import hashlib
 import json
 import math
 import struct
+import time
 from fastapi import HTTPException
-from app.config import LOCAL_EXTERNAL_STUBS
-from app.indexing.source import DIMENSION, BATCH_SIZE
+from app.config import AI_MODE
+from app.indexing.source import DIMENSION, BATCH_SIZE, INDEX_SPEC, specification, LIVE_SPEC
 
 
 def client():
@@ -76,15 +77,17 @@ def _http_client():
         raise
 
 
-def vectors(texts):
-    if not LOCAL_EXTERNAL_STUBS:
-        # This specification intentionally describes the explicit local hash model.
-        # Missing real configuration never silently selects it in deployment.
-        raise RuntimeError('Local index specification is unavailable outside local/test')
-    return [[byte / 255 for byte in hashlib.sha256(text.encode('utf-8')).digest()[:DIMENSION]] for text in texts]
+def vectors(texts, pointer=None, *, purpose='query', role='api'):
+    from app.indexing.runtime import authorize_pointer, scope_for, provider
+    pointer = pointer or {'spec':INDEX_SPEC}
+    authorize_pointer(pointer, purpose, role)
+    if AI_MODE == 'LOCAL_FAKE':
+        return [[byte / 255 for byte in hashlib.sha256(text.encode('utf-8')).digest()[:DIMENSION]] for text in texts]
+    return provider(role).embed(texts, scope_for(pointer, purpose))
 
 
 def create(name, ctx):
+    specification(ctx['spec'])
     return client().create_collection(name=name, embedding_function=None,
         metadata={'hnsw:space':'cosine', 'job_id':ctx['job_id'], 'generation':ctx['generation'],
                   'source_hash':ctx['source_hash'], 'index_spec':ctx['spec']})
@@ -94,8 +97,9 @@ def fetch(name):
     return client().get_collection(name=name, embedding_function=None)
 
 
-def float_vector(value):
-    if len(value) != DIMENSION:
+def float_vector(value, spec=INDEX_SPEC):
+    contract = specification(spec)
+    if len(value) != contract['dimensions']:
         raise ValueError('INVALID_VECTOR_DIMENSION')
     result = []
     for number in value:
@@ -105,11 +109,23 @@ def float_vector(value):
         if not math.isfinite(converted):
             raise ValueError('INVALID_VECTOR_VALUE')
         result.append(converted)
+    if contract['normalization'] == 'l2' and abs(sum(number * number for number in result) - 1.0) > 0.001:
+        raise ValueError('INVALID_VECTOR_VALUE')
     return result
 
 
+def chunk_spec(chunks):
+    specs = {chunk['metadata']['index_spec'] for chunk in chunks}
+    if len(specs) != 1:
+        raise ValueError('INDEX_SPECIFICATION_MISMATCH')
+    return specs.pop()
+
+
 def upsert(collection, chunks, embeddings):
-    clean = [float_vector(vector) for vector in embeddings]
+    spec = chunk_spec(chunks)
+    if collection.metadata.get('index_spec') != spec:
+        raise ValueError('INDEX_SPECIFICATION_MISMATCH')
+    clean = [float_vector(vector, spec) for vector in embeddings]
     if len(chunks) != len(clean):
         raise ValueError('INVALID_VECTOR_COUNT')
     collection.upsert(ids=[chunk['id'] for chunk in chunks],
@@ -118,7 +134,10 @@ def upsert(collection, chunks, embeddings):
 
 
 def validate(collection, chunks, expected_vectors):
-    expected = {chunk['id']: (chunk, float_vector(vector)) for chunk, vector in zip(chunks, expected_vectors)}
+    spec = chunk_spec(chunks)
+    if collection.metadata.get('index_spec') != spec:
+        raise ValueError('INDEX_SPECIFICATION_MISMATCH')
+    expected = {chunk['id']: (chunk, float_vector(vector, spec)) for chunk, vector in zip(chunks, expected_vectors)}
     if len(expected) != len(chunks) or not expected:
         raise ValueError('INVALID_EXPECTED_CHUNKS')
     actual = collection.get(include=['documents','metadatas','embeddings'])
@@ -134,7 +153,7 @@ def validate(collection, chunks, expected_vectors):
         stored = [float(item) for item in embeddings[index]]
         if docs[index] != chunk['document'] or metadata[index] != chunk['metadata']:
             raise ValueError('CANDIDATE_CONTENT_MISMATCH')
-        if float_vector(stored) != vector:
+        if float_vector(stored, spec) != vector:
             raise ValueError('CANDIDATE_VECTOR_MISMATCH')
         digest_rows.append([identity, docs[index], metadata[index], vector])
     query = collection.query(query_embeddings=[expected_vectors[0]], n_results=1,
@@ -147,18 +166,34 @@ def validate(collection, chunks, expected_vectors):
     return len(ids), digest
 
 
-def retrieve(pointer, query, limit=5):
+def retrieve(pointer, query, limit=5, *, timings=None):
     try:
+        from app.indexing.runtime import authorize_pointer
+        authorize_pointer(pointer, 'query')
         collection = fetch(pointer['candidate'])
-        result = collection.query(query_embeddings=vectors([query]), n_results=limit,
+        if any(collection.metadata.get(key) != pointer[value] for key,value in
+            [('index_spec','spec'),('source_hash','source_hash'),('job_id','job_id'),('generation','generation')]):
+            raise ValueError('INDEX_SPECIFICATION_MISMATCH')
+        stage = time.monotonic()
+        query_vectors = vectors([query], pointer)
+        if timings is not None:
+            timings['query_embedding'] = (time.monotonic()-stage)*1000
+        stage = time.monotonic()
+        result = collection.query(query_embeddings=query_vectors, n_results=limit,
             where={'$and':[{'type':'content'}, {'resource_kind':pointer['resource_kind']},
                 {'resource_id':str(pointer['resource_id'])}, {'source_revision':str(pointer['source_revision'])},
                 {'source_hash':pointer['source_hash']}, {'index_spec':pointer['spec']}]},
             include=['documents','metadatas','distances'])
+        if timings is not None:
+            timings['vector_search'] = (time.monotonic()-stage)*1000
         docs, metadata = result['documents'][0], result['metadatas'][0]
         if not docs or len(docs) != len(metadata):
             raise ValueError('Active collection returned no content')
         from langchain_core.documents import Document
         return [Document(page_content=content, metadata=meta) for content, meta in zip(docs, metadata)]
-    except Exception:
+    except Exception as error:
+        if AI_MODE == 'LIVE_OPENAI':
+            from app.providers import ProviderError
+            if isinstance(error,ProviderError):
+                raise  # Keep paid-provider timeout/error classification for the evaluator.
         raise HTTPException(503, {'code':'INDEX_STORAGE_UNAVAILABLE'}) from None

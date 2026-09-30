@@ -167,11 +167,14 @@ class RagProvenanceTests(unittest.TestCase):
         self.assertEqual(self.client.get('/rag/mode').status_code,401)
         mode=self.client.get('/rag/mode',headers=self.headers())
         self.assertEqual(mode.status_code,200)
-        self.assertEqual(mode.json(),{'environment':'test','answer_provider':'local_stub',
-            'embedding_provider':'local_hash8','grading_provider':'local_stub'})
-        with patch('app.rag.provenance.LOCAL_EXTERNAL_STUBS',False):
+        self.assertEqual(mode.json(),runtime_mode().model_dump())
+        self.assertEqual(mode.json()['configured_mode'],'LOCAL_FAKE')
+        self.assertFalse(mode.json()['real_ai_verified'])
+        with patch('app.rag.provenance.AI_MODE','LIVE_OPENAI'):
             value=runtime_mode().model_dump()
-            self.assertEqual(set(value.values()),{'test','configured_unverified'})
+            self.assertEqual(value['answer_provider'],'live_openai')
+            self.assertEqual(value['embedding_model'],'text-embedding-3-small')
+            self.assertFalse(value['real_ai_verified'])
 
     def during_answer(self,mutation):
         original=VersionedRagChain.ainvoke

@@ -8,8 +8,20 @@ MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024
 MAX_CHUNKS = 500
 BATCH_SIZE = 32
 INDEX_SPEC = 'local-hash8-content-v1'
-INDEX_SPECS = frozenset((INDEX_SPEC, 'local-hash8-content-v2'))
+LIVE_SPEC = 'openai-text-embedding-3-small-1536-l2-content-v1'
+LOCAL_INDEX_SPECS = frozenset((INDEX_SPEC, 'local-hash8-content-v2'))
+INDEX_SPECS = LOCAL_INDEX_SPECS | {LIVE_SPEC}
 DIMENSION = 8
+
+
+def specification(spec):
+    if spec in LOCAL_INDEX_SPECS:
+        return {'provider':'LOCAL_FAKE','model':'sha256-hash8','dimensions':8,
+            'normalization':'none','chunking':spec.rsplit('-',1)[-1]}
+    if spec == LIVE_SPEC:
+        return {'provider':'LIVE_OPENAI','model':'text-embedding-3-small','dimensions':1536,
+            'normalization':'l2','chunking':'content-v1'}
+    raise ValueError('Unsupported index specification')
 
 
 def text(value, default=''):

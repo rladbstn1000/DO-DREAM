@@ -28,8 +28,8 @@ export async function studentRequest(path: string, init: RequestInit = {}, timeo
     new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('응답을 기다리는 시간이 끝났습니다.')); }, timeout); })]);
   } finally { clearTimeout(timer!); init.signal?.removeEventListener('abort', stop); }
 }
-export async function studentJson(path: string, init?: RequestInit) {
-  const response = await studentRequest(path, init);
+export async function studentJson(path: string, init?: RequestInit, timeout?: number) {
+  const response = await studentRequest(path, init, timeout);
   if (response.status < 200 || response.status >= 300) throw new StudentApiError(response.status, response.data);
   return response.data;
 }

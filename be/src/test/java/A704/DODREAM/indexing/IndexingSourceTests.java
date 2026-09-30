@@ -67,6 +67,8 @@ class IndexingSourceTests {
     @Test void scopeNamesAreNotTruncatedOrSilentlyDefaulted() {
         assertEquals("local-hash8-content-v1",IndexingSource.spec(null));
         assertEquals("local-hash8-content-v2",IndexingSource.spec("local-hash8-content-v2"));
+        assertEquals(IndexingSource.LIVE_SPEC,IndexingSource.spec("openai-text-embedding-3-small-1536-l2-content-v1"));
+        assertThrows(IndexingFailure.class,()->IndexingSource.spec("openai-text-embedding-3-large-1536-l2-content-v1"));
         assertThrows(IndexingFailure.class,()->IndexingSource.spec("unknown"));
         assertThrows(IndexingFailure.class,()->IndexingSource.uuid("other_00000000-0000-0000-0000-000000000001"));
     }

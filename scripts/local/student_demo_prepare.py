@@ -10,10 +10,10 @@ import json
 import time
 from pathlib import Path
 from verify import ENV, req
-from manage import ROOT
+from manage import ROOT, RESULTS
 
-EMAIL = 'demo-phase4-v1@local.dodream.invalid'
-VERSION = 'student-web-v1'
+EMAIL = 'demo-phase5-v1@local.dodream.invalid'
+VERSION = 'student-web-phase5-v1'
 
 
 def prepare(wait_seconds=120):
@@ -55,7 +55,7 @@ def prepare(wait_seconds=120):
         time.sleep(1)
     result = {'fixtureVersion': VERSION, 'status': 'PASS', 'sameVersionReplay': 'PASS',
               'counts': first['counts'], 'samples': first['samples'], 'readable': True}
-    destination = ROOT / '.local/phase4/results'
+    destination = RESULTS
     destination.mkdir(parents=True, exist_ok=True)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     (destination / ('demo-preparation-' + stamp + '.json')).write_text(json.dumps(result, ensure_ascii=False, indent=2))

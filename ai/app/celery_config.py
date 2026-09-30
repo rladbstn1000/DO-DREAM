@@ -1,5 +1,5 @@
 from celery import Celery
-from app.config import CELERY_BROKER_URL
+from app.config import CELERY_BROKER_URL, AI_MODE
 
 celery_app = Celery('dodream_rag_worker',broker=CELERY_BROKER_URL,
     backend=CELERY_BROKER_URL,include=['app.rag.tasks'])
@@ -13,5 +13,14 @@ celery_app.conf.update(
     task_acks_on_failure_or_timeout=True, task_publish_retry=False,
     task_soft_time_limit=50, task_time_limit=55, result_expires=3600,
 )
+
+
+from celery.signals import worker_init
+@worker_init.connect
+def prohibit_live_queue_consumer(**kwargs):
+    if AI_MODE != 'LOCAL_FAKE':
+        # Celery treats ordinary signal exceptions as logged failures and may
+        # continue startup. SystemExit actually prevents any queue consumption.
+        raise SystemExit('Live evaluation workers must use the single-job command')
 if __name__ == '__main__':
     celery_app.start()

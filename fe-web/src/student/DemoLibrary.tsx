@@ -49,7 +49,7 @@ export function DemoPage() {
   }
   return <LearningLayout title="배움의 문을 두드려요" subtitle="읽고, 궁금한 것을 묻고, 내 생각을 답해보세요.">
     <section className="learn-hero"><div><span className="learn-pill">STUDENT EXPERIENCE</span><h2>오늘은 무엇을 배워볼까요?</h2><p>짧은 글을 내 속도로 읽고, 글에서 찾은 참고 자료와 함께 질문해보세요. 퀴즈 결과는 제출한 당시의 문제로 다시 볼 수 있어요.</p>
-      <p className="learn-small">독립된 로컬 체험 학생으로 시작합니다. 실제 학생 정보와 외부 AI 서비스를 사용하지 않습니다.</p></div><div className="learn-steps" aria-label="학습 순서"><span>01 읽기</span><span>02 질문하기</span><span>03 퀴즈 풀기</span></div></section>
+      <p className="learn-small">독립된 로컬 체험 학생으로 시작합니다. 실제 학생 정보는 사용하지 않습니다. AI 실행 설정은 학습 화면에서 확인할 수 있습니다.</p></div><div className="learn-steps" aria-label="학습 순서"><span>01 읽기</span><span>02 질문하기</span><span>03 퀴즈 풀기</span></div></section>
     {loading && <Notice>현재 로그인 정보를 확인하고 있습니다.</Notice>}
     {identityError && <Notice error>현재 로그인을 확인하지 못했습니다. 계정을 바꾸기 전에 <button onClick={refresh}>로그인 다시 확인</button>을 눌러주세요.</Notice>}
     {user ? <section className="learn-card"><h2>이미 로그인되어 있어요</h2><p>{user.name}님의 {user.role === 'TEACHER' ? '교사' : '학생'} 계정을 유지합니다. 새 체험은 명시적으로 로그아웃한 뒤 시작할 수 있습니다.</p>

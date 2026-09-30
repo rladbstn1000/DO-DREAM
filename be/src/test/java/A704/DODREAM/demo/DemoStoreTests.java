@@ -23,8 +23,8 @@ class DemoStoreTests {
         when(em.find(DemoCatalog.class,DemoManifest.VERSION,LockModeType.PESSIMISTIC_WRITE)).thenReturn(catalog);
         var query=mock(TypedQuery.class);when(em.createQuery(anyString(),eq(DemoSample.class))).thenReturn(query);
         when(query.setParameter(anyString(),any())).thenReturn(query);
-        var first=new DemoSample("water-v1",DemoManifest.VERSION,30);first.materialId=40L;
-        var second=new DemoSample("recycling-v1",DemoManifest.VERSION,31);second.materialId=41L;
+        var first=new DemoSample("water-phase5-v1",DemoManifest.VERSION,30);first.materialId=40L;
+        var second=new DemoSample("recycling-phase5-v1",DemoManifest.VERSION,31);second.materialId=41L;
         when(query.getResultList()).thenReturn(List.of(first,second));
         when(indexing.materialSummaries(10L,List.of(40L,41L))).thenReturn(Map.of(40L,new IndexingSummary("job","SUCCEEDED",1,true,true,false,1),41L,new IndexingSummary("job2","SUCCEEDED",1,true,true,false,1)));
     }

@@ -16,6 +16,9 @@ class UnitDispatcherGuardTests(unittest.TestCase):
         self.row = {'id': 'original-container-id', 'project': manage.PROJECT,
                     'service': 'index-dispatcher',
                     'name': manage.PROJECT + '-index-dispatcher-1', 'state': 'running'}
+        self.ai = {'id': 'keyless-ai-id', 'project': manage.PROJECT, 'service': 'ai',
+                   'name': manage.PROJECT + '-ai-1', 'state': 'running',
+                   'mounts': [], 'networks': [manage.PROJECT + '_default']}
         self.dependencies = {'mysql': 'exited', 'redis': 'exited'}
         self.actions = []
         self.failure = None
@@ -42,7 +45,7 @@ class UnitDispatcherGuardTests(unittest.TestCase):
             raise ScopeError('synthetic scope refusal')
 
     def metadata(self, env):
-        return [] if self.row is None else [copy.deepcopy(self.row)]
+        return [copy.deepcopy(self.ai)] + ([] if self.row is None else [copy.deepcopy(self.row)])
 
     def compose(self, name, *args):
         self.actions.append(('compose', name, args))
@@ -151,6 +154,20 @@ class UnitDispatcherGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ScopeError, 'synthetic scope refusal'):
             manage.unit_tests()
         self.assertEqual(self.actions, [])
+
+    def test_live_key_mount_refuses_before_dispatcher_stop_or_any_suite(self):
+        self.ai['mounts'] = [{'type': 'bind'}]
+        with self.assertRaisesRegex(ScopeError, 'Local regression refused'):
+            manage.unit_tests()
+        self.assertEqual(self.actions, [])
+        self.assertEqual(self.row['state'], 'running')
+
+    def test_live_egress_refuses_before_dispatcher_stop_or_any_suite(self):
+        self.ai['networks'].append(manage.PROJECT + '_gateway')
+        with self.assertRaisesRegex(ScopeError, 'Local regression refused'):
+            manage.unit_tests()
+        self.assertEqual(self.actions, [])
+        self.assertEqual(self.row['state'], 'running')
 
 
 if __name__ == '__main__':

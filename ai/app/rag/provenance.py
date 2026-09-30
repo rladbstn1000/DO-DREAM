@@ -2,21 +2,33 @@
 import hashlib
 from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
-from app.config import APP_ENV, LOCAL_EXTERNAL_STUBS
+from app.config import APP_ENV, AI_MODE
 
 
 class RuntimeMode(BaseModel):
     environment: str
-    answer_provider: Literal['local_stub', 'configured_unverified']
-    embedding_provider: Literal['local_hash8', 'configured_unverified']
-    grading_provider: Literal['local_stub', 'configured_unverified']
+    answer_provider: Literal['local_stub', 'configured_unverified', 'live_openai']
+    embedding_provider: Literal['local_hash8', 'configured_unverified', 'live_openai']
+    grading_provider: Literal['local_stub', 'configured_unverified', 'live_openai']
+    configured_mode: Optional[Literal['LOCAL_FAKE','LIVE_OPENAI']] = None
+    embedding_model: Optional[str] = None
+    answer_model: Optional[str] = None
+    grading_model: Optional[str] = None
+    index_spec: Optional[str] = None
+    real_ai_verified: bool = False
 
 
-def runtime_mode():
-    return RuntimeMode(environment=APP_ENV,
-        answer_provider='local_stub' if LOCAL_EXTERNAL_STUBS else 'configured_unverified',
-        embedding_provider='local_hash8' if LOCAL_EXTERNAL_STUBS else 'configured_unverified',
-        grading_provider='local_stub' if LOCAL_EXTERNAL_STUBS else 'configured_unverified')
+def runtime_mode(index_spec=None):
+    from app.indexing.source import INDEX_SPEC, LIVE_SPEC
+    local = AI_MODE == 'LOCAL_FAKE'
+    return RuntimeMode(environment=APP_ENV,configured_mode=AI_MODE,
+        answer_provider='local_stub' if local else 'live_openai',
+        embedding_provider='local_hash8' if local else 'live_openai',
+        grading_provider='local_stub' if local else 'live_openai',
+        embedding_model='sha256-hash8' if local else 'text-embedding-3-small',
+        answer_model='local-deterministic' if local else 'gpt-4.1-mini-2025-04-14',
+        grading_model='local-deterministic' if local else 'gpt-4.1-mini-2025-04-14',
+        index_spec=index_spec or (INDEX_SPEC if local else LIVE_SPEC))
 
 
 class SourceReference(BaseModel):

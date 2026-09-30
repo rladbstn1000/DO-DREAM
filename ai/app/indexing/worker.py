@@ -3,13 +3,14 @@ import copy
 import httpx
 from app.indexing import store, chroma, hooks
 from app.indexing.source import parse_snapshot, make_chunks, BATCH_SIZE
+from app.config import AI_MODE
 
 
-def process(job_id):
+def process(job_id, *, manual_live=False):
     receipt = store.receipt_context(job_id)
     if receipt:
         hooks.event(receipt,'worker_received')
-    ctx = store.claim_execution(job_id)
+    ctx = store.claim_execution(job_id, manual_live=manual_live)
     if ctx is None:
         if receipt:
             hooks.event(receipt,'duplicate_or_terminal_ignored')
@@ -25,14 +26,14 @@ def process(job_id):
         collection = chroma.create(ctx['candidate'],ctx)
         hooks.event(ctx,'candidate_created',expected_chunks=len(chunks))
         expected_vectors = []
-        batch_size = min(BATCH_SIZE,max(1,len(chunks)//2))
+        batch_size = min(3 if AI_MODE == 'LIVE_OPENAI' else BATCH_SIZE,max(1,len(chunks)//2))
         for offset in range(0,len(chunks),batch_size):
             if not store.execution_progress(ctx,embedding_call=True):
                 return {'status':'revoked'}
             batch = chunks[offset:offset+batch_size]
             if fault == 'embedding_failure':
                 raise ValueError('EMBEDDING_FAILURE')
-            batch_vectors = chroma.vectors([chunk['document'] for chunk in batch])
+            batch_vectors = chroma.vectors([chunk['document'] for chunk in batch], ctx, purpose='index', role='worker')
             expected_vectors.extend(batch_vectors)
             writes = copy.deepcopy(batch)
             write_vectors = copy.deepcopy(batch_vectors)

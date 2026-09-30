@@ -141,7 +141,7 @@ function QuestionPanel({ materialId, currentRevision, onDenied, onReload }: { ma
     inFlight.current = true; setBusy(true); setError(''); const generation = fence.capture();
     const submitted = question;
     try {
-      const data = await studentJson('/rag/chat', { method: 'POST', body: JSON.stringify({ document_id: String(materialId), question: submitted, ...(sessionId ? { session_id: sessionId } : {}) }) });
+      const data = await studentJson('/rag/chat', { method: 'POST', body: JSON.stringify({ document_id: String(materialId), question: submitted, ...(sessionId ? { session_id: sessionId } : {}) }) }, mode?.configured_mode === 'LIVE_OPENAI' ? 32000 : 20000);
       if (!isUuid(data.session_id) || !positiveId(data.message_id) || typeof data.answer !== 'string' || String(data.document_id) !== String(materialId) || !Array.isArray(data.sources)) throw new Error('Invalid answer');
       const sources = data.sources.map((d: unknown) => source(d, materialId));
       if (sources.some((s: Source) => s.source_revision !== data.source_revision || s.source_hash !== data.source_hash)) throw new Error('Source mismatch');
