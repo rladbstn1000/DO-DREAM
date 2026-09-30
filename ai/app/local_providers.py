@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import sqlite3
 import re
+import uuid
 from urllib.parse import urlsplit, unquote
 from langchain_core.documents import Document
 from fastapi import HTTPException
@@ -25,8 +26,10 @@ def load_fixture_json(url):
     if url not in (FIXTURE_BASE + "sample.json", FIXTURE_BASE + "local/synthetic/lesson.json"):
         parsed = urlsplit(url)
         key = unquote(parsed.path.lstrip("/"))
+        indexing_key = (parsed.path == '/' + key and re.fullmatch(
+            r"local/synthetic/indexing/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json", key))
         if (parsed.scheme != "https" or parsed.netloc != "local-fixture.invalid" or parsed.query or parsed.fragment
-                or not re.fullmatch(r"local/synthetic/authz/[A-Za-z0-9/_-]+\.json", key)):
+                or not (indexing_key or re.fullmatch(r"local/synthetic/authz/[A-Za-z0-9/_-]+\.json", key))):
             raise ValueError("Local storage accepts only authorized synthetic object keys; network denied")
         path = Path(LOCAL_OBJECT_STORAGE_DIR) / (hashlib.sha256(key.encode()).hexdigest() + ".json")
         if path.is_symlink() or not path.is_file() or path.stat().st_size > 10 * 1024 * 1024:
@@ -43,15 +46,33 @@ def load_fixture_json(url):
 
 
 def write_fixture_pdf(url, path):
-    if url != FIXTURE_BASE + "sample.pdf":
-        raise HTTPException(status_code=400, detail="Local storage supports only synthetic sample.pdf; network denied")
-    # Deliberately opaque fixture for the parser boundary; this is not PDF/OCR validation.
-    Path(path).write_bytes(b"%PDF-1.4\n% DO-DREAM LOCAL SYNTHETIC FIXTURE\n%%EOF\n")
+    if url == FIXTURE_BASE + 'sample.pdf':
+        Path(path).write_bytes(b'%PDF-1.4\n% DO-DREAM LOCAL SYNTHETIC FIXTURE\n%%EOF\n')
+        return
+    parsed = urlsplit(url)
+    key = parsed.path.lstrip('/')
+    match = re.fullmatch(r'local/synthetic/indexing-pdf/([0-9a-f-]{36})\.pdf',key)
+    if (parsed.scheme != 'https' or parsed.netloc != 'local-fixture.invalid' or parsed.query or parsed.fragment
+            or not match or str(uuid.UUID(match.group(1))) != match.group(1)):
+        raise HTTPException(400,'Local storage accepts only bound synthetic PDF objects')
+    source = Path(LOCAL_OBJECT_STORAGE_DIR)/(hashlib.sha256(key.encode()).hexdigest()+'.pdf')
+    if source.is_symlink() or not source.is_file() or source.stat().st_size > 10*1024*1024:
+        raise HTTPException(404,'Synthetic PDF unavailable')
+    data = source.read_bytes()
+    if b'DO-DREAM LOCAL SYNTHETIC FIXTURE' not in data:
+        raise HTTPException(400,'Synthetic PDF marker missing')
+    Path(path).write_bytes(data+b'\n% INDEX LOCAL INITIAL\n')
 
 
 def parse_pdf(path):
     if b"DO-DREAM LOCAL SYNTHETIC FIXTURE" not in Path(path).read_bytes():
         raise ValueError("Local PDF provider accepts only its synthetic fixture")
+    if b'INDEX LOCAL INITIAL' in Path(path).read_bytes():
+        return {'external_provider':'local_stub','indexes':['01 Synthetic initial'],
+            'data':[{'index':'01','index_title':'Synthetic initial','titles':[{'title':'Synthetic lesson',
+                's_titles':[{'s_title':'First','contents':'[INDEX LOCAL] Initial synthetic content one. '+('Water learning text. '*100),'ss_titles':[]},
+                            {'s_title':'Second','contents':'[INDEX LOCAL] Initial synthetic content two. '+('Safe science text. '*100),'ss_titles':[]}]}],
+                'concept_checks':[]}]}
     data = load_fixture_json(FIXTURE_BASE + "sample.json")["parsedData"]
     return {"external_provider": "local_stub", **data}
 

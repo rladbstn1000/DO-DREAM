@@ -10,12 +10,13 @@ def columns(table):return [r.split('\t')[0] for r in sql('SHOW COLUMNS FROM '+id
 def clone_statement(table,where,replacements):
     cols=columns(table)
     return 'INSERT INTO '+ident(table)+' ('+','.join(map(ident,cols))+') SELECT '+','.join(replacements.get(c,ident(c)) for c in cols)+' FROM '+ident(table)+' WHERE '+where+';'
-def clone_material(source,title):
+def clone_material(source,title,namespace="phase3a"):
+    if namespace not in ("phase3a","phase3b"):raise ValueError("Unknown fixture phase")
     found=sql('SELECT id FROM materials WHERE title='+literal(title)+';')
     if found:return int(found)
     rows=sql(f'SELECT m.uploaded_file_id,f.jsons3key FROM materials m JOIN uploaded_files f ON f.id=m.uploaded_file_id WHERE m.id={int(source)};').split('\t')
     file_id,key=int(rows[0]),rows[1]
-    newkey='local/synthetic/authz/phase3a-'+str(uuid.uuid4())+'.json'
+    newkey='local/synthetic/authz/'+namespace+'-'+str(uuid.uuid4())+'.json'
     if not re.fullmatch(r'local/synthetic/authz/[a-z0-9-]+\.json',key):raise RuntimeError('Only named synthetic AUTHZ object copies allowed')
     object_path=lambda k:'/app/local-data/objects/'+hashlib.sha256(k.encode()).hexdigest()+'.json'
     docker_exec('be',['cp',object_path(key),object_path(newkey)])

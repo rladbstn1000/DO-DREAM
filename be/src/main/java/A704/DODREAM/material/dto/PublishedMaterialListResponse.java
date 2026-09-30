@@ -22,9 +22,16 @@ public class PublishedMaterialListResponse {
     private int totalCount;
 
     public static PublishedMaterialListResponse from(List<Material> materials) {
+        return from(materials, java.util.Map.of());
+    }
+    public static PublishedMaterialListResponse from(List<Material> materials, java.util.Map<Long,A704.DODREAM.indexing.IndexingSummary> statuses) {
         return PublishedMaterialListResponse.builder()
                 .materials(materials.stream()
-                        .map(PublishedMaterialDto::from)
+                        .map(material -> {
+                            PublishedMaterialDto dto=PublishedMaterialDto.from(material);
+                            dto.indexing=statuses.getOrDefault(material.getId(),A704.DODREAM.indexing.IndexingSummary.none());
+                            return dto;
+                        })
                         .collect(Collectors.toList()))
                 .totalCount(materials.size())
                 .build();
@@ -44,6 +51,7 @@ public class PublishedMaterialListResponse {
         private PostStatus postStatus;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
+        private A704.DODREAM.indexing.IndexingSummary indexing;
 
         public static PublishedMaterialDto from(Material material) {
             return PublishedMaterialDto.builder()

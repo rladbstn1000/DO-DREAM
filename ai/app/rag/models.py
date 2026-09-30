@@ -69,3 +69,11 @@ class EmbeddingTask(Base):
     user_id = Column(Integer, nullable=False, index=True)
     document_id = Column(String, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ChatSessionIndex(Base):
+    """Additive version binding; legacy sessions remain unchanged and readable."""
+    __tablename__ = 'chat_session_indexes'
+    session_id = Column(String, ForeignKey('chat_sessions.id'), primary_key=True)
+    source_revision = Column(Integer, nullable=False)
+    source_hash = Column(String(64), nullable=False)

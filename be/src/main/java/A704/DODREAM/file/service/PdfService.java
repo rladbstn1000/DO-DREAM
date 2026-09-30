@@ -45,6 +45,10 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 @Slf4j
 public class PdfService {
     @Autowired private A704.DODREAM.authorization.AuthorizationPolicy policy;
+    @Autowired private A704.DODREAM.indexing.IndexingService indexingService;
+    @Autowired private A704.DODREAM.indexing.IndexingStore indexingStore;
+    @Autowired private A704.DODREAM.indexing.IndexingLocalHooks indexingHooks;
+    @Autowired private org.springframework.core.env.Environment environment;
 
 	@Autowired
 	private UploadedFileRepository uploadedFileRepository;
@@ -89,7 +93,7 @@ public class PdfService {
 	 */
 	public Map<String, Object> uploadAndParsePdfFromBytes(byte[] pdfBytes, String filename, Long userId,
 		String authorizationHeader) {
-        policy.teacher(userId);
+        indexingStore.teacher(userId);
 		try {
 			// 1. 파일 검증
 			if (pdfBytes == null || pdfBytes.length == 0) {
@@ -101,7 +105,9 @@ public class PdfService {
 			}
 
 			// 2. S3 키 생성
-			String s3Key = generateS3Key(filename);
+            String s3Key=environment.acceptsProfiles(org.springframework.core.env.Profiles.of("local"))
+                && filename.matches("indexing-synthetic(?:-[0-9a-f-]{36})?\\.pdf")
+                ? "local/synthetic/indexing-pdf/"+UUID.randomUUID()+".pdf" : generateS3Key(filename);
 
 			// 3. S3에 업로드 (한글 파일명 URL 인코딩 처리)
 			String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
@@ -114,6 +120,7 @@ public class PdfService {
 					LocalDateTime.now().toString()))
 				.build();
 
+            indexingHooks.boundary(0,false);
 			s3Client.putObject(putRequest, RequestBody.fromBytes(pdfBytes));
 
 			log.info("✅ PDF S3 업로드 완료: {}", s3Key);
@@ -129,9 +136,9 @@ public class PdfService {
 				.uploaderId(userId)
 				.build();
 
-			UploadedFile savedFile = uploadedFileRepository.save(uploadedFile);
+            long savedFileId=indexingStore.createUploadedFile(userId,uploadedFile);
 
-			log.info("✅ DB 저장 완료: pdfId={}", savedFile.getId());
+			log.info("✅ DB 저장 완료: pdfId={}", savedFileId);
 
 			// 5. CloudFront signed URL 생성
 			String cloudFrontUrl = cloudFrontService.generateSignedUrl(s3Key);
@@ -141,8 +148,9 @@ public class PdfService {
 
 			Map<String, Object> request = new HashMap<>();
 			request.put("cloudfront_url", cloudFrontUrl);
-            request.put("uploaded_file_id", savedFile.getId());
+            request.put("uploaded_file_id", savedFileId);
 
+            indexingHooks.boundary(savedFileId,filename.startsWith("indexing-synthetic"));
 			ResponseEntity<Map> response = webClient.post()
 				.uri(fastApiEndpoint)
                 .header("Authorization", authorizationHeader)
@@ -150,9 +158,9 @@ public class PdfService {
 				.retrieve()
 				.onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
 					clientResponse -> clientResponse.bodyToMono(String.class)
-						.map(errorBody -> new RuntimeException("FastAPI 에러: " + errorBody)))
+						.map(errorBody -> new RuntimeException("PDF provider request failed")))
 				.toEntity(Map.class)
-				.block();
+				.block(java.time.Duration.ofSeconds(15));
 
 			if (response.getBody() == null) {
 				throw new RuntimeException("FastAPI 응답이 비어있습니다.");
@@ -164,41 +172,12 @@ public class PdfService {
 				throw new RuntimeException("FastAPI 응답에 parsed_data가 없습니다.");
 			}
 
-			// 7. JSON을 S3에 저장
-			String jsonS3Key = uploadJsonToS3(s3Key, parsedData, userId.toString());
+            // Parsed object preparation is outside the publication transaction. The JSON reference
+            // and durable initial-index job become visible together; no user token enters the queue.
+            var indexing=indexingService.completeInitial(userId,savedFileId,parsedData);
+            return Map.of("pdfId",savedFileId,"filename",filename,"parsedData",parsedData,"indexing",indexing);
 
-			// 8. DB 업데이트 (파싱 결과 반영)
-			savedFile.setJsonS3Key(jsonS3Key);
-			savedFile.setParsedAt(LocalDateTime.now());
-
-			// 필수 필드만 DB에 저장 (검색용)
-			if (parsedData.containsKey("indexes")) {
-				List<String> indexes = (List<String>)parsedData.get("indexes");
-				savedFile.setIndexes(String.join(",", indexes));
-			}
-
-			uploadedFileRepository.save(savedFile);
-
-			log.info("✅ 텍스트 추출 및 저장 완료: pdfId={}", savedFile.getId());
-
-			try {
-				// ✅ 초기 임베딩 API 호출 (pdf_id와 S3 URL 전달)
-				callFastApiInitialEmbedding(savedFile.getId(),           // pdf_id (Long 타입)
-					jsonS3Key,                    // 파싱된 JSON 파일의 S3 키
-					authorizationHeader           // JWT 토큰
-				);
-			} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
-            throw denied;
-        } catch (Exception e) {
-				// 임베딩 실패가 파일 업로드 전체를 실패하게 하면 안 되므로 로그만 남김
-				log.error("⚠️ 초기 임베딩 생성 요청 실패 (pdfId={}): {}", savedFile.getId(), e.getMessage());
-			}
-
-			log.info("✅ 전체 프로세스 완료: pdfId={}", savedFile.getId());
-
-			return Map.of("pdfId", savedFile.getId(), "filename", filename, "parsedData", parsedData);
-
-		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
+		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException | A704.DODREAM.indexing.IndexingFailure denied) {
             throw denied;
         } catch (Exception e) {
 			throw new RuntimeException("PDF 업로드 및 파싱 실패: " + e.getMessage());
@@ -1247,69 +1226,4 @@ public class PdfService {
 		return quizItems;
 	}
 
-	/**
-	 * FastAPI 초기 임베딩 생성 API 호출 (텍스트 추출 직후)
-	 *
-	 * @param pdfId               PDF ID (Long)
-	 * @param jsonS3Key           S3에 저장된 JSON 파일 키
-	 * @param authorizationHeader JWT 토큰
-	 */
-	private void callFastApiInitialEmbedding(Long pdfId, String jsonS3Key, String authorizationHeader) {
-		log.info("🔵 FastAPI 초기 임베딩 호출 시작... [PDF ID: {}]", pdfId);
-
-		// 1. JSON 파일 접근을 위한 CloudFront URL 생성
-		String jsonCloudFrontUrl = cloudFrontService.generateSignedUrl(jsonS3Key);
-		log.debug("Local/remote object URL prepared for authorized embedding");
-
-		// 2. FastAPI 엔드포인트 설정 (초기 임베딩)
-		String fastApiEndpoint = fastApiUrl + "/rag/embeddings/create-initial";
-
-		// 3. 요청 바디 생성
-		Map<String, Object> fastApiRequest = Map.of("pdf_id", pdfId,
-			// ✅ Long 타입 (자동으로 JSON에서 숫자로 변환됨)
-			"s3_url", jsonCloudFrontUrl         // ✅ S3 URL 전달
-		);
-
-		// 4. JWT 토큰 검증
-		if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-			log.warn("⚠️ JWT 토큰이 없어 초기 임베딩 요청을 건너뜁니다.");
-			return;
-		}
-
-		try {
-			// 5. WebClient로 비동기 요청 전송 (Celery 백그라운드 처리)
-			ResponseEntity<Map> response = webClient.post()
-				.uri(fastApiEndpoint)
-				.header("Authorization", authorizationHeader)
-				.bodyValue(fastApiRequest)
-				.retrieve()
-				.onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-					clientResponse -> clientResponse.bodyToMono(String.class)
-						.map(errorBody -> new RuntimeException("FastAPI 초기 임베딩 에러: " + errorBody)))
-				.toEntity(Map.class)
-				.block(); // ✅ 동기 호출 (task_id만 받으면 되므로 빠름)
-
-			Map<String, Object> responseBody = response.getBody();
-
-			if (responseBody != null) {
-				String taskId = (String)responseBody.get("task_id");
-				String status = (String)responseBody.get("status");
-
-				log.info("✅ FastAPI 초기 임베딩 요청 성공");
-				log.info("   - PDF ID: {}", pdfId);
-				log.info("   - Task ID: {}", taskId);
-				log.info("   - Status: {}", status);
-				log.info("   - Collection Name: pdf_{}", pdfId);
-
-				// ✅ (선택) Task ID를 DB에 저장하여 나중에 상태 확인 가능
-				// pdfFileRepository.updateEmbeddingTaskId(pdfId, taskId);
-			}
-
-		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
-            throw denied;
-        } catch (Exception e) {
-			log.error("❌ FastAPI 초기 임베딩 요청 중 오류 발생 (pdfId={}): {}", pdfId, e.getMessage(), e);
-			throw e; // 상위로 예외 전파
-		}
-	}
 }

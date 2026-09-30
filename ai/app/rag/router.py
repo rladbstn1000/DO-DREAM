@@ -22,6 +22,9 @@ from app.security.authorization import (
     require_history_subject, require_history_material, require_quizzes, document_ref,
 )
 from app.common.db_session import get_db
+from app.indexing import store as index_store
+from app.indexing.source import INDEX_SPEC
+from app.rag.service import download_json_from_cloudfront
 
 
 class RequestModel(BaseModel):
@@ -31,11 +34,13 @@ class RequestModel(BaseModel):
 class InitialEmbeddingRequest(RequestModel):
     pdf_id: StrictInt = Field(gt=0, le=9223372036854775807)
     s3_url: HttpUrl
+    index_spec: str = INDEX_SPEC
 
 
 class EmbeddingRequest(RequestModel):
     document_id: str
     s3_url: HttpUrl
+    index_spec: str = INDEX_SPEC
 
 
 class ChatRequest(RequestModel):
@@ -71,74 +76,48 @@ class GenerateQuizResponse(BaseModel):
 router = APIRouter(prefix="/rag", tags=["RAG"])
 
 
-def enqueue_embedding(task, *, document_id, user, rag_db, arguments):
-    # Authorization and URL binding have already completed before metadata or queue writes.
-    task_id = str(uuid.uuid4())
-    rag_db.add(rag_models.EmbeddingTask(id=task_id, user_id=user.id, document_id=document_id))
-    rag_db.commit()
-    try:
-        task.apply_async(kwargs={**arguments, "user_id": user.id}, task_id=task_id)
-    except Exception:
-        raise HTTPException(503, "Embedding queue unavailable") from None
-    return task_id
-
-
-@router.post("/embeddings/create-initial", status_code=202)
-async def api_create_initial_embedding(
-    request: InitialEmbeddingRequest, current_user: User = Depends(get_current_user),
-    common_db: Session = Depends(get_db), rag_db: Session = Depends(get_rag_db),
-):
-    file = require_file(common_db, current_user, request.pdf_id)
-    url = require_object_url(request.s3_url, file.json_s3_key)
-    document_id = f"pdf_{file.id}"
-    task_id = enqueue_embedding(create_initial_embedding_task, document_id=document_id,
-        user=current_user, rag_db=rag_db,
-        arguments={"pdf_id": str(file.id), "s3_url": url})
-    return {"status": "processing", "message": "초기 임베딩 생성 작업이 시작되었습니다.",
-            "pdf_id": file.id, "collection_name": f"material_{document_id}",
-            "task_id": task_id, "check_status_url": f"/rag/embeddings/status/{task_id}"}
-
-
-@router.post("/embeddings/create", status_code=202)
-async def api_create_embedding(
-    request: EmbeddingRequest, current_user: User = Depends(get_current_user),
-    common_db: Session = Depends(get_db), rag_db: Session = Depends(get_rag_db),
-):
+async def accept_embedding(request, current_user, common_db, document_id):
     teacher_only(current_user)
-    if document_ref(request.document_id)[0] != "material":
-        raise HTTPException(400, "Expected a material identifier")
-    require_document(common_db, current_user, request.document_id)
-    url = require_object_url(request.s3_url, document_json_key(common_db, request.document_id))
-    task_id = enqueue_embedding(create_embedding_task, document_id=request.document_id,
-        user=current_user, rag_db=rag_db,
-        arguments={"document_id": request.document_id, "s3_url": url})
-    return {"status": "processing", "message": "임베딩 생성 작업이 시작되었습니다.",
-            "document_id": request.document_id, "task_id": task_id,
-            "check_status_url": f"/rag/embeddings/status/{task_id}"}
+    require_document(common_db, current_user, document_id)
+    key = document_json_key(common_db, document_id)
+    url = require_object_url(request.s3_url, key)
+    # Auth and object binding precede storage; no common DB connection waits on it.
+    common_db.rollback()
+    common_db.close()
+    source = await download_json_from_cloudfront(url)
+    status = index_store.accept_source(current_user.id, document_id, key, source, request.index_spec)
+    return {**status, 'document_id':document_id,
+        'check_status_url':'/rag/embeddings/status/'+status['job_id']}
 
 
-@router.get("/embeddings/status/{task_id}")
-async def check_embedding_status(
-    task_id: str, current_user: User = Depends(get_current_user),
-    common_db: Session = Depends(get_db), rag_db: Session = Depends(get_rag_db),
-):
+@router.post('/embeddings/create-initial', status_code=202)
+async def api_create_initial_embedding(request: InitialEmbeddingRequest,
+    current_user: User = Depends(get_current_user), common_db: Session = Depends(get_db)):
+    return await accept_embedding(request,current_user,common_db,'pdf_'+str(request.pdf_id))
+
+
+@router.post('/embeddings/create', status_code=202)
+async def api_create_embedding(request: EmbeddingRequest,
+    current_user: User = Depends(get_current_user), common_db: Session = Depends(get_db)):
     teacher_only(current_user)
-    task = rag_db.query(rag_models.EmbeddingTask).filter(
-        rag_models.EmbeddingTask.id == task_id,
-        rag_models.EmbeddingTask.user_id == current_user.id).first()
-    if task is None:
-        raise HTTPException(404, "Object not found")
-    require_document(common_db, current_user, task.document_id)
-    from celery.result import AsyncResult
-    result = AsyncResult(task_id, app=create_embedding_task.app)
-    state = result.state
-    response = {"task_id": task_id, "status": state}
-    if state == "SUCCESS":
-        # Only object identity and aggregate completion are exposed, never task exception/URL data.
-        response["result"] = {"status": "success", "document_id": task.document_id}
-    elif state == "FAILURE":
-        response["message"] = "임베딩 생성 작업이 실패했습니다."
-    return response
+    if document_ref(request.document_id)[0] != 'material':
+        raise HTTPException(400,'Expected a material identifier')
+    return await accept_embedding(request,current_user,common_db,request.document_id)
+
+
+@router.get('/embeddings/status/{task_id}')
+async def check_embedding_status(task_id: str, current_user: User = Depends(get_current_user)):
+    return index_store.public_status(task_id,current_user)
+
+
+class RetryIndexRequest(RequestModel):
+    expected_generation: StrictInt = Field(ge=0,le=3)
+
+
+@router.post('/embeddings/retry/{task_id}',status_code=202)
+async def retry_embedding(task_id: str, request: RetryIndexRequest,
+                          current_user: User = Depends(get_current_user)):
+    return index_store.public_status(task_id,current_user,request.expected_generation)
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -159,18 +138,25 @@ async def api_chat_with_rag(
             raise HTTPException(409, "Session document cannot be changed")
         messages = rag_db.query(rag_models.ChatMessage).filter(
             rag_models.ChatMessage.session_id == session.id).order_by(rag_models.ChatMessage.created_at).all()
-    # No message/session write, collection access, or LLM call occurs before the checks above.
+    pointer = index_store.resolve_active(common_db,current_user,request.document_id)
+    if session is not None:
+        version = rag_db.get(rag_models.ChatSessionIndex,session.id)
+        if version is None or version.source_revision != pointer['source_revision'] or version.source_hash != pointer['source_hash']:
+            raise HTTPException(409,{'code':'RAG_SOURCE_CHANGED'})
+    # Authorization, active version and session version all precede any write.
     if session is None:
         session = rag_models.ChatSession(id=str(uuid.uuid4()), user_id=current_user.id,
                                          document_id=request.document_id)
         rag_db.add(session)
+        rag_db.add(rag_models.ChatSessionIndex(session_id=session.id,
+            source_revision=pointer['source_revision'],source_hash=pointer['source_hash']))
         rag_db.commit()
     rag_db.add(rag_models.ChatMessage(session_id=session.id, role="user", content=request.question))
     rag_db.commit()
     history = [HumanMessage(content=m.content) if m.role == "user" else AIMessage(content=m.content)
                for m in messages if m.role in {"user", "ai"}]
     try:
-        chain = get_rag_chain(request.document_id)
+        chain = get_rag_chain(pointer)
         result = await chain.ainvoke({"input": request.question, "chat_history": history})
         answer = result["answer"]
         rag_db.add(rag_models.ChatMessage(session_id=session.id, role="ai", content=answer))
@@ -189,8 +175,9 @@ async def api_generate_quiz(
 ):
     teacher_only(current_user)
     require_document(common_db, current_user, request.document_id)
+    pointer = index_store.resolve_active(common_db,current_user,request.document_id)
     try:
-        questions = await generate_quiz_with_rag(request.document_id, request.num_questions)
+        questions = await generate_quiz_with_rag(request.document_id, request.num_questions, pointer=pointer)
         for index, question in enumerate(questions, start=1):
             question["question_number"] = index
             question["title"] = f"{index}번 문제"

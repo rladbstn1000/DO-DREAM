@@ -1,8 +1,10 @@
-import { authenticatedFetch } from '../auth/client';
+import { authenticatedFetch, authSession } from '../auth/client';
 import { quizDocumentId } from '../utils/quizDocumentId';
+import IndexingStatus from '../component/IndexingStatus';
+import { indexingErrorMessage, indexingPresentation, parseIndexingSummary } from '../indexing/status';
 // src/pages/AdvancedEditor.tsx
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
@@ -121,6 +123,10 @@ export default function AdvancedEditor({
   );
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const publishing = useRef(false);
+  const mounted = useRef(true);
+  const [isPublishing, setIsPublishing] = useState(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [mergeMode, setMergeMode] = useState(false);
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(
     new Set(),
@@ -656,6 +662,11 @@ export default function AdvancedEditor({
       await Swal.close();
 
       if (!response.ok) {
+        const indexingMessage = indexingErrorMessage(response.status, await response.clone().json().catch(() => null));
+        if (indexingMessage) {
+          await Swal.fire({ icon: 'info', title: '색인 상태를 확인해주세요', text: indexingMessage, confirmButtonColor: '#192b55' });
+          return;
+        }
         if (response.status === 404) {
           await Swal.fire({
             icon: 'error',
@@ -978,6 +989,7 @@ export default function AdvancedEditor({
   };
 
   const handlePublish = async () => {
+    if (publishing.current) return;
     if (!materialTitle.trim()) {
       Swal.fire({
         icon: 'warning',
@@ -1031,9 +1043,12 @@ export default function AdvancedEditor({
       quizzes: quizzes.length > 0 ? quizzes : undefined,
     };
 
+    publishing.current = true;
+    setIsPublishing(true);
+    const publishEpoch = authSession.getEpoch();
     try {
       void Swal.fire({
-        title: mode === 'edit' ? '수정 중입니다...' : '발행 중입니다...',
+        title: mode === 'edit' ? '수정을 접수하고 있습니다...' : '발행을 접수하고 있습니다...',
         allowOutsideClick: false,
         showConfirmButton: false,
         didOpen: () => Swal.showLoading(),
@@ -1054,12 +1069,8 @@ export default function AdvancedEditor({
         body: JSON.stringify(payload),
       });
 
-      const responseText = await res.text();
-      console.log('📤 Publish Response:', {
-        status: res.status,
-        statusText: res.statusText,
-        body: responseText,
-      });
+      const responseBody = await res.json().catch(() => null);
+      if (!mounted.current || authSession.getEpoch() !== publishEpoch) return;
 
       await Swal.close();
 
@@ -1074,28 +1085,33 @@ export default function AdvancedEditor({
           return;
         }
 
-        throw new Error(responseText || '서버에서 오류가 발생했습니다');
+        throw new Error(res.status === 403 || res.status === 404 ? '자료가 없거나 수정 권한이 없습니다.' : '발행 요청을 확인하지 못했습니다. 자료 목록에서 저장 상태를 확인해주세요.');
       }
 
+      const indexing = parseIndexingSummary(responseBody?.indexing);
+      const display = indexingPresentation({ summary: indexing, error: null });
       await Swal.fire({
         icon: 'success',
-        title: mode === 'edit' ? '수정되었습니다!' : '발행되었습니다!',
-        text: `"${materialTitle}" ${mode === 'edit' ? '수정' : '발행'} 완료`,
+        title: mode === 'edit' ? '수정이 접수되었습니다' : '발행이 접수되었습니다',
+        text: `자료가 저장되었습니다. ${display.label}. ${display.hint}`,
         confirmButtonColor: '#192b55',
       });
 
+      if (!mounted.current || authSession.getEpoch() !== publishEpoch) return;
       setHasUnsavedChanges(false);
       onPublish(materialTitle, chapters, selectedLabel);
     } catch (error) {
+      if (!mounted.current || authSession.getEpoch() !== publishEpoch) return;
       await Swal.close();
-      console.error('❌ Publish error:', error);
-
       Swal.fire({
         icon: 'error',
-        title: mode === 'edit' ? '수정 실패' : '발행 실패',
-        text: error instanceof Error ? error.message : '다시 시도해주세요',
+        title: '접수 상태를 확인해주세요',
+        text: error instanceof Error && error.message.startsWith('자료가 없거나') ? error.message : '응답을 확인하지 못했습니다. 다시 발행하기 전에 자료 목록에서 저장 상태를 확인해주세요.',
         confirmButtonColor: '#192b55',
       });
+    } finally {
+      publishing.current = false;
+      if (mounted.current) setIsPublishing(false);
     }
   };
 
@@ -1210,12 +1226,17 @@ export default function AdvancedEditor({
                 }}
               />
             </button>
-            <button className="ae-btn-publish" onClick={handlePublish}>
+            <button className="ae-btn-publish" onClick={handlePublish} disabled={isPublishing}>
               {mode === 'edit' ? '수정하기' : '발행하기'}
             </button>
           </div>
         </div>
       </header>
+
+      {(mode === 'edit' ? !!materialId : !!pdfId) && <div style={{ padding: '8px 24px' }}>
+        <small>저장된 자료의 AI 기능</small>
+        <IndexingStatus resourcePath={mode === 'edit' ? `/api/documents/${materialId}/indexing` : `/api/pdf/${pdfId}/indexing`} />
+      </div>}
 
       <div className="ae-layout">
         {/* 오른쪽 챕터 사이드바 */}

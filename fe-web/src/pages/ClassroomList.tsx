@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
 import { useGlobalMemo } from '@/contexts/MemoContext';
 import teacherAvatar from '../assets/classList/teacher.png';
 import './ClassroomList.css';
+import IndexingStatus from '../component/IndexingStatus';
 
 import MaterialSendModal2Step from '@/component/MaterialSendModal2step';
 import schoolImg from '../assets/classList/school.png';
@@ -38,6 +39,7 @@ type Material = {
   status: 'draft' | 'published';
   uploadedFileId?: number;
   rawUpdatedAt: Date;
+  indexing?: unknown;
 };
 
 type ClassroomListProps = {
@@ -152,6 +154,7 @@ type PublishedMaterialDto = {
     | null;
   createdAt: string; // ISO 문자열
   updatedAt: string; // ISO 문자열
+  indexing?: unknown;
 };
 
 type PublishedMaterialsResponse = {
@@ -950,6 +953,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
             label: m.label ? m.label.toLowerCase() : undefined,
             status: 'published',
             uploadedFileId: m.uploadedFileId,
+            indexing: m.indexing,
 
             // ✅ 여기에 실제 날짜 객체를 저장
             rawUpdatedAt: dateObj,
@@ -1757,12 +1761,10 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
                           <span className="cl-material-date">
                             {material.uploadDate}
                           </span>
-                          <span
-                            className={`cl-material-status ${material.status}`}
-                          >
-                            {material.status === 'draft' ? '작성중' : '발행됨'}
-                          </span>
+                          {material.status === 'draft' && <span className="cl-material-status draft">작성중</span>}
                         </div>
+                        {material.status === 'published' && <IndexingStatus
+                          resourcePath={`/api/documents/${material.id}/indexing`} initial={material.indexing} />}
                       </div>
                     </div>
 

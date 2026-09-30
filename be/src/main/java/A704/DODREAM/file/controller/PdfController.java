@@ -67,7 +67,6 @@ public class PdfController {
 		HttpServletRequest httpServletRequest
 	) {
 		Long userId = userPrincipal.userId();
-        policy.teacher(userId);
 		String authorizationHeader = httpServletRequest.getHeader("Authorization");
 		Map<String, Object> result = pdfService.uploadAndParsePdfFromBytes(pdfBytes, filename, userId, authorizationHeader);
 		return ResponseEntity.ok(result);

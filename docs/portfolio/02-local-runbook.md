@@ -56,7 +56,7 @@ python3 scripts/local/manage.py isolation
 - `startup`: 별도 일회성 컨테이너에서 빈/오류/짧은 키의 실제 기동 실패 검사. 원문 로그/키를 저장하지 않는다.
 - `smoke`: 헬스, 합성 로그인, 웹 Origin/CORS, 정상·무토큰·위조토큰, 자료, 실제 Celery queue, 대역 채팅/SQLite, Redis refresh 흐름.
 - `security`: 안전 기대값을 검증한다. 2-A 인증3개와 범위 밖 객체권한6개를 분리한다. 역할별 새 로그인과 양성 대조군을 먼저 확인한다. 남은 객체권한 때문에 **exit1/FAIL이 예상되며 전체 보안 통과가 아니다**. 원래1차FAIL 증거는 그대로 보존한다. 실제 외부 파일/AI에 요청하지 않는다.
-- `persistence`: MySQL 전용 probe table과 Redis probe key를 생성하고 이번 프로젝트만 stop/up한다. 앱이 seed하지 않는 marker, 도메인 수, 기존 SQLite session과 대역 인덱스를 확인한다. 먼저 smoke가 필요하다. 세션 부재는 BLOCKED다.
+- `persistence`: MySQL 전용 probe table과 Redis probe key를 생성하고 검증한 자체 컨테이너만 stop/start한다. 현재 자료와 활성 원본이 일치하는 새 대화 세션을 실제 API로 만들고, 같은 컨테이너 ID·이미지, marker, SQLite 연결·대화, MySQL 활성 포인터, 실제 Chroma 내용의 재시작 보존을 확인한다. 먼저 smoke와 현재 공유 자료의 색인 완료가 필요하다. 검증 전제가 충족되지 않으면 원인을 기록하고 재시작을 진행하지 않는다.
 
 1차 증거는 `.local/results/`에 보존한다. 현재 명령/종료코드와 민감값을 제거한 출력은 `.local/phase2a/results/`에 저장한다. `DODREAM_RESULTS_DIR`로 이후 검증의 새 증거 폴더를 지정할 수 있다. 새 폴더에서는 시작 전 `resources-before`를 기록해야 isolation 비교가 가능하다. `commands.jsonl`은 기록 기능 도입 이후 실행 이력이고, 이전 시도는 별도 JSON/log와 결과 문서에 보존했다. 테스트 HTTP body·토큰·cookie는 저장하지 않는다. 일반 `docker compose config`는 비밀을 펼치므로 출력하지 말고 wrapper의 `config --quiet`를 쓴다. 원문 컨테이너 로그를 공유하지 않는다.
 
@@ -177,3 +177,56 @@ python3 scripts/local/manage.py isolation
 오류 주입 파일과 호출 카운터는 전용 로컬 볼륨에만 둔다. 공개 조작 API는 없다. `grading`은 자체 Spring의 실제 중지·재기동을 포함하므로 인증 장애 검사/브라우저 검사와 동시에 실행하지 않는다. 끝나면 이번에 시작한 서비스만 시작 전 상태로 돌리고 볼륨과 DB는 유지한다. 과거 ETCH 보존 FAIL/원인 UNVERIFIED는 그대로 남긴다.
 
 실행 순서는 채점/서버 회귀 → `auth-test-up`과 Chrome → `persistence` → 시작 상태 복구 → `isolation`으로 잡는다. main 서비스만 재기동하는 영속성 검사 동안 auth-short는 계속 실행될 수 있다. 3-A에서는 그 순서를 거꾸로 실행한 뒤 short BE의 Redis 타임아웃/로그인503을 관측했고, 기존 범위 gate의 `restart be-auth-short`로 해당 테스트 프로세스만 재기동한 뒤 브라우저 검사를 재검증했다. 실패를 인증 허용이나 기대값 변경으로 우회하지 않는다.
+
+## 3-B 실제 Chroma·영속 색인 작업
+
+현재 증거 기본 경로는 `.local/phase3b/results/`다. 이전 단계의 결과를 덮어쓰지 않는다. 시작 HEAD는 `705c2a440e6e2d84fb26effc792e4ddd733f23d4`, 작업 브랜치는 `codex/dodream-phase3b-indexing`이다. 설계는 [11](11-indexing-reliability-design.md), 실제 실행 판정은 [12](12-phase3b-results.md)를 따른다.
+
+Compose에 `chroma`와 `index-dispatcher`, 전용 `dodream-phase1_chroma-data` 볼륨을 추가했다. Chroma는 내부 HTTP8000만 사용하며 호스트 포트가 없다. AI/워커에는 Chroma 파일 경로를 마운트하지 않는다. 기존 네 볼륨은 그대로 유지한다. 최초 생성이 확인된 Chroma 볼륨의 이름·생성 시각도 고정해 이후 사라진 볼륨을 조용히 재생성하지 않는다. 모든 작업은 기존 고정 project/file/directory와 metadata gate를 거친다.
+
+새 단계의 시작 기준선은 기존 워커를 시작하기 전에 만든다. 3-B 워커는 새 `indexing-v3` 큐만 소비한다. 과거 default 큐, SQLite 작업·대화 및 local 인덱스는 그대로 보존하며 자동 승격하지 않는다. 기준선 파일이 있으면 `before`를 반복해 덮어쓰지 않는다.
+
+```bash
+python3 scripts/local/indexing_data.py before
+python3 scripts/local/indexing_fixtures.py
+python3 scripts/local/manage.py indexing-migrate
+python3 scripts/local/manage.py build
+python3 scripts/local/manage.py up
+```
+
+`indexing-migrate`는 V004 신규 세 테이블을 현재 자체 DB에 추가하고 재실행·필수 컬럼·unique를 확인한다. 첫 설치 검증은 `indexing_migration.py fresh-prepare`로 **새** `dodream_phase3b_fresh`를 만들고 `verify_fresh_indexing_schema.py`로 실제 Spring을 기동한다. 이미 존재하면 초기화하지 않는다. V003과 V004를 JPA 최초 기동 전에 적용하며 시험 스키마와 볼륨을 보존한다.
+
+이번 AUTHZ/GRADING 회귀 자료는 `[AUTHZ 3B]`, `[GRADING LOCAL] phase3b`의 새 복제 행이다. 기존 3-A 자료와 원래 문제 버전·풀이를 수정하지 않는다. 색인 장애 검사는 실제 local 전용 합성 PDF 업로드에서 얻은 새 파일과 `[INDEXING LOCAL]` 자료만 사용한다. PDF/JSON 객체는 새 UUID 경로에 준비하고 기존 객체를 덮어쓰지 않는다. 원본 PDF 페이지 해석·OCR은 실제 검증 범위가 아니다.
+
+```bash
+python3 scripts/local/manage.py scope-test
+python3 scripts/local/manage.py test
+python3 scripts/local/manage.py indexing
+python3 scripts/local/manage.py auth-test-up
+python3 scripts/local/manage.py auth
+python3 scripts/local/manage.py startup
+python3 scripts/local/manage.py smoke
+python3 scripts/local/manage.py security
+python3 scripts/local/manage.py authorization
+python3 scripts/local/manage.py grading
+```
+
+`manage.py test`는 전달기가 DB 시험 중간 상태를 소비하지 않도록 실행 중인 자체 `index-dispatcher`만 잠시 중지하고, 실패나 예외 때도 같은 컨테이너 ID를 직접 시작해 복원한다. 원래 중지됐거나 없었다면 시작하지 않는다. Compose의 의존 서비스 자동 시작을 이용하지 않으며, ID가 바뀌거나 범위 gate를 통과하지 못하면 차단한다. DB 단위 fixture의 합성 pointer는 실제 Chroma 활성화 증거로 집계하지 않는다. 색인 검사는 첫 정상 경로가 실패하면 후속 장애 검사를 중단한다. 개별 재검증은 `manage.py indexing happy`처럼 해당 시나리오 이름을 지정한다. 실제 SIGKILL은 관측된 gate 뒤의 자체 `be`, `worker`, `index-dispatcher`에만 허용한다. 실제 응답 timeout 검사는 자체 Chroma만 pause/unpause하며 finally에서 복구한다. 별도 독립 워커도 고정 project/service/task 라벨을 확인한 일회용 컨테이너이고 기존 워커·볼륨을 삭제하지 않는다. 이 검사는 인증/채점/Chrome 검사와 동시 실행하지 않는다.
+
+`grading`에는 3-A의 공급자 대기 중 독립 DB 조회 검사가 포함되어 있다. 별도 보조 실행 수를 중복 합산하지 않는다. 모든 회귀는 이미지 build가 끝난 후 시작한다. Redis/MySQL을 재시작한 뒤에는 실제 health와 합성 로그인을 확인하고 `auth-test-up` 또는 필요한 자체 `be-auth-short` 재기동 후 Chrome 인증 검사를 실행한다.
+
+웹은 기존 `test:auth`, `test:authorization`, `test:grading`, `typecheck`, `build -- --mode phase1`과 새 `test:indexing`을 실행한다. 기존 Chrome 세 종류에 새 `test:browser-indexing`을 더한다. 새 교사 UI 검사는 `verify_indexing.py browser`가 새 합성 자료와 ignored manifest/checkpoint를 준비해 시작하며, 준비 없이 단독 하네스를 실행하지 않는다. 학생 UI 전체·모바일 전체는 이번 범위가 아니다.
+
+```bash
+python3 scripts/local/manage.py persistence
+python3 scripts/local/indexing_data.py after
+python3 scripts/local/indexing_retention.py
+python3 scripts/local/manage.py stop
+python3 scripts/local/manage.py isolation
+```
+
+`persistence`는 원래 probe 행을 바꾸지 않고 새 3-B probe를 사용한다. 회귀 중 자료가 개정되면 과거 smoke 세션은 정상적으로409가 될 수 있으므로, 이전 세션/로그를 보존한 채 현재 공유 자료의 활성 원본에 연결한 새 세션을 시험한다. 재시작 전후 재색인 요청 없이 같은 pointer·source·세션·메시지·Chroma count/digest를 비교한다. 이미지 태그를 다시 적용하는 `up` 대신 검증한 기존 컨테이너 ID를 시작하고, 준비 상태 확인에는240초 재시도 예산과 개별 HTTP2초 제한을 적용한다(전체 명령의 엄격한240초 상한을 뜻하지 않음).
+
+마지막에는 시작 snapshot의 **실제 서비스별 상태**로 복구하고 새 서비스는 중지한다. 시작 상태가 모두 중지가 아니라면 무조건 전체 `stop`하지 않는다. 원래 행의 모든 컬럼과 기존 객체 digest, 과거 SQLite 인덱스 행을 대조한다. `indexing_retention.py`는 상태·이름·해시 파일명만 읽는 보존 검토용 dry-run이며 삭제 모드가 없다. 미참조 후보·객체의 분류가 삭제 안전성 보증은 아니다.
+
+실제 외부 AI, 외부 저장소·OCR·알림, 공개 배포는 실행하지 않는다. 과거 ETCH와 3-A 외부 변화의 FAIL/UNVERIFIED는 유지하고 이번 before/after 판정은 별도로 기록한다.

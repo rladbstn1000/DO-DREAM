@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Isolated local Compose operations; never deletes data or emits secret values."""
 import base64
+import hashlib
 import datetime
 import json
 import os
@@ -16,7 +17,7 @@ import scope_guard
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / '.local'
-RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase3a' / 'results')))
+RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase3b' / 'results')))
 RESULTS.mkdir(parents=True, exist_ok=True)
 PROJECT = 'dodream-phase1'
 ENV_FILE = LOCAL / 'env'
@@ -61,7 +62,7 @@ def compose_args(*args):
     while at<len(args) and args[at] in ('--profile','--progress'):at+=2
     if at<len(args) and args[at]=='run':
         at+=1
-        if '--name' not in args:args[at:at]=['--name','dodream-phase3a-test-'+secrets.token_hex(6)]
+        if '--name' not in args:args[at:at]=['--name','dodream-phase3b-test-'+secrets.token_hex(6)]
         args[at:at]=['--label',scope_guard.RUN_LABEL]
     base=compose_base()
     operation,_=scope_guard.command_scope(args)
@@ -75,21 +76,51 @@ def stop_owned_test(name):
     rows=scope_guard.read_metadata(clean_env())
     row=next((r for r in rows if r['name']==name),None)
     scope_guard.require(row and row['project']==PROJECT and row['service'] in scope_guard.SERVICES
-                        and row['task']=='phase3a' and name.startswith('dodream-phase3a-'),
+                        and row['task']=='phase3b' and name.startswith('dodream-phase3b-'),
                         'One-off cleanup target is not owned by this task')
     # Use the inspected immutable ID; never target an unverified name.
     return subprocess.run(['docker','stop','--time','5',row['id']],capture_output=True,text=True,
                           env=clean_env(),timeout=15)
+
+def source_identity():
+    head=subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,capture_output=True,text=True).stdout.strip()
+    names=subprocess.run(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=ROOT,capture_output=True).stdout.split(b'\0')
+    digest=hashlib.sha256()
+    for raw in sorted(set(names)):
+        if not raw or raw.endswith(b'.DS_Store') or raw.rsplit(b'/',1)[-1]==b'.env':continue
+        path=ROOT/os.fsdecode(raw)
+        if path.is_file() and not path.is_symlink():digest.update(raw+b'\0'+hashlib.sha256(path.read_bytes()).digest())
+    return {'head':head,'working_source_sha256':digest.hexdigest()}
+
+def crash_owned(service):
+    scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
+    row=next((r for r in scope_guard.read_metadata(clean_env()) if r['service']==service and r['project']==PROJECT and r['name']==PROJECT+'-'+service+'-1'),None)
+    target=scope_guard.crash_target(row,service)
+    return run('crash-'+service,['docker','kill','--signal','KILL',target])
+
+def pause_chroma(resume=False):
+    scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
+    row=next((r for r in scope_guard.read_metadata(clean_env()) if r['service']=='chroma' and r['project']==PROJECT),None)
+    target=scope_guard.chroma_pause_target(row,resume)
+    action='unpause' if resume else 'pause'
+    return run('chroma-'+action,['docker',action,target])
 
 def record(name, command, result, started):
     RESULTS.mkdir(parents=True, exist_ok=True)
     entry = {'command': command, 'exit_code': result.returncode,
              'status': 'PASS' if result.returncode == 0 else 'FAIL',
              'started_at': started, 'finished_at': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    entry['source'] = source_identity()
+    if shutil.which('docker'):
+        ids=subprocess.run(['docker','ps','-a','--filter','label=com.docker.compose.project='+PROJECT,'--format','{{.ID}}'],capture_output=True,text=True,env=clean_env())
+        if ids.returncode==0 and ids.stdout.strip():
+            images=subprocess.run(['docker','inspect','--format','{{index .Config.Labels "com.docker.compose.service"}}\t{{.Image}}',*ids.stdout.split()],capture_output=True,text=True,env=clean_env())
+            if images.returncode==0:entry['observed_container_image_ids']=sorted(set(images.stdout.splitlines()))
     with (RESULTS / 'commands.jsonl').open('a') as history:
         history.write(json.dumps(entry) + '\n')
     stamp = started.replace(':','').replace('.','')
     (RESULTS / (name + '-' + stamp + '.log')).write_text(redact(result.stdout or ''))
+    (RESULTS / (name + '-' + stamp + '.json')).write_text(json.dumps(entry, indent=2) + '\n')
     (RESULTS / (name + '.json')).write_text(json.dumps(entry, indent=2) + '\n')
     (RESULTS / (name + '.log')).write_text(redact(result.stdout or ''))
     print(json.dumps(entry, ensure_ascii=False))
@@ -106,6 +137,46 @@ def run(name, args):
 
 def compose(name, *args):
     return run(name, compose_args(*args))
+
+def unit_tests():
+    # The real-DB indexing suite creates new synthetic ledger rows and requires
+    # the dispatcher to remain stopped while it asserts transaction state.
+    def dispatcher():
+        scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
+        rows=[r for r in scope_guard.read_metadata(clean_env())
+              if r['project']==PROJECT and r['service']=='index-dispatcher']
+        scope_guard.require(len(rows)<=1 and all(r['name']==PROJECT+'-index-dispatcher-1' for r in rows),
+                            'Unit-test dispatcher target is ambiguous')
+        return rows[0] if rows else None
+
+    before=dispatcher()
+    scope_guard.require(before is None or before['state'] in ('running','exited','created'),
+                        'Unit-test dispatcher has an unsupported initial state')
+    restore=before is not None and before['state']=='running'
+    try:
+        if restore:
+            stopped=compose('unit-dispatcher-stop','stop','index-dispatcher')
+            if stopped.returncode:
+                return stopped.returncode
+            current=dispatcher()
+            scope_guard.require(current and current['id']==before['id'] and current['state']=='exited',
+                                'Unit-test dispatcher did not stop with the same verified identity')
+        results = [compose('be-tests', '--profile', 'test', 'run', '--rm', '--no-deps', 'be-test'),
+                   compose('ai-tests', 'exec', '-T', 'ai', 'python', '-m', 'unittest', 'discover', '-s', 'tests', '-v'),
+                   compose('pdf-tests', 'exec', '-T', 'python-service', 'python', '-m', 'unittest', 'discover', '-s', 'tests', '-v')]
+        return int(any(r.returncode for r in results))
+    finally:
+        if restore:
+            current=dispatcher()
+            scope_guard.require(current and current['id']==before['id'] and current['state'] in ('running','exited'),
+                                'Unit-test dispatcher identity/state changed; restoration blocked')
+            # Compose start may also start dependencies. Restore only the exact
+            # container whose ownership, identity and prior state were verified.
+            resumed=run('unit-dispatcher-restore',['docker','start',before['id']])
+            scope_guard.require(resumed.returncode==0,'Unit-test dispatcher restoration failed')
+            current=dispatcher()
+            scope_guard.require(current and current['id']==before['id'] and current['state']=='running',
+                                'Unit-test dispatcher running state was not restored')
 
 def init():
     LOCAL.mkdir(exist_ok=True, mode=0o700)
@@ -173,7 +244,7 @@ def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0
     if command == 'help':
-        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | authorization | grading | grading-migrate | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
+        print('init | check | config | scope | scope-test | build | up | auth-test-up | test | auth | authorization | grading | grading-migrate | indexing | indexing-migrate | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
         return 0
     settings()
     if command == 'scope-test':return run('scope-unit',[sys.executable,'-m','unittest','discover','-s','scripts/local/tests','-v']).returncode
@@ -195,11 +266,10 @@ def main():
         result = compose('compose-status', 'ps', '--all'); print(redact(result.stdout)); return result.returncode
     if command == 'stop': return compose('compose-stop', '--profile', 'auth-test', 'stop').returncode
     if command == 'restart': return compose('compose-restart', 'restart').returncode
+    if command == 'indexing-migrate': return run('index-migration-forward',[sys.executable,str(ROOT/'scripts/local/indexing_migration.py'),'forward']).returncode
+    if command == 'indexing': return run('indexing',[sys.executable,str(ROOT/'scripts/local/verify_indexing.py'),*sys.argv[2:]]).returncode
     if command == 'test':
-        results = [compose('be-tests', '--profile', 'test', 'run', '--rm', '--no-deps', 'be-test'),
-                   compose('ai-tests', 'exec', '-T', 'ai', 'python', '-m', 'unittest', 'discover', '-s', 'tests', '-v'),
-                   compose('pdf-tests', 'exec', '-T', 'python-service', 'python', '-m', 'unittest', 'discover', '-s', 'tests', '-v')]
-        return int(any(r.returncode for r in results))
+        return unit_tests()
     if command == 'auth':
         return run('auth-regression', [sys.executable, str(ROOT / 'scripts/local/verify_auth.py')]).returncode
     if command == 'grading':

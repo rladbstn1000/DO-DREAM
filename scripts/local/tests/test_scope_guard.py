@@ -5,7 +5,7 @@ import sys
 import unittest
 import socket
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from scope_guard import command_scope,validate_inventory,validate_plan,preservation_status,port_available,ScopeError,PROJECT,RUN_LABEL
+from scope_guard import command_scope,validate_inventory,validate_plan,preservation_status,port_available,crash_target,chroma_pause_target,ScopeError,PROJECT,RUN_LABEL
 
 ROOT=Path('/synthetic/dodream')
 def plan():
@@ -114,5 +114,35 @@ class LocalPortTests(unittest.TestCase):
         with socket.socket() as listener:
             listener.bind(('127.0.0.1',0));port=listener.getsockname()[1];listener.listen()
         self.assertTrue(port_available(port))
+
+class IndexScopeTests(unittest.TestCase):
+    def test_new_internal_services_allowed(self):
+        self.assertEqual(command_scope(['up','-d','chroma','index-dispatcher']),('up',['chroma','index-dispatcher']))
+    def test_chroma_volume_only_server(self):
+        p=plan();p['services']['chroma']={'build':{'context':str(ROOT/'scripts/local/chroma'),'dockerfile':'Dockerfile.local'},'volumes':[{'type':'volume','source':'chroma-data','target':'/chroma/chroma'}]}
+        self.assertIn(PROJECT+'-chroma',validate_plan(p,ROOT)[0])
+        p['services']['ai']={'volumes':[{'type':'volume','source':'chroma-data','target':'/chroma/chroma'}]}
+        with self.assertRaises(ScopeError):validate_plan(p,ROOT)
+    def test_chroma_cannot_mount_old_database(self):
+        p=plan();p['services']['chroma']={'volumes':[{'type':'volume','source':'mysql-data','target':'/var/lib/mysql'}]}
+        with self.assertRaises(ScopeError):validate_plan(p,ROOT)
+    def test_chroma_no_public_or_loopback_port(self):
+        p=plan();p['services']['chroma']={'ports':[{'host_ip':'127.0.0.1','published':'18010'}]}
+        with self.assertRaises(ScopeError):validate_plan(p,ROOT)
+    def test_foreign_chroma_volume_refused(self):
+        with self.assertRaises(ScopeError):validate_inventory([row(name='foreign',project='other',networks=[],mounts=[{'type':'volume','name':PROJECT+'_chroma-data'}])],(),ROOT)
+    def test_crash_requires_exact_owned_service(self):
+        self.assertEqual(crash_target(row(state='running'),'be'),'synthetic-id')
+        for r,s in [(row(state='exited'),'be'),(row(state='running',project='other'),'be'),(row(state='running'),'mysql'),(row(state='running',name='arbitrary'),'be')]:
+            with self.subTest(row=r,service=s),self.assertRaises(ScopeError):crash_target(r,s)
+    def test_new_fresh_schema_target_exact(self):
+        self.assertEqual(command_scope(['run','--rm','--no-deps','--name','dodream-phase3b-fresh-schema','--label',RUN_LABEL,'-e','MYSQL_DATABASE=dodream_phase3b_fresh','be']),('run',['be']))
+    def test_pause_is_only_for_owned_chroma(self):
+        r=row(service='chroma',name=PROJECT+'-chroma-1',state='running')
+        self.assertEqual(chroma_pause_target(r),'synthetic-id')
+        with self.assertRaises(ScopeError):chroma_pause_target(row(state='running'))
+        with self.assertRaises(ScopeError):chroma_pause_target({**r,'project':'other'})
+        with self.assertRaises(ScopeError):chroma_pause_target(r,True)
+        self.assertEqual(chroma_pause_target({**r,'state':'paused'},True),'synthetic-id')
 
 if __name__=='__main__':unittest.main()

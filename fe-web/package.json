@@ -13,6 +13,8 @@
     "test:browser-authorization": "node tests/browser-authorization.mjs",
     "test:grading": "node --experimental-strip-types --test tests/grading-submission.test.ts",
     "test:browser-grading": "node tests/browser-grading.mjs",
+    "test:indexing": "node --experimental-strip-types --test tests/indexing-status.test.ts",
+    "test:browser-indexing": "node tests/browser-indexing.mjs",
     "build": "tsc -b && vite build --config vite.config.ts",
     "lint": "eslint .",
     "preview": "vite preview --config vite.config.ts"

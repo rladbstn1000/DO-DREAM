@@ -1,0 +1,63 @@
+-- Phase 3-B. Additive/rerunnable MySQL 8 ledger. Apply before application startup.
+-- Legacy files, materials, grading rows and indexes are neither rewritten nor inferred.
+CREATE TABLE IF NOT EXISTS index_resources (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ resource_kind VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ resource_id BIGINT NOT NULL, owner_id BIGINT NOT NULL,
+ source_revision BIGINT NOT NULL DEFAULT 0,
+ current_source_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ request_seq BIGINT NOT NULL DEFAULT 0,
+ latest_job_id BIGINT NULL, active_execution_id BIGINT NULL,
+ activation_count BIGINT NOT NULL DEFAULT 0,
+ created_at DATETIME(6) NOT NULL, updated_at DATETIME(6) NOT NULL,
+ CONSTRAINT uq_index_resource UNIQUE(resource_kind,resource_id),
+ CONSTRAINT ck_index_resource_kind CHECK(resource_kind IN ('MATERIAL','PDF')),
+ CONSTRAINT ck_index_resource_ids CHECK(resource_id>0 AND owner_id>0 AND source_revision>=0 AND request_seq>=0)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS index_jobs (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ job_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ resource_pk BIGINT NOT NULL,
+ source_revision BIGINT NOT NULL,
+ source_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ snapshot_json LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+ snapshot_bytes INT NOT NULL,
+ index_spec VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ request_seq BIGINT NOT NULL,
+ state VARCHAR(20) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ delivery_state VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PENDING',
+ delivery_attempts INT NOT NULL DEFAULT 0,
+ delivery_claim_token CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+ delivery_deadline DATETIME(6) NULL,
+ next_delivery_at DATETIME(6) NOT NULL,
+ last_delivered_at DATETIME(6) NULL,
+ execution_generation INT NOT NULL DEFAULT 0,
+ created_at DATETIME(6) NOT NULL, updated_at DATETIME(6) NOT NULL,
+ completed_at DATETIME(6) NULL,
+ failure_code VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+ CONSTRAINT uq_index_job_public UNIQUE(job_id),
+ CONSTRAINT uq_index_job_source_spec UNIQUE(resource_pk,source_revision,index_spec),
+ CONSTRAINT fk_index_job_resource FOREIGN KEY(resource_pk) REFERENCES index_resources(id),
+ CONSTRAINT ck_index_job_snapshot CHECK(snapshot_bytes>0 AND snapshot_bytes<=2097152 AND OCTET_LENGTH(snapshot_json)=snapshot_bytes AND JSON_VALID(snapshot_json)),
+ CONSTRAINT ck_index_job_generation CHECK(execution_generation>=0 AND execution_generation<=3 AND delivery_attempts>=0 AND delivery_attempts<=5),
+ INDEX idx_index_delivery(state,delivery_state,next_delivery_at),
+ INDEX idx_index_job_resource(resource_pk,request_seq)
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS index_executions (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ job_pk BIGINT NOT NULL, generation INT NOT NULL,
+ candidate_name VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ claim_token CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ lease_until DATETIME(6) NOT NULL,
+ state VARCHAR(20) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ expected_chunks INT NULL, actual_chunks INT NULL,
+ content_digest CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+ embedding_calls INT NOT NULL DEFAULT 0,
+ started_at DATETIME(6) NOT NULL, completed_at DATETIME(6) NULL,
+ failure_code VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+ CONSTRAINT uq_index_execution_generation UNIQUE(job_pk,generation),
+ CONSTRAINT uq_index_candidate UNIQUE(candidate_name),
+ CONSTRAINT fk_index_execution_job FOREIGN KEY(job_pk) REFERENCES index_jobs(id),
+ CONSTRAINT ck_index_execution_generation CHECK(generation>=1 AND generation<=3),
+ INDEX idx_index_execution_lease(state,lease_until)
+) ENGINE=InnoDB;

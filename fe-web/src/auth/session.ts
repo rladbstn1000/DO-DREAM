@@ -191,5 +191,5 @@ export function createAuthSession(options: Options) {
       '이 기기에서 로그아웃했습니다. 서버 세션 폐기는 확인하지 못했습니다.', response.status);
   }
 
-  return { authenticatedFetch, login, logout, clear: () => transition('expired'), getToken: token };
+  return { authenticatedFetch, login, logout, clear: () => transition('expired'), getToken: token, getEpoch: () => epoch };
 }

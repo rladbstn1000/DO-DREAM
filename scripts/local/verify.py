@@ -3,14 +3,16 @@
 import base64
 import http.cookies
 import json
+import re
 import secrets
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
-from manage import ROOT, RESULTS, settings, compose_args, clean_env
-from scope_guard import port_available
+import uuid
+from manage import ROOT, RESULTS, PROJECT, settings, compose_args, compose_base, clean_env
+from scope_guard import MAIN, gate, port_available, read_metadata
 
 ENV = settings()
 BASE = {name: 'http://127.0.0.1:' + ENV[key] for name, key in
@@ -20,7 +22,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs): return None
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
-def req(service, path, token=None, body=None, headers=None):
+def req(service, path, token=None, body=None, headers=None, timeout=20):
     if not path.startswith('/') or path.startswith('//'):
         raise ValueError('Only explicit local paths allowed')
     h = {'Content-Type': 'application/json'}
@@ -29,7 +31,7 @@ def req(service, path, token=None, body=None, headers=None):
     # The new cookie auth contract needs a CSRF cookie/header even with expired AT.
     if body is not None and path.startswith('/api/auth/') and '/native/' not in path:
         csrf_req = urllib.request.Request(BASE[service] + '/api/auth/csrf')
-        csrf_response = OPENER.open(csrf_req, timeout=20)
+        csrf_response = OPENER.open(csrf_req, timeout=timeout)
         csrf = json.loads(csrf_response.read())
         jar = http.cookies.SimpleCookie()
         for value in csrf_response.headers.get_all('Set-Cookie', []): jar.load(value)
@@ -39,7 +41,7 @@ def req(service, path, token=None, body=None, headers=None):
         h[csrf['headerName']] = csrf['token']
     request = urllib.request.Request(BASE[service] + path, headers=h,
         data=None if body is None else json.dumps(body).encode())
-    try: response = OPENER.open(request, timeout=20)
+    try: response = OPENER.open(request, timeout=timeout)
     except urllib.error.HTTPError as error: response = error
     raw = response.read()
     try: data = json.loads(raw)
@@ -54,8 +56,10 @@ def check(name, passed, detail=''):
 def credentials(kind='teacher'):
     body = {'email': 'teacher@local.dodream.invalid', 'password': ENV['LOCAL_TEACHER_PASSWORD']}
     if kind == 'other-teacher': body['email'] = 'other-teacher@local.dodream.invalid'
+    if kind == 'index-owner': body['email'] = 'authz-owner@local.dodream.invalid'
     if kind == 'student': body = {'deviceId': 'dodream-local-student', 'deviceSecret': ENV['LOCAL_STUDENT_SECRET']}
-    routekind = 'student' if kind == 'student' else 'teacher'
+    if kind == 'index-shared': body = {'deviceId':'dodream-authz-shared','deviceSecret':ENV['LOCAL_STUDENT_SECRET']}
+    routekind = 'student' if kind in ('student','index-shared') else 'teacher'
     code, data, headers, _ = req('be', '/api/auth/' + routekind + '/login', body=body)
     if code != 200 or not isinstance(data, dict) or not data.get('accessToken'):
         raise RuntimeError(kind + ' login failed with HTTP ' + str(code))
@@ -70,11 +74,11 @@ def payload(token):
 def material_ids(token):
     code, data, _, _ = req('be', '/api/documents/published', token)
     if code != 200 or not data.get('materials'): raise RuntimeError('No synthetic material')
-    return data['materials']
+    return [m for m in data['materials'] if m.get('title','').startswith('[AUTHZ 3B] ')]
 
 def embed(token, doc):
     code, data, _, _ = req('ai', '/rag/embeddings/create', token,
-        {'document_id': str(doc), 's3_url': 'https://local-fixture.invalid/sample.json'})
+        {'document_id': str(doc), 's3_url': 'https://local-fixture.invalid/'+sql('SELECT f.jsons3key FROM materials m JOIN uploaded_files f ON f.id=m.uploaded_file_id WHERE m.id='+str(int(doc))+';')})
     if code != 202 or not data.get('task_id'): return False
     task = data['task_id']
     for _ in range(40):
@@ -88,12 +92,12 @@ def smoke():
     for service, path in [('be','/actuator/health'), ('ai','/health'), ('pdf','/health'), ('web','/')]:
         code, _, _, _ = req(service, path)
         check(service + '_health', code == 200, 'HTTP ' + str(code))
-    teacher, rt = credentials()
-    student, _ = credentials('student')
+    teacher, rt = credentials('index-owner')
+    student, _ = credentials('index-shared')
     check('synthetic_teacher_login', True)
     check('synthetic_student_login', True)
     code, data, web_headers, _ = req('web', '/api/auth/teacher/login', body={
-        'email':'teacher@local.dodream.invalid', 'password':ENV['LOCAL_TEACHER_PASSWORD']},
+        'email':'authz-owner@local.dodream.invalid', 'password':ENV['LOCAL_TEACHER_PASSWORD']},
         headers={'Origin':BASE['web']})
     check('web_browser_origin_login', code == 200 and bool(data.get('accessToken')), 'HTTP '+str(code)+'; browser Origin through nginx')
     # A second login replaces this user's single session. Refresh its current RT,
@@ -108,13 +112,14 @@ def smoke():
             code, _, _, _ = req(service, path, token)
             check(service + '_' + label + '_token_denied', code in (401,403), 'HTTP ' + str(code))
     code, _, _, _ = req('be', '/api/auth/teacher/login', body={
-        'email':'teacher@local.dodream.invalid', 'password':'deliberately-incorrect-local-password'})
+        'email':'authz-owner@local.dodream.invalid', 'password':'deliberately-incorrect-local-password'})
     check('incorrect_password_denied', code in (401,403), 'HTTP ' + str(code))
     materials = material_ids(teacher)
     check('published_material_read', len(materials) >= 1, 'synthetic records present')
     code, shared, _, _ = req('be', '/api/materials/shared', student)
     check('shared_material_read', code == 200 and shared.get('totalCount',0) >= 1, 'HTTP ' + str(code))
-    doc = shared['materials'][0]['materialId']
+    allowed={m['materialId'] for m in materials}
+    doc = next(m['materialId'] for m in shared['materials'] if m['materialId'] in allowed)
     code, data, headers, _ = req('be', f'/api/materials/shared/{doc}/json', student)
     check('sample_content_read', code == 200 and bool(data), 'HTTP ' + str(code))
     check('celery_real_queue_local_embedding', embed(teacher, doc), 'real Redis/Celery; deterministic local provider')
@@ -128,7 +133,7 @@ def smoke():
     check('redis_refresh_rotation_flow', code == 200, 'HTTP ' + str(code) + '; cookie manually supplied for HTTP local test')
 
 def security():
-    teacher, rt = credentials(); student, _ = credentials('student')
+    teacher, rt = credentials('index-owner'); student, _ = credentials('index-shared')
     # Positive controls prove object-policy failures are not masked by invalid token contracts.
     for who, token in [('teacher', teacher), ('student', student)]:
         for svc, route in [('be', '/api/teacher/me' if who == 'teacher' else '/api/materials/shared'), ('ai', '/users/users/me')]:
@@ -193,13 +198,122 @@ def docker_exec(service, command, stdin=None):
 def sql(statement):
     return docker_exec('mysql',['sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" mysql --default-character-set=utf8mb4 -N -B -u"$MYSQL_USER" "$MYSQL_DATABASE"'],statement)
 
+def persistence_pointer(doc):
+    """Read only the current resource and its bound active execution, not content."""
+    if not re.fullmatch(r'[1-9][0-9]*', str(doc)): raise ValueError('Invalid document ID')
+    raw=sql("SELECT JSON_OBJECT('documentId',r.resource_id,'sourceRevision',r.source_revision,"
+        "'sourceHash',r.current_source_hash,'activeExecution',r.active_execution_id,"
+        "'candidate',e.candidate_name,'activeRevision',j.source_revision,'activeHash',j.source_hash,"
+        "'activeJob',j.job_id,'indexSpec',j.index_spec,'executionState',e.state,'jobState',j.state) "
+        "FROM index_resources r JOIN index_executions e ON e.id=r.active_execution_id "
+        "JOIN index_jobs j ON j.id=e.job_pk AND j.resource_pk=r.id "
+        "WHERE r.resource_kind='MATERIAL' AND r.resource_id="+str(doc)+';')
+    return json.loads(raw) if raw else None
+
+def persistence_readable(pointer):
+    return bool(pointer and pointer['executionState']=='ACTIVE' and pointer['jobState']=='SUCCEEDED'
+        and pointer['sourceRevision']==pointer['activeRevision'] and pointer['sourceHash']==pointer['activeHash'])
+
+def persistence_digest(candidate):
+    if not re.fullmatch(r'idx_[a-z0-9_]+',candidate): raise ValueError('Invalid candidate')
+    code="import json,hashlib;from app.indexing.chroma import fetch;c=fetch("+repr(candidate)+");d=c.get(include=['documents','metadatas','embeddings']);v=d['embeddings'];rows=sorted([[i,d['documents'][p],d['metadatas'][p],[float(x) for x in v[p]]] for p,i in enumerate(d['ids'])]);print(json.dumps({'count':c.count(),'digest':hashlib.sha256(json.dumps(rows,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()}))"
+    return json.loads(docker_exec('ai',['python','-c',code]))
+
+def persistence_binding(session):
+    session=str(uuid.UUID(session))
+    code="import sqlite3,json;db=sqlite3.connect('file:/app/db_data/rag.db?mode=ro',uri=True);db.row_factory=sqlite3.Row;row=db.execute('SELECT s.id,s.user_id,s.document_id,i.source_revision,i.source_hash,(SELECT COUNT(*) FROM chat_messages m WHERE m.session_id=s.id) AS message_count FROM chat_sessions s JOIN chat_session_indexes i ON i.session_id=s.id WHERE s.id=?',("+repr(session)+",)).fetchone();print(json.dumps(dict(row) if row else None));db.close()"
+    return json.loads(docker_exec('ai',['python','-c',code]))
+
+def persistence_containers():
+    """Validate ownership before selecting the nine existing primary containers."""
+    gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
+    inventory=read_metadata(clean_env())
+    rows={}
+    for service in MAIN:
+        found=[r for r in inventory if r['name']==PROJECT+'-'+service+'-1'
+            and r['project']==PROJECT and r['service']==service]
+        if len(found)!=1: raise RuntimeError('Owned primary container unavailable')
+        rows[service]=found[0]['id']
+    return persistence_inspect(rows)
+
+def persistence_inspect(ids):
+    if set(ids)!=set(MAIN) or any(not re.fullmatch(r'[0-9a-f]{64}',v) for v in ids.values()):
+        raise ValueError('Invalid immutable container IDs')
+    # Never inspect Env, commands or application logs.
+    fmt='{{json .Id}}\t{{json .Image}}\t{{json .State.Status}}\t{{if index .State "Health"}}{{json .State.Health.Status}}{{else}}null{{end}}'
+    result=subprocess.run(['docker','inspect','--format',fmt,*ids.values()],capture_output=True,
+        text=True,env=clean_env(),timeout=20)
+    if result.returncode: raise RuntimeError('Container metadata unavailable')
+    observed={}
+    for line in result.stdout.splitlines():
+        identity,image,state,health=[json.loads(v) for v in line.split('\t')]
+        observed[identity]={'id':identity,'image':image,'state':state,'health':health}
+    if set(observed)!=set(ids.values()): raise RuntimeError('Container inventory changed')
+    return {service:observed[identity] for service,identity in ids.items()}
+
+def persistence_identity(rows):
+    return {s:{k:r[k] for k in ('id','image')} for s,r in rows.items()}
+
+def persistence_wait_ready(before):
+    deadline=time.monotonic()+240
+    ids={s:r['id'] for s,r in before.items()}
+    while time.monotonic()<deadline:
+        rows=persistence_inspect(ids)
+        if persistence_identity(rows)!=persistence_identity(before): return False,rows
+        if all(r['state']=='running' and r['health'] in (None,'healthy') for r in rows.values()):
+            try:
+                if all(req(s,p,timeout=2)[0]==200 for s,p in
+                    [('be','/actuator/health'),('ai','/health'),('pdf','/health'),('web','/')]):
+                    return True,rows
+            except (OSError,TimeoutError): pass
+        time.sleep(2)
+    return False,rows
+
 def persistence():
+    # Other regressions may legitimately publish a new source after smoke. Bind a
+    # fresh real session immediately before stopping; never relax RAG_SOURCE_CHANGED.
+    teacher,_=credentials('index-owner'); student,_=credentials('index-shared')
+    allowed={m['materialId'] for m in material_ids(teacher)}
+    code,shared,_,_=req('be','/api/materials/shared',student)
+    check('persistence_shared_fixture_prerequisite',code==200 and isinstance(shared,dict),'HTTP '+str(code))
+    if code!=200 or not isinstance(shared,dict):return
+    pointer=None
+    for material in shared.get('materials',[]):
+        if material['materialId'] in allowed:
+            candidate=persistence_pointer(material['materialId'])
+            if persistence_readable(candidate):pointer=candidate;break
+    check('persistence_current_index_prerequisite',pointer is not None,'current source equals active source; no enqueue')
+    if pointer is None:return
+    doc=str(pointer['documentId'])
+    code,data,_,_=req('ai','/rag/chat',student,{'document_id':doc,'question':'재시작 전 영속성 검사용 새 대화입니다.'})
+    valid=code==200 and isinstance(data,dict) and bool(data.get('session_id'))
+    check('persistence_fresh_session_created',valid,'HTTP '+str(code))
+    if not valid:return
+    saved={'session_id':str(uuid.UUID(data['session_id'])),'document_id':doc,'student_id':payload(student)['sub']}
+    binding=persistence_binding(saved['session_id'])
+    stable=bool(binding and str(binding['user_id'])==str(saved['student_id']) and binding['document_id']==doc
+        and binding['source_revision']==pointer['sourceRevision'] and binding['source_hash']==pointer['sourceHash']
+        and binding['message_count']>=2 and persistence_pointer(doc)==pointer)
+    check('persistence_fresh_session_bound_to_current_source',stable)
+    if not stable:return
+    physical=persistence_digest(pointer['candidate'])
+    check('persistence_active_candidate_nonempty',physical['count']>0)
+    if physical['count']<=0:return
+    containers=persistence_containers()
+    ready=all(r['state']=='running' and r['health'] in (None,'healthy') for r in containers.values())
+    check('persistence_existing_containers_ready',ready)
+    if not ready:return
+    evidence={'session':saved,'before':{'pointer':pointer,'binding':binding,'physical':physical,'containers':containers}}
+    evidence_path=RESULTS/('persistence-session-'+time.strftime('%Y%m%dT%H%M%SZ',time.gmtime())+'-'+secrets.token_hex(4)+'.json')
+    def save_evidence():
+        text=json.dumps(evidence,ensure_ascii=False,indent=2)+'\n'
+        evidence_path.write_text(text);(RESULTS/'persistence-session.json').write_text(text)
+    save_evidence()
     marker=secrets.token_hex(16)
-    sql('CREATE TABLE IF NOT EXISTS phase1_persistence_probe (id INT PRIMARY KEY, marker VARCHAR(64) NOT NULL);\nINSERT INTO phase1_persistence_probe VALUES (1,"'+marker+'") ON DUPLICATE KEY UPDATE marker=VALUES(marker);')
-    docker_exec('redis',['redis-cli','SET','phase1:persistence',marker])
+    sql('CREATE TABLE IF NOT EXISTS phase1_persistence_probe (id INT PRIMARY KEY, marker VARCHAR(64) NOT NULL);\nINSERT INTO phase1_persistence_probe VALUES (300000000,"'+marker+'") ON DUPLICATE KEY UPDATE marker=VALUES(marker);')
+    docker_exec('redis',['redis-cli','SET','phase3b:persistence',marker])
     before=sql('SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM materials;')
-    saved=json.loads((RESULTS/'synthetic-session.json').read_text()) if (RESULTS/'synthetic-session.json').exists() else None
-    result=subprocess.run(compose_args('stop'),capture_output=True,text=True,env=clean_env())
+    result=subprocess.run(compose_args('stop',*MAIN),capture_output=True,text=True,env=clean_env(),timeout=120)
     check('compose_stop',result.returncode==0,'exit '+str(result.returncode))
     if result.returncode:return
     # Give this project's just-stopped port forwarders a bounded release window.
@@ -210,22 +324,35 @@ def persistence():
     released=all(port_available(p) for p in ports)
     check('loopback_ports_released_after_stop',released,'bounded read-only check; no process termination')
     if not released:return
-    result=subprocess.run(compose_args('up','-d','--wait','--wait-timeout','240'),capture_output=True,text=True,env=clean_env())
+    # start preserves the existing immutable containers; up could reconcile a
+    # changed build tag and accidentally test newly-created runtime images.
+    result=subprocess.run(compose_args('start',*MAIN),capture_output=True,text=True,env=clean_env(),timeout=120)
     check('compose_restart',result.returncode==0,'exit '+str(result.returncode))
     if result.returncode: return
-    check('mysql_new_marker_persisted',sql('SELECT marker FROM phase1_persistence_probe WHERE id=1;')==marker,'probe is not seeded by application')
+    healthy,after_containers=persistence_wait_ready(containers)
+    evidence['after']={'containers':after_containers};save_evidence()
+    check('persistence_bounded_restart_readiness',healthy,'240-second health window')
+    after_containers=persistence_containers()
+    evidence['after']['containers']=after_containers;save_evidence()
+    same=persistence_identity(after_containers)==persistence_identity(containers)
+    check('persistence_same_container_ids_and_images',same,'all nine primary containers')
+    if not healthy or not same:return
+    check('mysql_new_marker_persisted',sql('SELECT marker FROM phase1_persistence_probe WHERE id=300000000;')==marker,'probe is not seeded by application')
     check('mysql_domain_counts_preserved',sql('SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM materials;')==before,'synthetic user/material counts match')
-    check('redis_new_marker_persisted',docker_exec('redis',['redis-cli','GET','phase1:persistence'])==marker,'probe is not seeded by application')
-    teacher,_=credentials()
-    if saved:
-        code,data,_,_=req('ai','/rag/chat/sessions?student_id='+str(saved['student_id']),teacher)
-        check('rag_sqlite_session_persisted',code==200 and any(s['id']==saved['session_id'] for s in data),'same session ID after restart')
-        student,_=credentials('student')
-        code,_,_,_=req('ai','/rag/chat',student,{'document_id':saved['document_id'],'session_id':saved['session_id'],'question':'재시작 후 합성 자료 확인'})
-        check('local_embedding_provider_persisted',code==200,'HTTP '+str(code)+' without enqueue after restart')
-    else:
-        for name in ('rag_sqlite_session_persisted','local_embedding_provider_persisted'):
-            CHECKS.append({'name':name,'status':'BLOCKED','detail':'run smoke to create synthetic session first'})
+    check('redis_new_marker_persisted',docker_exec('redis',['redis-cli','GET','phase3b:persistence'])==marker,'probe is not seeded by application')
+    teacher,_=credentials('index-owner')
+    code,data,_,_=req('ai','/rag/chat/sessions?student_id='+str(saved['student_id']),teacher)
+    check('rag_sqlite_session_persisted',code==200 and isinstance(data,list) and any(s['id']==saved['session_id'] for s in data),'same fresh session ID after restart')
+    after_binding=persistence_binding(saved['session_id']);after_pointer=persistence_pointer(doc)
+    after_physical=persistence_digest(pointer['candidate'])
+    evidence['after'].update({'binding':after_binding,'pointer':after_pointer,'physical':after_physical});save_evidence()
+    check('persistence_session_binding_and_messages_preserved',after_binding==binding)
+    check('persistence_active_pointer_and_source_preserved',after_pointer==pointer)
+    check('persistence_chroma_candidate_digest_preserved',after_physical==physical,'same collection/count/content/metadata/vectors')
+    student,_=credentials('index-shared')
+    code,data,_,_=req('ai','/rag/chat',student,{'document_id':doc,'session_id':saved['session_id'],'question':'재시작 후 합성 자료 확인'})
+    check('local_embedding_provider_persisted',code==200 and isinstance(data,dict) and data.get('session_id')==saved['session_id'],
+        'HTTP '+str(code)+'; same source/session, without enqueue before or after restart')
 
 if __name__=='__main__':
     mode=sys.argv[1]

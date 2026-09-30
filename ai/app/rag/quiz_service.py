@@ -43,57 +43,23 @@ if not LOCAL_EXTERNAL_STUBS:
 
 async def generate_quiz_with_rag(
     document_id: str,
-    num_questions: int = 10
+    num_questions: int = 10, *, pointer=None
 ) -> List[Dict]:
     """
     RAG를 사용하여 문서에서 퀴즈를 자동 생성합니다.
     """
     
+    if not isinstance(pointer,dict):
+        raise ValueError('An authorized active index pointer is required')
+    from app.indexing.chroma import retrieve
+    docs = retrieve(pointer,'중요한 개념, 정의, 특징, 법칙',limit=num_questions*3)
     if LOCAL_EXTERNAL_STUBS:
-        from app.local_providers import generate_quiz
-        return generate_quiz(_get_collection_name(document_id), num_questions)
-
-    # 모델 초기화 확인
-    if not embedding_model or not quiz_llm:
-        raise ValueError("임베딩 모델 또는 퀴즈용 LLM이 초기화되지 않았습니다.")
-    
+        from app.local_providers import MARKER
+        return [{'question_type':'SHORT_ANSWER','content':MARKER+' 물을 구성하는 두 원소는?',
+            'correct_answer':'수소와 산소','chapter_reference':'content'} for _ in range(num_questions)]
+    if quiz_llm is None:
+        raise ValueError('Quiz provider unavailable')
     try:
-        # 1. Chroma에서 문서 검색
-        collection_name = _get_collection_name(document_id)
-        
-        vectorstore = Chroma(
-            persist_directory=CHROMA_PERSIST_DIRECTORY,
-            embedding_function=embedding_model,
-            collection_name=collection_name
-        )
-        
-        # 2. 문서 검색 + 재시도(Retry) 로직
-        docs = []
-        max_retries = 5
-        retry_delay = 2.0
-        
-        print(f"🔍 문서 검색 시작 (Collection: {collection_name})...")
-        
-        for i in range(max_retries):
-            try:
-                docs = vectorstore.similarity_search(
-                    "중요한 개념, 정의, 특징, 법칙",
-                    k=num_questions * 3,  
-                )
-            except Exception:
-                docs = []
-
-            if docs:
-                break
-            
-            print(f"⏳ 문서가 아직 준비되지 않음. {retry_delay}초 후 재시도... ({i+1}/{max_retries})")
-            await asyncio.sleep(retry_delay)
-        
-        if not docs:
-            raise ValueError(f"'{document_id}' 문서가 아직 처리되지 않았거나 콘텐츠를 찾을 수 없습니다.")
-        
-        print(f"📚 {len(docs)}개의 문서 청크를 검색했습니다.")
-        
         # 3. 문서 컨텍스트 구성
         doc_context = "\n\n---\n\n".join([
             f"[출처: {doc.metadata.get('title', '제목 없음')}]\n{doc.page_content[:500]}"

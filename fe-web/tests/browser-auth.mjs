@@ -57,7 +57,7 @@ async function fresh() {
   const loginResponse = page.waitForResponse(r => r.url().endsWith('/api/auth/teacher/login'));
   await page.locator('form.sign-in button[type="submit"]').click();
   const response = await loginResponse;
-  assert.equal(response.status(), 200);
+  if (response.status() !== 200) throw Object.assign(new Error('Login unavailable'), { observation: { stage: 'login', status: response.status() } });
   assert.equal(Object.hasOwn(await response.json(), 'refreshToken'), false);
   await page.waitForURL('**/classrooms');
   await page.waitForLoadState('networkidle');
@@ -70,9 +70,10 @@ async function run(name, action) {
   try { await action(); }
   catch (error) {
     if (!checks.some(row => row.name === name && row.status === 'FAIL')) {
-      checks.push({ name, status: 'FAIL', detail: error.name });
+      checks.push({ name, status: 'FAIL', detail: error.observation ?? error.name });
       console.log(JSON.stringify(checks.at(-1)));
     }
+    if (name === 'browser_login_cookie_csrf_logout') throw error;
   }
 }
 try {
@@ -193,13 +194,13 @@ try {
     } finally { await context.close(); }
   });
 } catch (error) {
-  checks.push({ name: 'browser_execution', status: 'BLOCKED', detail: error.name });
+  if (!checks.some(row => row.status === 'FAIL')) checks.push({ name: 'browser_execution', status: browser ? 'FAIL' : 'BLOCKED', detail: error.name });
 } finally {
   const version = browser ? browser.version() : 'unavailable';
   if (browser) await browser.close();
   const report = { browser: 'Chrome ' + version, origin, checks, externalRequestsBlocked: blockedExternal,
     nativeDeviceExecution: 'NOT_RUN', counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase3a/results/browser-checks.json');
+  const output = path.join(root, '.local/phase3b/results/browser-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');

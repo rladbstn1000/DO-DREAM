@@ -268,165 +268,35 @@ def extract_initial_data_from_json(json_data: dict) -> List[Document]:
 
 
 def create_and_store_embeddings(document_id: str, documents: List[Document]):
-    """
-    Document 리스트를 청크로 분할하고 임베딩을 생성하여 Chroma DB에 저장합니다.
-    """
-    if not documents:
-        raise ValueError("임베딩할 Document가 없습니다.")
-
-    if not embedding_model:
-        raise ValueError("임베딩 모델이 초기화되지 않았습니다.")
-
-    # 타입별 청크 크기 최적화
-    content_chunks = []
-    quiz_chunks = []
-
-    for doc in documents:
-        if doc.metadata.get("type") == "quiz":
-            quiz_chunks.append(doc)
-        else:
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000, chunk_overlap=100
-            )
-            content_chunks.extend(text_splitter.split_documents([doc]))
-
-    all_chunks = content_chunks + quiz_chunks
-
-    if not all_chunks:
-        print("⚠️ 경고: 텍스트 분할 후 청크가 없습니다.")
-        return
-
-    collection_name = _get_collection_name(document_id)
-    print(
-        f"텍스트 분할 완료. 총 {len(all_chunks)}개의 청크 생성 "
-        f"(콘텐츠: {len(content_chunks)}, 퀴즈: {len(quiz_chunks)}). "
-        f"컬렉션: {collection_name}"
-    )
-
-    # 기존 컬렉션이 있으면 삭제 후 재생성
-    try:
-        existing_vectorstore = Chroma(
-            persist_directory=CHROMA_PERSIST_DIRECTORY,
-            embedding_function=embedding_model,
-            collection_name=collection_name,
-        )
-        existing_vectorstore.delete_collection()
-        print(f"🗑️ 기존 컬렉션 '{collection_name}' 삭제됨 (재생성)")
-    except Exception:
-        pass 
-
-    # Chroma DB에 저장
-    vector_store = Chroma.from_documents(
-        documents=all_chunks,
-        embedding=embedding_model,
-        collection_name=collection_name,
-        persist_directory=CHROMA_PERSIST_DIRECTORY,
-    )
-
-    print(f"✅ '{document_id}' (컬렉션: {collection_name}) 임베딩 및 저장 완료.")
+    """Legacy direct mutations are disabled; creation requires the durable job ledger."""
+    raise RuntimeError('Direct legacy index writes are disabled')
 
 
-# --- 초기 임베딩 전용 함수 (단순 래퍼) ---
 def create_initial_embeddings(pdf_id: str, documents: List[Document]):
-    """
-    초기 임베딩 생성
-    document_id 앞에 'pdf_' 접두사를 붙여서 저장합니다.
-    """
-    # 🔧 수정: pdf_id 앞에 'pdf_'를 붙여서 컬렉션명 구분
-    # 예: 입력 '14' -> 'pdf_14' -> _get_collection_name -> 'material_pdf_14'
-    prefixed_id = f"pdf_{pdf_id}"
-    create_and_store_embeddings(prefixed_id, documents)
+    raise RuntimeError('Direct legacy index writes are disabled')
 
 
-# --- 워크플로우 2: RAG 질의응답 (Re-ranking 적용) ---
-# (get_rag_chain 함수는 기존과 동일하게 유지)
+class VersionedRagChain:
+    def __init__(self,pointer):
+        self.pointer = dict(pointer)
 
-def get_rag_chain(document_id: str):
-    if LOCAL_EXTERNAL_STUBS:
-        from app.local_providers import LocalRagChain
-        return LocalRagChain(_get_collection_name(document_id))
-    if not embedding_model or not llm:
-        raise ValueError("LLM 또는 임베딩 모델이 초기화되지 않았습니다.")
+    async def ainvoke(self,request):
+        from app.indexing.chroma import retrieve
+        docs = retrieve(self.pointer,request['input'],limit=5)
+        if LOCAL_EXTERNAL_STUBS:
+            from app.local_providers import MARKER
+            return {'answer':MARKER+' '+docs[0].page_content[:300]}
+        if llm is None:
+            raise ValueError('Answer provider unavailable')
+        prompt = ChatPromptTemplate.from_messages([
+            ('system','자료의 본문만 참고하여 한두 문장으로 답하세요. 자료에 없으면 모른다고 답하세요.\n{context}'),
+            MessagesPlaceholder(variable_name='chat_history'),('user','{input}')])
+        response = await (prompt | llm).ainvoke({'context':'\n'.join(doc.page_content for doc in docs),
+            'input':request['input'],'chat_history':request.get('chat_history',[])})
+        return {'answer':response.content}
 
-    collection_name = _get_collection_name(document_id)
-    print(f"🔗 RAG Chain 연결: {collection_name}")
 
-    try:
-        vectorstore = Chroma(
-            persist_directory=CHROMA_PERSIST_DIRECTORY,
-            embedding_function=embedding_model,
-            collection_name=collection_name,
-        )
-        # 컬렉션 존재 여부 확인용 쿼리
-        vectorstore.similarity_search("test", k=1, filter={"type": "content"})
-    except Exception as e:
-        raise ValueError(f"'{collection_name}' 컬렉션을 찾을 수 없습니다. (ID: {document_id}): {e}")
-
-    base_retriever = vectorstore.as_retriever(
-        search_type="mmr",
-        search_kwargs={"k": 10, "fetch_k": 20, "filter": {"type": "content"}},
-    )
-
-    if reranker_model:
-        print(f"✅ Reranker 적용: 10개 → 상위 3개 재정렬")
-        compressor = CrossEncoderReranker(
-            model=reranker_model, top_n=3
-        )
-        final_retriever = ContextualCompressionRetriever(
-            base_compressor=compressor, base_retriever=base_retriever
-        )
-    else:
-        print(f"⚠️ Reranker 미적용: Base Retriever만 사용 (k=5로 조정)")
-        final_retriever = vectorstore.as_retriever(
-            search_type="mmr",
-            search_kwargs={"k": 5, "fetch_k": 15, "filter": {"type": "content"}},
-        )
-
-    rephrase_prompt = ChatPromptTemplate.from_messages(
-        [
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("user", "{input}"),
-            (
-                "user",
-                "이전 대화 내용을 참고하여, 위 질문을 검색하기 좋은 독립적인 질문으로 다시 작성해주세요. "
-                "질문만 작성하고 다른 설명은 하지 마세요.",
-            ),
-        ]
-    )
-
-    history_aware_retriever = create_history_aware_retriever(
-        llm=llm, retriever=final_retriever, prompt=rephrase_prompt
-    )
-
-    answer_prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """당신은 학생의 질문에 답변하는 친절하고 전문적인 AI 교사입니다.
-                
-                [!!중요 규칙!!]
-                1. 학생은 이 답변을 모바일에서 **음성(TTS)으로 듣습니다.**
-                2. 따라서, 답변은 **반드시 1~2문장의 간결하고 명확한 핵심 요약**으로 제공해야 합니다.
-                3. 절대 길게 설명하지 마세요. 학생이 듣기에 불편합니다.
-                
-                [답변 생성 논리]
-                1. **우선 순위 1 (자료 기반):** 질문에 대한 답이 [문서 내용]에 있다면, 그 내용을 바탕으로 답변하세요.
-                2. **우선 순위 2 (용어/개념 설명):** 답이 [문서 내용]에 명시되지 않았더라도, 질문의 대상(단어, 용어, 개념)이 [문서 내용]에 **포함**되어 있다면 당신의 일반적인 지식을 활용해 설명하세요.
-                3. **차단 (관련 없음):** 질문이 [문서 내용]과 전혀 관련이 없거나, 문서에 등장하지 않는 주제라면 "자료와 관련이 없는 질문입니다."라고만 답변하세요.
-                4. 답변에는 출처를 언급하지 마세요.
-
-                [문서 내용]:
-                {context}"""
-            ),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("user", "{input}"),
-        ]
-    )
-
-    document_chain = create_stuff_documents_chain(llm, answer_prompt)
-
-    conversational_retrieval_chain = create_retrieval_chain(
-        history_aware_retriever, document_chain
-    )
-
-    return conversational_retrieval_chain
+def get_rag_chain(pointer):
+    if not isinstance(pointer,dict) or 'candidate' not in pointer:
+        raise ValueError('An authorized active index pointer is required')
+    return VersionedRagChain(pointer)

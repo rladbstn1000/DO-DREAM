@@ -84,7 +84,7 @@ public class LocalExternalConfiguration {
                     if (!"local-synthetic-fixtures".equals(request.bucket())) throw unavailable("Unknown synthetic bucket");
                     byte[] bytes = objects.read(request.key());
                     return new ResponseInputStream<>(GetObjectResponse.builder()
-                        .contentType("application/json").contentLength((long) bytes.length).build(),
+                        .contentType(request.key().endsWith(".pdf")?"application/pdf":"application/json").contentLength((long) bytes.length).build(),
                         new ByteArrayInputStream(bytes));
                 }
                 if (method.getName().equals("putObject") && args.length == 2

@@ -39,6 +39,7 @@ async function scenario(name, action) {
       const row = { name, status: 'FAIL', detail: { error: error.name, step } };
       checks.push(row); console.log(JSON.stringify(row));
     }
+    if (name === 'browser_owner_editor') throw error;
   }
 }
 async function contextPage() {
@@ -73,17 +74,33 @@ async function login(email) {
   assert.ok(protectedResponses.filter(status => status === 200).length >= 2);
   return { ...state, refreshes: () => refreshes };
 }
-async function api(page, pathname, method = 'GET', body) {
+async function api(page, pathname, method = 'GET', body, timeoutMs) {
   assert.ok(pathname.startsWith('/api/') || pathname.startsWith('/ai/'));
-  return page.evaluate(async ({ pathname, method, body }) => {
+  return page.evaluate(async ({ pathname, method, body, timeoutMs }) => {
     const response = await fetch(pathname, { method, credentials: 'include',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('accessToken') },
-      body: body === undefined ? undefined : JSON.stringify(body) });
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: timeoutMs === undefined ? undefined : AbortSignal.timeout(timeoutMs) });
     const text = await response.text();
     let data;
     try { data = text ? JSON.parse(text) : null; } catch { data = null; }
     return { status: response.status, data };
-  }, { pathname, method, body });
+  }, { pathname, method, body, timeoutMs });
+}
+async function waitForCurrentIndex(page, materialId, sourceRevision) {
+  const deadline = Date.now() + 30000;
+  for (let count = 0; count < 60; count++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    const response = await api(page, `/api/documents/${materialId}/indexing`, 'GET', undefined, Math.min(8000, remaining));
+    assert.equal(response.status, 200);
+    assert.equal(response.data.sourceRevision, sourceRevision);
+    if (response.data.readable === true && response.data.activeCurrent === true) return;
+    assert.ok(['QUEUED', 'PROCESSING'].includes(response.data.state));
+    if (Date.now() >= deadline) break;
+    await new Promise(resolve => setTimeout(resolve, Math.min(500, deadline - Date.now())));
+  }
+  throw new Error('Current index did not become available');
 }
 const editingJson = data => data?.parsedData ?? data?.editedJson ?? data;
 const hasSession = page => page.evaluate(() => !!localStorage.getItem('accessToken') && localStorage.getItem('isLoggedIn') === 'true');
@@ -117,7 +134,7 @@ async function studentLogout(page) {
     return response.status;
   });
 }
-const lessonTitle = process.env.DODREAM_AUTHZ_BROWSER_TITLE || '[AUTHZ 3A] editable';
+const lessonTitle = process.env.DODREAM_AUTHZ_BROWSER_TITLE || '[AUTHZ 3B] editable';
 let lesson;
 let original;
 
@@ -161,6 +178,7 @@ try {
       const response = await saved;
       mutated = response.status() === 200;
       check('browser_owner_editor_save_allowed', response.status() === 200, 'HTTP ' + response.status());
+      const published = await response.json();
       await page.locator('.swal2-confirm').click();
       await page.waitForURL('**/classrooms');
       await page.locator('.swal2-container').waitFor({ state: 'hidden' });
@@ -171,6 +189,7 @@ try {
       check('browser_owner_saved_content_reloaded', reread.status === 200 && JSON.stringify(editingJson(reread.data)).includes(marker) &&
         (await page.locator('.tiptap[contenteditable="true"]').first().innerText()).includes(marker));
       step = 'owner generates quiz with canonical Material ID';
+      await waitForCurrentIndex(page, lesson.materialId, published.indexing.sourceRevision);
       const generation = page.waitForResponse(r => r.url().endsWith('/ai/rag/quiz/generate'));
       await page.getByRole('button', { name: 'AI 퀴즈 생성', exact: true }).click();
       const generated = await generation;
@@ -181,6 +200,7 @@ try {
         step = 'restore synthetic edited content';
         const restored = await api(page, `/api/documents/${lesson.uploadedFileId}/publish`, 'POST', original);
         check('browser_synthetic_content_restored', restored.status === 200, 'HTTP ' + restored.status);
+        await waitForCurrentIndex(page, lesson.materialId, restored.data.indexing.sourceRevision);
       }
       await context.close();
     }
@@ -281,13 +301,13 @@ try {
     }
   });
 } catch (error) {
-  checks.push({ name: 'browser_authorization_execution', status: 'BLOCKED', detail: { error: error.name, step } });
+  if (!checks.some(row => row.status === 'FAIL')) checks.push({ name: 'browser_authorization_execution', status: browser ? 'FAIL' : 'BLOCKED', detail: { error: error.name, step } });
 } finally {
   const version = browser ? browser.version() : 'unavailable';
   if (browser) await browser.close();
   const report = { browser: 'Chrome ' + version, origin, checks, externalRequestsBlocked: blockedExternal,
     nativeDeviceExecution: 'NOT_RUN', counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase3a/results/browser-authorization-checks.json');
+  const output = path.join(root, '.local/phase3b/results/browser-authorization-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');

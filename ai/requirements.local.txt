@@ -13,3 +13,10 @@ redis==5.2.1
 httpx==0.28.1
 langchain-core==0.3.79
 langchain-text-splitters==0.3.11
+chromadb-client==0.6.3
+numpy==1.26.4
+overrides==7.7.0
+posthog==3.25.0
+opentelemetry-api==1.29.0
+opentelemetry-sdk==1.29.0
+opentelemetry-exporter-otlp-proto-grpc==1.29.0

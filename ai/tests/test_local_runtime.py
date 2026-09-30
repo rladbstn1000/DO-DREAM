@@ -13,7 +13,8 @@ from app.main import app
 from app.common.db_session import Base, engine, SessionLocal
 from app.common.models import (User, RoleEnum, TeacherProfile, StudentProfile, ClassroomTeacher, UploadedFile, Material, MaterialShare)
 from app.local_providers import load_fixture_json, grade_answers, FIXTURE_BASE
-from app.rag.service import extract_data_from_json, create_and_store_embeddings
+from app.rag.service import extract_data_from_json
+from indexing_fixture import seed_index as create_and_store_embeddings, enable
 
 
 class LocalRuntimeTests(unittest.TestCase):
@@ -33,6 +34,9 @@ class LocalRuntimeTests(unittest.TestCase):
             db.commit()
         cls.client = TestClient(app)
         cls.token = jwt.encode(access_claims(), SECRET_KEY_BYTES, algorithm="HS256")
+
+    def setUp(self):
+        enable(self)
 
     def test_real_jwt_and_database_lookup(self):
         result = self.client.get("/users/users/me", headers={"Authorization": f"Bearer {self.token}"})

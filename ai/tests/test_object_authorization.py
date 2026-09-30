@@ -16,8 +16,10 @@ from app.common.models import (User, RoleEnum, TeacherProfile, StudentProfile, C
     UploadedFile, Material, MaterialShare, Quiz, GradingAttempt, GradingAttemptItem)
 from grading_fixture import make_attempt
 from app.rag.database import SessionLocal as RagSession
-from app.rag.models import ChatSession, ChatMessage, EmbeddingTask
-from app.rag.service import extract_data_from_json, create_and_store_embeddings, _get_collection_name
+from app.rag.models import ChatSession, ChatMessage, EmbeddingTask, ChatSessionIndex
+from app.rag.service import extract_data_from_json, _get_collection_name
+from indexing_fixture import seed_index as create_and_store_embeddings, enable, clear_resources
+from app.indexing.models import IndexResource, IndexJob, IndexExecution
 from app.local_providers import LocalVectorStore, LocalEmbeddings, load_fixture_json, FIXTURE_BASE
 from langchain_core.documents import Document
 
@@ -34,8 +36,11 @@ class ObjectAuthorizationTests(unittest.TestCase):
         cls.client = TestClient(app)
 
     def setUp(self):
+        self.chroma = enable(self)
+        clear_resources(list(range(5101,5106))+list(range(4101,4106)))
         with RagSession() as db:
             ids = [r.id for r in db.query(ChatSession).filter(ChatSession.user_id.in_([OWNER, OTHER, OUTSIDE, STUDENT, PEER, OTHER_CLASS, SECOND])).all()]
+            db.query(ChatSessionIndex).filter(ChatSessionIndex.session_id.in_(ids)).delete(synchronize_session=False)
             db.query(ChatMessage).filter(ChatMessage.session_id.in_(ids)).delete(synchronize_session=False)
             db.query(ChatSession).filter(ChatSession.id.in_(ids)).delete(synchronize_session=False)
             db.query(EmbeddingTask).filter(EmbeddingTask.user_id.in_([OWNER, OTHER, OUTSIDE, STUDENT])).delete(synchronize_session=False)
@@ -228,20 +233,27 @@ class ObjectAuthorizationTests(unittest.TestCase):
     def test_embedding_metadata_status_and_initial_owner_positive(self):
         with patch('app.rag.router.create_embedding_task.apply_async') as queue:
             response=self.client.post('/rag/embeddings/create',headers=self.headers(OWNER),json={'document_id':str(DOC),'s3_url':FIXTURE_BASE+'sample.json'})
-            self.assertEqual(response.status_code,202);queue.assert_called_once()
-            self.assertEqual(queue.call_args.kwargs['kwargs']['user_id'],OWNER)
+            self.assertEqual(response.status_code,202)
+            queue.assert_not_called()  # Only durable committed jobs reach the dispatcher.
         task=response.json()['task_id']
+        with SessionLocal() as db:
+            row=db.query(IndexJob).filter(IndexJob.job_id==task).one()
+            self.assertEqual(db.get(IndexResource,row.resource_pk).owner_id,OWNER)
+            self.assertEqual(row.state,'QUEUED')
         with patch('celery.result.AsyncResult') as result:
-            result.return_value.state='SUCCESS'
             self.assertEqual(self.client.get('/rag/embeddings/status/'+task,headers=self.headers(OWNER)).status_code,200)
-            result.reset_mock()
             self.assertEqual(self.client.get('/rag/embeddings/status/'+task,headers=self.headers(OTHER)).status_code,404)
             self.assertEqual(self.client.get('/rag/embeddings/status/'+task,headers=self.headers(STUDENT)).status_code,403)
             self.assertEqual(self.client.get('/rag/embeddings/status/legacy-task',headers=self.headers(OWNER)).status_code,404)
             result.assert_not_called()
         with patch('app.rag.router.create_initial_embedding_task.apply_async') as queue:
-            self.assertEqual(self.client.post('/rag/embeddings/create-initial',headers=self.headers(OWNER),json={'pdf_id':4101,'s3_url':FIXTURE_BASE+'sample.json'}).status_code,202)
-            queue.assert_called_once()
+            response=self.client.post('/rag/embeddings/create-initial',headers=self.headers(OWNER),json={'pdf_id':4101,'s3_url':FIXTURE_BASE+'sample.json'})
+            self.assertEqual(response.status_code,202)
+            queue.assert_not_called()
+            with SessionLocal() as db:
+                row=db.query(IndexJob).filter(IndexJob.job_id==response.json()['task_id']).one()
+                resource=db.get(IndexResource,row.resource_pk)
+                self.assertEqual((resource.resource_kind,resource.resource_id,resource.owner_id),('PDF',4101,OWNER))
 
     def test_initial_and_quiz_generation_other_owner_denied_before_provider(self):
         with patch('app.rag.router.create_initial_embedding_task.apply_async') as queue, patch('app.rag.router.generate_quiz_with_rag') as provider:
@@ -288,6 +300,13 @@ class ObjectAuthorizationTests(unittest.TestCase):
             Document(page_content='TEACHER_ANSWER_SENTINEL',metadata={'type':'quiz'}),
             Document(page_content='Safe lesson content',metadata={'type':'content'}),
             Document(page_content='UNTYPED_PRIVATE_SENTINEL',metadata={})],embedding=LocalEmbeddings(),collection_name=store.name)
+        with SessionLocal() as db:
+            resource=db.query(IndexResource).filter(IndexResource.resource_kind=='MATERIAL',IndexResource.resource_id==DOC).one()
+            active=db.get(IndexExecution,resource.active_execution_id)
+            target=self.chroma.collections[active.candidate_name]
+            reference=next(iter(target.rows.values()))
+            target.rows['private-quiz']=('TEACHER_ANSWER_SENTINEL',{**reference[1],'type':'quiz'},reference[2])
+            target.rows['private-untyped']=('UNTYPED_PRIVATE_SENTINEL',{},reference[2])
         response=self.chat()
         self.assertEqual(response.status_code,200)
         self.assertIn('Safe lesson content',response.json()['answer'])

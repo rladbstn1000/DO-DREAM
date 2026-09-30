@@ -8,14 +8,16 @@ import subprocess
 import datetime
 
 PROJECT = 'dodream-phase1'
-SERVICES = frozenset(('mysql','redis','be','be-test','ai','worker','python-service','web','be-auth-short','web-auth-test'))
-MAIN = ('mysql','redis','be','ai','worker','python-service','web')
-VOLUMES = frozenset(PROJECT+'_'+v for v in ('mysql-data','redis-data','be-data','ai-data'))
+SERVICES = frozenset(('mysql','redis','be','be-test','ai','worker','python-service','web','be-auth-short','web-auth-test','chroma','index-dispatcher'))
+MAIN = ('mysql','redis','be','ai','worker','python-service','web','chroma','index-dispatcher')
+EXISTING_VOLUMES = frozenset(PROJECT+'_'+v for v in ('mysql-data','redis-data','be-data','ai-data'))
+NEW_VOLUMES = frozenset((PROJECT+'_chroma-data',))
+VOLUMES = EXISTING_VOLUMES | NEW_VOLUMES
 NETWORKS = frozenset((PROJECT+'_default',PROJECT+'_gateway'))
 MUTATIONS = frozenset(('build','up','start','stop','restart','run','exec'))
 READS = frozenset(('config','ps','logs'))
-RUN_LABEL = 'com.dodream.task=phase3a'
-BUILD_CONTEXTS = {'be':'be','be-test':'be','ai':'ai','worker':'ai','web':'fe-web','python-service':'python-service'}
+RUN_LABEL = 'com.dodream.task=phase3b'
+BUILD_CONTEXTS = {'be':'be','be-test':'be','ai':'ai','worker':'ai','web':'fe-web','python-service':'python-service','chroma':'scripts/local/chroma','index-dispatcher':'ai'}
 
 class ScopeError(RuntimeError):
     pass
@@ -67,9 +69,9 @@ def command_scope(args):
             if value in with_value:
                 require(i+1<len(rest),'Missing service option value')
                 parameter=rest[i+1]
-                if value=='--name': require(bool(re.fullmatch(r'dodream-phase3a-[a-z0-9-]+',parameter)),'One-off name is outside this task')
+                if value=='--name': require(bool(re.fullmatch(r'dodream-phase3[ab]-[a-z0-9-]+',parameter)),'One-off name is outside this task')
                 if value=='-e':
-                    if parameter=='MYSQL_DATABASE=dodream_phase3a_fresh_v2':fresh_schema=True
+                    if parameter in ('MYSQL_DATABASE=dodream_phase3a_fresh_v2','MYSQL_DATABASE=dodream_phase3b_fresh'):fresh_schema=parameter
                     else:require(parameter.split('=',1)[0] in ('JWT_SECRET','JWT_SECRET_BASE64'),'Unreviewed environment override')
                 if value=='--label':require(parameter==RUN_LABEL,'Unknown one-off owner label')
                 i+=2
@@ -85,7 +87,7 @@ def command_scope(args):
     if operation=='run':require('--rm' in rest and '--no-deps' in rest and '--name' in rest and '--label' in rest,'One-off run must be named, labelled and disposable')
     if fresh_schema:
         require(operation=='run' and targets==['be'] and '--name' in rest
-                and rest[rest.index('--name')+1]=='dodream-phase3a-fresh-schema',
+                and rest[rest.index('--name')+1]==('dodream-phase3b-fresh-schema' if fresh_schema.endswith('phase3b_fresh') else 'dodream-phase3a-fresh-schema'),
                 'Fresh schema override is restricted to its dedicated disposable Spring process')
     if not targets:
         targets=list(MAIN)
@@ -111,7 +113,10 @@ def validate_plan(plan, root):
         image=service.get('image','')
         require(not image or image in ('mysql:8.4','redis:7.4-alpine',*(PROJECT+'-'+s for s in SERVICES)),'Unexpected service image')
         for mount in service.get('volumes',[]):
-            if mount['type']=='volume':require(mount['source'] in ('mysql-data','redis-data','be-data','ai-data'),'Unexpected volume reference')
+            if mount['type']=='volume':
+                require(mount['source'] in ('mysql-data','redis-data','be-data','ai-data','chroma-data'),'Unexpected volume reference')
+                if mount['source']=='chroma-data':require(name=='chroma' and mount.get('target')=='/chroma/chroma','Chroma storage belongs only to its server')
+                if name=='chroma':require(mount['source']=='chroma-data','Chroma cannot mount existing application data')
             elif mount['type']=='bind':require(Path(mount['source']).resolve()==root/'scripts/local/nginx.auth-test.conf' and mount.get('read_only') is True,'Unreviewed bind mount')
             else:raise ScopeError('Unreviewed mount type')
         require(set(service.get('networks',{}))<=({'default','gateway'} if name.startswith('web') else {'default'}),'Unexpected network membership')
@@ -129,7 +134,10 @@ def validate_inventory(rows, build_images=(), root=None):
             require(row['service'] in SERVICES,'Unknown service has our project label')
             require(set(row['networks'])<=NETWORKS,'Owned container attached to unexpected network')
             for m in row['mounts']:
-                if m['type']=='volume':require(m['name'] in VOLUMES,'Owned container uses unexpected volume')
+                if m['type']=='volume':
+                    require(m['name'] in VOLUMES,'Owned container uses unexpected volume')
+                    if m['name'] in NEW_VOLUMES:require(row['service']=='chroma' and m['destination']=='/chroma/chroma','Shared Chroma filesystem refused')
+                    if row['service']=='chroma':require(m['name'] in NEW_VOLUMES,'Chroma cannot mount existing application data')
                 elif m['type']=='bind':require(root and Path(m['source']).resolve()==Path(root).resolve()/'scripts/local/nginx.auth-test.conf' and not m['rw'],'Owned container has an unreviewed bind')
                 else:raise ScopeError('Owned container has an unreviewed mount type')
         else:
@@ -171,9 +179,22 @@ def _gate(args,base,root,env):
     config=json.loads(_read([*base,'--profile','test','--profile','auth-test','config','--format','json'],env))
     builds,ports=validate_plan(config,root)
     # The four existing data volumes must never be silently replaced by a new project.
-    for volume in sorted(VOLUMES):
+    for volume in sorted(EXISTING_VOLUMES):
         owner=_read(['docker','volume','inspect','--format','{{index .Labels "com.docker.compose.project"}}',volume],env).strip()
         require(owner==PROJECT,'Existing data volume ownership is unverified')
+    existing_volumes=set(_read(['docker','volume','ls','--format','{{.Name}}'],env).splitlines())
+    established=Path(root)/'.local'/'phase3b'/'chroma-volume-established.json'
+    if established.exists():
+        require(NEW_VOLUMES <= existing_volumes,'Established Chroma volume disappeared; never recreate it silently')
+    for volume in sorted(NEW_VOLUMES & existing_volumes):
+        owner=_read(['docker','volume','inspect','--format','{{index .Labels "com.docker.compose.project"}}',volume],env).strip()
+        require(owner==PROJECT,'New Chroma volume name collides with an unverified owner')
+        created=_read(['docker','volume','inspect','--format','{{.CreatedAt}}',volume],env).strip()
+        if established.exists():
+            require(json.loads(established.read_text())=={'name':volume,'created':created},'Established Chroma volume identity changed')
+        else:
+            established.parent.mkdir(parents=True,exist_ok=True)
+            with established.open('x') as receipt:json.dump({'name':volume,'created':created},receipt)
     for network in sorted(NETWORKS):
         owner=_read(['docker','network','inspect','--format','{{index .Labels "com.docker.compose.project"}}',network],env).strip()
         require(owner==PROJECT,'Existing network ownership is unverified')
@@ -203,3 +224,18 @@ def _record(report,results):
     report['observed_at']=datetime.datetime.now(datetime.timezone.utc).isoformat()
     Path(results).mkdir(parents=True,exist_ok=True)
     with (Path(results)/'mutation-scope.jsonl').open('a') as f:f.write(json.dumps(report)+'\n')
+
+
+def crash_target(row, service):
+    """Only the three task-owned processes used by observed 3-B crash gates."""
+    require(service in ('be','worker','index-dispatcher'), 'Service is not a reviewed crash target')
+    require(row and row['project']==PROJECT and row['service']==service and row['state']=='running', 'Crash target ownership/state unverified')
+    require(row['name']==PROJECT+'-'+service+'-1', 'Only the primary owned service process may be crashed')
+    return row['id']
+
+
+def chroma_pause_target(row, resume=False):
+    require(row and row['project']==PROJECT and row['service']=='chroma'
+            and row['name']==PROJECT+'-chroma-1', 'Only the owned Chroma server may be paused')
+    require(row['state']==('paused' if resume else 'running'), 'Unexpected Chroma pause state')
+    return row['id']

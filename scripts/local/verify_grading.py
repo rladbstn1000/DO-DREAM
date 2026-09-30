@@ -106,10 +106,10 @@ class Runner:
             require("grading_login_" + who, code == 200 and isinstance(data, dict) and bool(data.get("accessToken")), f"HTTP {code}")
             self.tokens[who] = data["accessToken"]
             self.users[who] = int(payload(data["accessToken"])["sub"])
-        rows = query("SELECT JSON_OBJECT('id',id,'title',title,'teacher',teacher_id) FROM materials WHERE title IN ('[GRADING LOCAL] phase3a','[GRADING LOCAL] phase3a second') AND deleted_at IS NULL;")
+        rows = query("SELECT JSON_OBJECT('id',id,'title',title,'teacher',teacher_id) FROM materials WHERE title IN ('[GRADING LOCAL] phase3b','[GRADING LOCAL] phase3b second') AND deleted_at IS NULL;")
         require("dedicated_grading_materials", len(rows) == 2 and all(row["teacher"] == self.users["owner"] for row in rows))
-        self.material = next(row["id"] for row in rows if row["title"] == "[GRADING LOCAL] phase3a")
-        self.second = next(row["id"] for row in rows if row["title"] == "[GRADING LOCAL] phase3a second")
+        self.material = next(row["id"] for row in rows if row["title"] == "[GRADING LOCAL] phase3b")
+        self.second = next(row["id"] for row in rows if row["title"] == "[GRADING LOCAL] phase3b second")
         self.teacher_quizzes = self.quizzes("owner")
         require("dedicated_grading_questions", len(self.teacher_quizzes) >= 2)
         students = self.quizzes("shared")
@@ -438,7 +438,7 @@ print(json.dumps({"connections":rows,"nulls":nulls}))
         try:
             self.wait_event(key, "after_response")
             row = self.attempt(key)
-            sql(f"UPDATE materials SET deleted_at=UTC_TIMESTAMP(6) WHERE id={self.material} AND title='[GRADING LOCAL] phase3a' AND deleted_at IS NULL;")
+            sql(f"UPDATE materials SET deleted_at=UTC_TIMESTAMP(6) WHERE id={self.material} AND title='[GRADING LOCAL] phase3b' AND deleted_at IS NULL;")
             deleted = True
             check("deleted_attempt_status_denied", self.status(row["attemptId"])[0] == 404)
             check("deleted_attempt_retry_denied", self.retry(row["attemptId"], 1, True)[0] == 404)
@@ -449,7 +449,7 @@ print(json.dumps({"connections":rows,"nulls":nulls}))
         finally:
             self.release("be", key)
             if deleted:
-                sql(f"UPDATE materials SET deleted_at=NULL WHERE id={self.material} AND title='[GRADING LOCAL] phase3a';")
+                sql(f"UPDATE materials SET deleted_at=NULL WHERE id={self.material} AND title='[GRADING LOCAL] phase3b';")
 
     def statistics_and_legacy(self):
         old_key, body = str(uuid.uuid4()), self.body()
@@ -483,7 +483,7 @@ print(json.dumps({"connections":rows,"nulls":nulls}))
             self.release("be", old_key)
         # A new synthetic legacy row, never a rewrite of an existing user's history.
         quiz_id = self.quizzes("shared")[0]["id"]
-        sql(f"INSERT INTO student_quiz_logs(quiz_id,student_id,student_answer,is_correct,ai_feedback,solved_at) SELECT q.id,{self.users['shared']},'phase3a synthetic legacy',0,'synthetic legacy','2001-01-01 00:00:00' FROM quizzes q JOIN materials m ON m.id=q.material_id WHERE q.id={quiz_id} AND m.id={self.material} AND m.title='[GRADING LOCAL] phase3a';")
+        sql(f"INSERT INTO student_quiz_logs(quiz_id,student_id,student_answer,is_correct,ai_feedback,solved_at) SELECT q.id,{self.users['shared']},'phase3a synthetic legacy',0,'synthetic legacy','2001-01-01 00:00:00' FROM quizzes q JOIN materials m ON m.id=q.material_id WHERE q.id={quiz_id} AND m.id={self.material} AND m.title='[GRADING LOCAL] phase3b';")
         self.edit("legacy-current")
         code, history, _ = http("be", f"/api/materials/{self.material}/quizzes/history", self.tokens["shared"])
         legacy = [row for row in history if row.get("student_answer") == "phase3a synthetic legacy"] if isinstance(history, list) else []

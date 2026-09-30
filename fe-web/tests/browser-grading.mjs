@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const origin = process.env.DODREAM_GRADING_BROWSER_ORIGIN || 'http://127.0.0.1:15173';
+const lessonTitle = process.env.DODREAM_GRADING_BROWSER_TITLE || '[GRADING LOCAL] phase3b';
 const base = new URL(origin);
 if (!['127.0.0.1', 'localhost'].includes(base.hostname) || base.protocol !== 'http:' || base.origin !== origin) throw new Error('Loopback origin required');
 const env = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n')
@@ -83,7 +84,7 @@ try {
   step = 'synthetic API logins and dedicated grading fixture';
   assert.equal(await teacherLogin(owner.page), 200); assert.equal(await studentLogin(student.page), 200);
   const listing = await api(owner.page, '/api/documents/published'); assert.equal(listing.status, 200);
-  const material = listing.data.materials.find(row => row.title === '[GRADING LOCAL] phase3a'); assert.ok(material?.materialId);
+  const material = listing.data.materials.find(row => row.title === lessonTitle); assert.ok(material?.materialId);
   const id = material.materialId;
   await owner.context.close();
   step = 'student version and answer projection';
@@ -159,7 +160,7 @@ try {
   const report = { browser: 'Chrome ' + version, origin, mode: 'BROWSER_API_CONTRACT_ONLY', studentWebUi: 'NOT_IMPLEMENTED',
     nativeDeviceExecution: 'NOT_RUN', externalRequestsBlocked, checks,
     counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase3a/results/browser-grading-checks.json');
+  const output = path.join(root, '.local/phase3b/results/browser-grading-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true }); await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify({ counts: report.counts, evidence: output })); process.exitCode = checks.some(row => row.status !== 'PASS') ? 1 : 0;

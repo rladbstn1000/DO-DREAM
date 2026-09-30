@@ -47,3 +47,8 @@ LOCAL_PROVIDER_DATA_DIR = os.getenv("LOCAL_PROVIDER_DATA_DIR", "/app/db_data/loc
 # Exact object-key binding for authorized provider requests; no wildcard host.
 OBJECT_STORAGE_HOST = os.getenv("OBJECT_STORAGE_HOST", "")
 LOCAL_OBJECT_STORAGE_DIR = os.getenv("LOCAL_OBJECT_STORAGE_DIR", "/app/be-local-data/objects")
+# One dedicated HTTP Chroma server owns persistence; clients never mount its data.
+CHROMA_HOST = os.getenv('CHROMA_HOST', 'chroma')
+CHROMA_PORT = int(os.getenv('CHROMA_PORT', '8000'))
+if not CHROMA_HOST or '/' in CHROMA_HOST or not 1 <= CHROMA_PORT <= 65535:
+    raise RuntimeError('Invalid Chroma endpoint')
