@@ -1,0 +1,104 @@
+{
+  "dataset_version": "phase5-eval-v1",
+  "live_api_authorized": false,
+  "execution_status": "NOT_RUN",
+  "models": {
+    "embedding": "text-embedding-3-small",
+    "dimensions": 1536,
+    "answer": "gpt-4.1-mini-2025-04-14",
+    "grading": "gpt-4.1-mini-2025-04-14",
+    "rewrite": "gpt-4.1-mini-2025-04-14"
+  },
+  "index_specification": "openai-text-embedding-3-small-1536-l2-content-v1",
+  "standard_usd_per_million_tokens": {
+    "embedding_input": "0.02",
+    "chat_input": "0.40",
+    "chat_cached_input": "0.10",
+    "chat_output": "1.60"
+  },
+  "pricing_billing_confirmation": "Published unit prices only; actual invoice NOT_RUN/unconfirmed. Runtime guard owns enforceable reservations.",
+  "retrieval": {
+    "top_k": 3,
+    "reranker": false,
+    "whole_document_fallback": false,
+    "query_A": "current_question",
+    "query_B": "history_rewrite_only_if_history_present",
+    "same_for_both": [
+      "material_and_revision",
+      "embedding_specification",
+      "top_k",
+      "answer_model",
+      "answer_prompt",
+      "answer_token_limit",
+      "fixed_prior_history"
+    ],
+    "rewrite_output_policy": "standalone retrieval question only; no new factual answer; untrusted history/question remain data"
+  },
+  "generation": {
+    "temperature": 0,
+    "max_answer_output_tokens": 512,
+    "max_rewrite_output_tokens": 256,
+    "maximum_input_utf8_bytes": 16384,
+    "app_deadlines": {
+      "provider_total_seconds": 8,
+      "provider_read_seconds": 5,
+      "provider_connect_seconds": 2,
+      "provider_write_seconds": 2,
+      "live_rag_total_seconds": 28,
+      "local_rag_total_seconds": 15,
+      "grading_outer_seconds": 10,
+      "spring_grading_http_total_seconds": 15,
+      "live_rag_change_reason": "B adds bounded rewrite, query embedding, and answer calls (3 x 8s);28s allows bounded local search/validation overhead. Local15sunchanged. No paid timeout tests."
+    },
+    "automatic_retries": 0,
+    "max_grading_output_tokens_per_batch": 1024,
+    "maximum_grading_snapshots_per_batch": 8,
+    "maximum_embedding_texts_per_call": 8,
+    "maximum_embedding_text_utf8_bytes": 4096,
+    "maximum_question_chars": 4000,
+    "maximum_history_messages": 12,
+    "maximum_history_message_chars": 4000,
+    "maximum_history_total_chars": 8000,
+    "maximum_answer_chars": 2000,
+    "maximum_feedback_chars": 2000
+  },
+  "experiment": {
+    "development_rag_cases": 12,
+    "final_rag_cases": 12,
+    "development_grading_cases": 8,
+    "final_grading_cases": 8,
+    "paired_order": "R01:A,R01:B,R02:B,R02:A alternating per case; preserve each fixed history independently, never use prior generated output as history",
+    "split_execution_order": [
+      "development",
+      "final"
+    ],
+    "final_after_prompt_change": "exploratory; not independent confirmation",
+    "smoke_counts_toward_quality_metrics": false,
+    "adoption": "No adoption decision until complete paired observations and separate semantic review; no forced adoption of B."
+  },
+  "cache_policy": {
+    "application_answer_cache": "disabled",
+    "embedding_query_cache": "disabled",
+    "provider_prompt_cache": "not controllable; record cached_input_tokens, never assume zero or savings in reservation",
+    "cold_warm": "record first request after provider-process startup as cold; remaining requests warm; preserve startup run ID; one pass no paid warmup; no cold/warm equality claim"
+  },
+  "metric_definitions": {
+    "hit_at_3": "per variant: successful answerable cases whose first 3 retrieved stable source IDs intersect evaluator evidence / all executed answerable cases (errors/timeouts count as misses). Planned16 pervariant; NOT_RUN omitted from executed denominator and completeness reported. No score without observed cases.",
+    "source_ids": "cited subset of actual context subset of retrieved top3, with same material/version; automatic structural check, not semantic grounding",
+    "answer_grounding": "human review per answer and exact provided references; defaults NOT_RUN. Developer judgments must be labeled automatic_preliminary, never human PASS.",
+    "absence_abstention": "self-reported abstained on successful absent cases / executed absent cases, errors/timeouts failures; claim is behavior only until semantic review",
+    "grading_agreement": "boolean is_correct equal fixed expected value / all executed grading cases, errors/timeouts failures; planned16; no claim of expert validity",
+    "latency": "Record rewrite/query_embedding/vector_search/retrieval_including_query_embedding/answer/grading/total exactly as app stages. Retrieval inclusive is diagnostic, not additive with query_embedding/vector_search. Medians and n, separatedSUCCESS/ERROR/TIMEOUT and cold/warm; no operational p95/SLA.",
+    "cost": "sum shared-ledger observed calculated cost, conservative reservations retained for unknown usage, include rewrite, retries,smoke,UI; never equate estimated cost with invoice",
+    "human_review": "NOT_RUN until explicit human rows are provided and attributed; no paid judge"
+  },
+  "authorization_requirements": [
+    "explicit human approval of this run",
+    "human-set budget and request cap",
+    "approved material IDs and source hashes",
+    "dedicated key",
+    "offline tested durable shared budget",
+    "isolated worker/queue/provider process"
+  ],
+  "provider_calls_performed": 0
+}

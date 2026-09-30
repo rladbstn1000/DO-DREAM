@@ -91,7 +91,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
         console.log("[AuthStore] Hydrated successfully");
         console.log("[AuthStore] ========================================");
-        console.log("[AuthStore] ACCESS TOKEN:", token);
         console.log("[AuthStore] ========================================");
       } else {
         set({ isHydrated: true });
@@ -150,14 +149,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       console.log("[AuthStore] Register response type:", typeof response);
-      console.log("[AuthStore] Register response:", response);
 
       if (typeof response !== "object" || response === null) {
         console.log("[AuthStore] Response is not an object, trying login...");
 
         const loginResponse = await authApi.login({ deviceId, deviceSecret });
 
-        console.log("[AuthStore] Login response:", loginResponse);
 
         if (typeof loginResponse !== "object" || !loginResponse.accessToken) {
           throw new Error("로그인 응답이 올바르지 않습니다");
@@ -255,8 +252,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await registerFcmToken(() => get().accessToken);
       }
     } catch (error: any) {
-      console.error("[AuthStore] Registration error:", error);
-      console.error("[AuthStore] Error response:", error.response?.data);
+      console.error("[AuthStore] Registration request failed");
 
       // 409 에러 처리 (이미 등록된 계정)
       if (error.response?.status === 409) {
@@ -321,7 +317,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
           }
         } catch (loginError) {
-          console.error("[AuthStore] Auto-login also failed:", loginError);
+          console.error("[AuthStore] Auto-login also failed");
         }
       }
 
@@ -388,7 +384,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await authApi.logout();
     } catch (error) {
-      console.error("[AuthStore] Logout API error:", error);
+      console.error("[AuthStore] Server logout was not confirmed");
+      throw error;
     } finally {
       set({
         student: null,
@@ -409,6 +406,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clear: () => {
+    authApi.invalidateLocalSession();
     set({
       student: null,
       accessToken: null,

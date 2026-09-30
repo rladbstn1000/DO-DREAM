@@ -1,3 +1,4 @@
+import { authSession } from '../auth/client';
 // src/pages/Join.tsx
 import { useEffect, useState, useCallback } from 'react';
 import Swal from 'sweetalert2';
@@ -33,7 +34,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       toast: true,
       position: 'top-end',
       icon: 'error',
-      title: message,
+      titleText: message,
       showConfirmButton: false,
       timer: 2000,
     });
@@ -44,7 +45,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: message,
+      titleText: message,
       showConfirmButton: false,
       timer: 1800,
     });
@@ -67,43 +68,8 @@ export default function Join({ onLoginSuccess }: JoinProps) {
     setIsLoggingIn(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/auth/teacher/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email, password }),
-      });
-
-      let payload: any = null;
-      try {
-        payload = await res.json();
-      } catch {}
-
-      if (!res.ok) {
-        const msg = payload?.message || '이메일 또는 비밀번호를 확인해주세요';
-        throw new Error(msg);
-      }
-
-      // ✅ Access Token 저장 (여러 가능한 구조 지원)
-      const token =
-        payload?.data?.accessToken || payload?.accessToken || payload?.token;
-
-      if (token) {
-        localStorage.setItem('accessToken', token);
-        console.log('✅ Token saved:', token.substring(0, 20) + '...');
-      } else {
-        console.warn('⚠️ No token found in response:', payload);
-      }
-
-      // 사용자 정보 저장
-      const teacherName =
-        payload?.data?.teacherName || payload?.teacherName || payload?.name;
-
-      if (teacherName) {
-        localStorage.setItem('teacherName', teacherName);
-      }
-
-      localStorage.setItem('isLoggedIn', 'true');
+      await authSession.login(email, password);
+      onLoginSuccess();
 
       await Swal.close();
       await Swal.fire({
@@ -115,7 +81,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         showConfirmButton: false,
       });
 
-      onLoginSuccess();
     } catch (err: any) {
       await Swal.close();
       showErrorToast(err?.message || '로그인 중 오류가 발생했습니다');
@@ -172,7 +137,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
       setIsVerified(true);
     } catch (err: any) {
-      console.error('[verify:error]', err);
+      console.error('[verify:error]');
 
       const elapsed = Date.now() - started;
       if (elapsed < 700) await new Promise((r) => setTimeout(r, 700 - elapsed));
@@ -182,7 +147,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         toast: true,
         position: 'top-end',
         icon: 'error',
-        title:
+        titleText:
           err?.name === 'AbortError'
             ? '요청이 지연되었습니다. 다시 시도해 주세요'
             : err?.message || '인증 중 오류가 발생했습니다',

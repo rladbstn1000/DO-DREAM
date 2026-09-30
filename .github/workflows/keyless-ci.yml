@@ -1,0 +1,118 @@
+name: Keyless checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, master, 'codex/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keyless-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DODREAM_AI_MODE: LOCAL_FAKE
+  LIVE_API_AUTHORIZED: 'false'
+  LOCAL_EXTERNAL_STUBS: 'true'
+  HF_HUB_OFFLINE: '1'
+  TRANSFORMERS_OFFLINE: '1'
+  LANGCHAIN_TRACING_V2: 'false'
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.22.0'
+      - run: npm ci --no-audit --no-fund
+        working-directory: fe-web
+      - run: |
+          npm run test:auth
+          npm run test:authorization
+          npm run test:grading
+          npm run test:indexing
+          npm run test:student
+          npm run test:hardening
+          node --test tests/pages-release.test.mjs
+          # verify includes typecheck, both explicit builds, graph/artifact checks,
+          # and an isolated Chrome session against built static files only.
+          # Hosted Ubuntu supplies Chrome; no user profile or browser installation.
+          npm run verify:showcase
+        working-directory: fe-web
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ai, python-service]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Install the exact service lock
+        working-directory: ${{ matrix.service }}
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r requirements.local.lock.txt
+          .venv/bin/python -m pip check
+      - name: Keyless unit and contract checks
+        working-directory: ${{ matrix.service }}
+        run: .venv/bin/python -m unittest discover -s tests -v
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      # Leading * avoids simple-class-name inference for the uppercase A704 package.
+      - name: Compile and test without services
+        working-directory: be
+        run: >-
+          sh ./gradlew --no-daemon bootJar testClasses test
+          --tests '*A704.DODREAM.auth.JwtContractTests'
+          --tests '*A704.DODREAM.auth.AuthFailureAndCookieTests'
+          --tests '*A704.DODREAM.authorization.StudentProjectionTests'
+          --tests '*A704.DODREAM.authorization.AuthorizationSideEffectTests'
+          --tests '*A704.DODREAM.quiz.grading.GradingContractTests'
+          --tests '*A704.DODREAM.quiz.grading.GradingAcceptanceRaceTests'
+          --tests '*A704.DODREAM.indexing.IndexingSourceTests'
+          --tests '*A704.DODREAM.indexing.IndexingBoundaryTests'
+          --tests '*A704.DODREAM.hardening.ExceptionRedactionTests'
+          --tests '*A704.DODREAM.hardening.SecurityExposureTests'
+          --tests '*A704.DODREAM.hardening.ProgressAndDeletionTests'
+          --tests '*A704.DODREAM.hardening.StorageTransportTimeoutTests'
+          --tests '*A704.DODREAM.file.*'
+  offline-tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Offline tooling contracts
+        run: |
+          python -m unittest discover -s scripts/ci/tests -v
+          python -m unittest discover -s scripts/evaluation/tests -v
+          python -m unittest discover -s scripts/local/tests -v
+          git diff --exit-code -- fe-web/package-lock.json ai/requirements.local.lock.txt python-service/requirements.local.lock.txt be/gradle.lockfile

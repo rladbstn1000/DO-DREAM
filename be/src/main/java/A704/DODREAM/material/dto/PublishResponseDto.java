@@ -14,8 +14,10 @@ import java.time.LocalDateTime;
 public class PublishResponseDto {
     private Boolean success;
     private Long pdfId;
+    private Long materialId;
     private String filename;
     private String jsonS3Key;
     private LocalDateTime publishedAt;
     private String message;
+    private A704.DODREAM.indexing.IndexingSummary indexing;
 }

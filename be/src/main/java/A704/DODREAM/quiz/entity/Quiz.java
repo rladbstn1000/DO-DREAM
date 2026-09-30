@@ -35,6 +35,10 @@ public class Quiz {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private long version;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "material_id", nullable = false)
 	private Material material;
@@ -51,7 +55,7 @@ public class Quiz {
 	@Column(nullable = false, columnDefinition = "TEXT")
 	private String content; // 문제 내용
 
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String correctAnswer; // 정답
 
 	@Column
@@ -60,4 +64,12 @@ public class Quiz {
 	@CreatedDate
 	@Column(name = "created_at", updatable = false)
 	private LocalDateTime createdAt;
+
+    public void edit(A704.DODREAM.quiz.dto.QuizSaveDto input) {
+        this.questionType = input.getQuestionType();
+        this.title = input.getTitle();
+        this.content = input.getContent();
+        this.correctAnswer = input.getCorrectAnswer();
+        this.chapterReference = input.getChapterReference();
+    }
 }

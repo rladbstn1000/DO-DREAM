@@ -1,0 +1,10 @@
+.indexing-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; }
+.indexing-badge { padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+.indexing-ready { color: #166534; background: #dcfce7; }
+.indexing-pending, .indexing-warning { color: #92400e; background: #fef3c7; }
+.indexing-failed { color: #991b1b; background: #fee2e2; }
+.indexing-unknown { color: #334155; background: #e2e8f0; }
+.indexing-check { border: 1px solid #64748b; border-radius: 4px; padding: 4px 8px; background: #fff; color: #192b55; cursor: pointer; font: inherit; }
+.indexing-check:disabled { opacity: .6; cursor: default; }
+.indexing-check:focus-visible { outline: 2px solid #192b55; outline-offset: 2px; }
+.indexing-note { flex-basis: 100%; color: #475569; }

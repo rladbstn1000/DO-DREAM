@@ -35,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/pdf")
 @Tag(name = "PDF API", description = "PDF 파싱 및 분석 API")
 public class PdfController {
+    @Autowired private A704.DODREAM.authorization.AuthorizationPolicy policy;
 
 	@Autowired
 	private PdfService pdfService;
@@ -59,13 +60,16 @@ public class PdfController {
 	)
 	@PostMapping(value = "/upload-and-parse", consumes = "application/pdf")
 	public ResponseEntity<Map<String, Object>> uploadAndParsePdfBinary(
-		@RequestBody byte[] pdfBytes,
 		@Parameter(description = "PDF 파일명 (예: document.pdf)")
 		@RequestParam(value = "filename", defaultValue = "document.pdf") String filename,
 		@AuthenticationPrincipal UserPrincipal userPrincipal,
 		HttpServletRequest httpServletRequest
-	) {
-		Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L; // 기본값 1L (테스트용)
+	) throws IOException {
+		Long userId = userPrincipal.userId();
+        policy.teacher(userId);
+        A704.DODREAM.file.service.PdfInputPolicy.filename(filename);
+        byte[] pdfBytes = A704.DODREAM.file.service.PdfInputPolicy.read(
+            httpServletRequest.getInputStream(), httpServletRequest.getContentLengthLong());
 		String authorizationHeader = httpServletRequest.getHeader("Authorization");
 		Map<String, Object> result = pdfService.uploadAndParsePdfFromBytes(pdfBytes, filename, userId, authorizationHeader);
 		return ResponseEntity.ok(result);
@@ -87,7 +91,7 @@ public class PdfController {
 	//      @RequestParam("file") MultipartFile file,
 	//      @AuthenticationPrincipal UserPrincipal userPrincipal
 	//  ) {
-	//    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L; // 기본값 1L (테스트용)
+	//    Long userId = userPrincipal.userId();
 	//    Map<String, Object> result = pdfService.uploadAndParsePdf(file, userId);
 	//    return ResponseEntity.ok(result);
 	//  }
@@ -107,7 +111,7 @@ public class PdfController {
 	//      @PathVariable Long pdfId,
 	//      @AuthenticationPrincipal UserPrincipal userPrincipal
 	//  ) {
-	//    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L; // 기본값 1L (테스트용)
+	//    Long userId = userPrincipal.userId();
 	//    Map<String, Object> result = pdfService.parsePdfAndSave(pdfId, userId);
 	//    return ResponseEntity.ok(result);
 	//  }
@@ -125,7 +129,8 @@ public class PdfController {
 		@PathVariable Long pdfId,
 		@AuthenticationPrincipal UserPrincipal userPrincipal
 	) {
-		Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+		Long userId = userPrincipal.userId();
+        policy.ownedFile(userId, pdfId);
 		Map<String, Object> result = pdfService.getJsonFromS3(pdfId, userId);
 		return ResponseEntity.ok(result);
 	}
@@ -143,7 +148,8 @@ public class PdfController {
 		@PathVariable Long pdfId,
 		@AuthenticationPrincipal UserPrincipal userPrincipal
 	) {
-		Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+		Long userId = userPrincipal.userId();
+        policy.ownedFile(userId, pdfId);
 		String signedUrl = pdfService.generateJsonSignedUrl(pdfId, userId);
 		return ResponseEntity.ok(Map.of("url", signedUrl));
 	}
@@ -162,7 +168,8 @@ public class PdfController {
 		@PathVariable Long pdfId,
 		@AuthenticationPrincipal UserPrincipal userPrincipal
 	) {
-		Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+		Long userId = userPrincipal.userId();
+        policy.ownedFile(userId, pdfId);
 		Map<String, Object> result = pdfService.getConceptCheckOnly(pdfId, userId);
 		return ResponseEntity.ok(result);
 	}
@@ -183,7 +190,7 @@ public class PdfController {
 	//      @PathVariable Long pdfId,
 	//      @AuthenticationPrincipal UserPrincipal userPrincipal
 	//  ) {
-	//    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+	//    Long userId = userPrincipal.userId();
 	//    Map<String, Object> result = pdfService.extractConceptCheck(pdfId, userId);
 	//    return ResponseEntity.ok(result);
 	//  }dfdf
@@ -204,7 +211,8 @@ public class PdfController {
 		@RequestBody PublishRequest request,
 		@AuthenticationPrincipal UserPrincipal userPrincipal
 	) {
-		Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+		Long userId = userPrincipal.userId();
+        policy.ownedFile(userId, pdfId);
 		tempPdfDataService.save(pdfId, userId, request);
 
 		return ResponseEntity.ok(Map.of(
@@ -228,7 +236,8 @@ public class PdfController {
 		@PathVariable Long pdfId,
 		@AuthenticationPrincipal UserPrincipal userPrincipal
 	) {
-		Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+		Long userId = userPrincipal.userId();
+        policy.ownedFile(userId, pdfId);
 		Map<String, Object> tempData = tempPdfDataService.get(pdfId, userId);
 
 		if (tempData == null) {
@@ -259,7 +268,8 @@ public class PdfController {
 		@PathVariable Long pdfId,
 		@AuthenticationPrincipal UserPrincipal userPrincipal
 	) {
-		Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+		Long userId = userPrincipal.userId();
+        policy.ownedFile(userId, pdfId);
 
 		// 서비스에서 텍스트 추출
 		String textContent = pdfService.extractTextFromJson(pdfId, userId);

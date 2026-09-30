@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ClassroomService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
 
 	private final ClassroomTeacherRepository classroomTeacherRepository;
 	private final StudentProfileRepository studentProfileRepository;
@@ -35,6 +36,7 @@ public class ClassroomService {
 
     // 선생님의 담당 반 목록
     public ClassroomResponse getTeacherClassrooms(Long teacherId) {
+        policy.teacher(teacherId);
 
         TeacherProfile teacherProfile = teacherProfileRepository.findByUserId(teacherId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -52,7 +54,7 @@ public class ClassroomService {
 						.findByClassroomIdWithUser(ct.getClassroom().getId())
 						.size();
 					int materialCount = materialShareRepository
-						.findByClassIdAndTeacherId(ct.getClassroom().getId(), ct.getTeacher().getId())
+						.findByClassIdAndTeacherId(ct.getClassroom().getId(), ct.getTeacher().getUser().getId())
 						.size();
 
 					return ClassroomResponse.ClassroomInfo.from(ct, studentCount, materialCount);
@@ -69,6 +71,7 @@ public class ClassroomService {
 
     // 반별 학생 목록
     public StudentListResponse getClassroomStudents(Long classroomId, Long teacherId) {
+        policy.classroom(teacherId, classroomId);
         Classroom classroom = classroomRepository.findById(classroomId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CLASSROOM_NOT_FOUND));
 
@@ -87,6 +90,7 @@ public class ClassroomService {
 
     // 선생님의 담당 반별 학생 목록
     public List<StudentListResponse> getTeacherClassroomStudents(Long teacherId, List<Long> classroomIds){
+        policy.teacher(teacherId);
         TeacherProfile teacher = teacherProfileRepository.findByUserId(teacherId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 

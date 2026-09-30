@@ -11,7 +11,6 @@ import A704.DODREAM.file.enums.PostStatus;
 import A704.DODREAM.report.entity.LearningReport;
 import jakarta.persistence.*;
 import lombok.*;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;

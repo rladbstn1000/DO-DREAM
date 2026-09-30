@@ -1,0 +1,79 @@
+# No fixed project name, published port, host bind, secret mount, or named volume.
+# integration.py supplies the unique project and freshly generated test secrets.
+services:
+  mysql:
+    build:
+      context: ../..
+      dockerfile: scripts/ci/Dockerfile.mysql
+    environment:
+      MYSQL_DATABASE: dodream_ci
+      MYSQL_USER: dodream_ci
+      MYSQL_PASSWORD: ${CI_MYSQL_PASSWORD:?CI runner required}
+      MYSQL_ROOT_PASSWORD: ${CI_MYSQL_ROOT_PASSWORD:?CI runner required}
+    tmpfs: [/var/lib/mysql]
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql --host=127.0.0.1 --user="$$MYSQL_USER" --database="$$MYSQL_DATABASE" --execute="SELECT 1" >/dev/null 2>&1']
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    mem_limit: 1g
+  redis:
+    image: redis:7.4-alpine
+    command: [redis-server, --save, '', --appendonly, 'no']
+    tmpfs: [/data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    mem_limit: 128m
+  chroma:
+    image: chromadb/chroma:0.6.3
+    environment:
+      IS_PERSISTENT: 'TRUE'
+      PERSIST_DIRECTORY: /chroma/chroma
+      ANONYMIZED_TELEMETRY: 'FALSE'
+      ALLOW_RESET: 'FALSE'
+    tmpfs: [/chroma/chroma]
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/api/v1/heartbeat", timeout=3)']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 768m
+  be-test:
+    build:
+      context: ../../be
+      dockerfile: Dockerfile.local
+      target: test
+    command: [gradle, --offline, --no-daemon, test, --rerun-tasks]
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      MYSQL_DATABASE: dodream_ci
+      MYSQL_USER: dodream_ci
+      MYSQL_PASSWORD: ${CI_MYSQL_PASSWORD:?CI runner required}
+      MYSQL_HOST: mysql
+      REDIS_HOST: redis
+      JWT_SECRET: ${CI_JWT_SECRET:?CI runner required}
+      JWT_ISSUER: dodream
+      JWT_AUDIENCE: dodream-api
+      AI_BASE_URL: http://127.0.0.1:9/disabled
+      LOCAL_TEACHER_PASSWORD: ${CI_TEACHER_PASSWORD:?CI runner required}
+      LOCAL_STUDENT_SECRET: ${CI_STUDENT_SECRET:?CI runner required}
+      LOCAL_DEMO_ENABLED: 'false'
+      LOCAL_PHASE5_ENABLED: 'false'
+      DODREAM_AI_MODE: LOCAL_FAKE
+      LIVE_API_AUTHORIZED: 'false'
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
+    tmpfs: [/app/local-data]
+    mem_limit: 2g
+  probe:
+    build:
+      context: ../..
+      dockerfile: scripts/ci/Dockerfile.probe
+    environment:
+      CI_MYSQL_PASSWORD: ${CI_MYSQL_PASSWORD:?CI runner required}
+    mem_limit: 512m
+networks:
+  default:
+    internal: true

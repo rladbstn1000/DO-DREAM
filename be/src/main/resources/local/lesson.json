@@ -1,0 +1,8 @@
+{
+  "local_fixture": true,
+  "source": "Synthetic local fixture; no OCR, embedding, or LLM call was made.",
+  "chapters": [{
+    "id": "local-chapter-1", "c_title": "합성 학습 자료: 물의 상태", "type": "text",
+    "sections": [{"id": "local-section-1", "s_title": "물과 얼음", "content": "물은 차가워지면 얼음이 됩니다. 얼음은 따뜻해지면 물이 됩니다."}]
+  }]
+}

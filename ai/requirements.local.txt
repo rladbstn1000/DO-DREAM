@@ -1,0 +1,23 @@
+# Local-only runtime, no Chroma/OpenAI SDK/transformers/torch/model downloads.
+# There was no ai requirements manifest at the baseline commit.
+fastapi==0.116.1
+starlette==0.47.3
+uvicorn==0.34.3
+pydantic==2.10.6
+SQLAlchemy==2.0.41
+PyMySQL==1.1.1
+cryptography==45.0.4
+python-jose==3.5.0
+python-dotenv==1.1.0
+celery==5.5.3
+redis==5.2.1
+httpx==0.28.1
+langchain-core==0.3.85
+langchain-text-splitters==0.3.11
+chromadb-client==0.6.3
+numpy==1.26.4
+overrides==7.7.0
+posthog==3.25.0
+opentelemetry-api==1.29.0
+opentelemetry-sdk==1.29.0
+opentelemetry-exporter-otlp-proto-grpc==1.29.0

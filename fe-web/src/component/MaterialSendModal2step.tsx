@@ -147,26 +147,20 @@ export default function MaterialSendModal2Step({
   };
 
   const getStudentImage = (s: StudentLite): string | undefined => {
-    console.log('🔍 getStudentImage 호출:', s.name, {
-      gender: s.gender,
-      avatarUrl: s.avatarUrl,
-      maleImage: maleImage?.substring(0, 50),
-      femaleImage: femaleImage?.substring(0, 50),
-    });
 
     if (s.avatarUrl) {
-      console.log('  ✅ avatarUrl 반환');
+
       return s.avatarUrl;
     }
     if (s.gender === 'male') {
-      console.log('  ✅ maleImage 반환');
+
       return maleImage;
     }
     if (s.gender === 'female') {
-      console.log('  ✅ femaleImage 반환');
+
       return femaleImage;
     }
-    console.log('  ❌ undefined 반환');
+
     return undefined;
   };
 

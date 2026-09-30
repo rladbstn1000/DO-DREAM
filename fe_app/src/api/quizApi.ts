@@ -1,6 +1,10 @@
 import apiClient from './apiClient';
 import type { QuizQuestion } from '../types/quiz';
-import { QuizAnswerPayload, QuizGradingResultItem, RawQuizGradingResult } from '../types/api/quizApiTypes';
+import { createQuizSubmission } from './quizSubmission';
+import type { SubmissionView } from './quizSubmission';
+import { nativeAuth } from './interceptors';
+import { getAccessToken } from '../services/authStorage';
+import { mergeSubmittedQuizResults } from './submittedQuizResults';
 
 /**
  * 특정 학습자료의 퀴즈 목록을 조회합니다.
@@ -17,28 +21,20 @@ export const fetchQuizzes = async (materialId: number | string): Promise<QuizQue
   }
 };
 
-/**
- * 퀴즈 답안을 제출하고 채점 결과를 받습니다.
- * @param materialId 학습자료 ID
- * @param payload 제출할 답안 데이터
- * @returns Promise<QuizGradingResultItem[]>
- */
-export const submitQuizAnswers = async (materialId: number | string, payload: QuizAnswerPayload): Promise<QuizGradingResultItem[]> => {
-  try {
-    // API는 snake_case로 응답하므로 RawQuizGradingResult 타입으로 받음
-    const response = await apiClient.post<RawQuizGradingResult[]>(`/api/materials/${materialId}/quizzes/submit`, payload);
-
-    // snake_case를 camelCase로 변환
-    const transformedResults: QuizGradingResultItem[] = response.data.map((raw) => ({
-      id: raw.question_id,
-      userAnswer: raw.student_answer,
-      isCorrect: raw.is_correct,
-      feedback: raw.ai_feedback, // ai_feedback을 feedback으로 매핑
-    } as QuizGradingResultItem));
-
-    return transformedResults;
-  } catch (error) {
-    console.error('[API] submitQuizAnswers 에러:', error);
-    throw error;
-  }
-};
+/** A logical submission owns its key, immutable request and explicit recovery state. */
+export function createNativeQuizSubmission(
+  materialId: number | string, questions: QuizQuestion[], changed: (view: SubmissionView) => void,
+) {
+  return createQuizSubmission({ materialId, questions, changed, mergeResults: mergeSubmittedQuizResults,
+    session: () => getAccessToken() ? nativeAuth.getEpoch() : null,
+    request: async request => {
+      // The existing interceptor reuses this header and body after its one AT refresh.
+      // Non-auth responses are interpreted here without propagating Axios request/token data.
+      const response = await apiClient.request({ method: request.method, url: request.path, data: request.body,
+        headers: { 'Idempotency-Key': request.key }, timeout: 20000,
+        validateStatus: status => status !== 401 });
+      return { status: response.status, data: response.data,
+        attemptId: response.headers['x-grading-attempt-id'], state: response.headers['x-grading-state'] };
+    },
+  });
+}

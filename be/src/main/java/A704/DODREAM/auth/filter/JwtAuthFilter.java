@@ -26,9 +26,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		// 프리플라이트만 스킵(선택). 그 외 경로 화이트리스트는 SecurityConfig에서 permitAll로만 관리
-		if(request.getRequestURI().startsWith("/api/actuator")
-				|| request.getRequestURI().startsWith("/actuator")) {
+        // Cookie/body authentication validates its own refresh token; expired AT must not block it.
+        // Use the decoded routing path so encoded auth URLs follow exactly the same policy.
+        String path = request.getServletPath();
+		if(path.startsWith("/api/auth/")
+            || path.startsWith("/api/actuator")
+				|| path.startsWith("/actuator")) {
 			return true;
 		}
 		return "OPTIONS".equalsIgnoreCase(request.getMethod());
@@ -40,7 +43,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		String h = req.getHeader("Authorization");
 		if (h != null && h.startsWith("Bearer ")) {
 			try {
-				Claims c = jwt.parse(h.substring(7)).getBody();
+				Claims c = jwt.parseAccess(h.substring(7)).getPayload();
 
 				// JwtUtil에서 subject = userId 문자열, name/role은 claim으로 발급 중
 				Long userId = parseLong(c.getSubject());

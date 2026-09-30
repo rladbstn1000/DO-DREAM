@@ -4,27 +4,31 @@ import java.time.Duration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import reactor.netty.http.client.HttpClient;
 
 @Configuration
+@Profile("!local")
 public class WebClientConfig {
 
 	@Bean
 	public WebClient webClient() {
-		HttpClient httpClient = HttpClient.create()
-			.responseTimeout(Duration.ofMinutes(10));  // PDF 파싱은 시간이 오래 걸릴 수 있음 (Gemini API)
+		HttpClient httpClient = HttpClient.create().disableRetry(true).followRedirect(false)
+            .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS,2000)
+            .responseTimeout(Duration.ofSeconds(5));
 
 		return WebClient.builder()
 			.clientConnector(new ReactorClientHttpConnector(httpClient))
+            .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(A704.DODREAM.file.service.PdfInputPolicy.MAX_BYTES))
 			.build();
 	}
 
 	@Bean
 	public WebClient branchWebClient() {
-		return WebClient.builder()
+		return webClient().mutate()
 			.baseUrl("https://api2.branch.io")
 			.defaultHeader("Content-Type", "application/json")
 			.build();

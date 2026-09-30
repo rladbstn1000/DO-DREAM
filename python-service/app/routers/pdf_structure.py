@@ -7,13 +7,13 @@ import logging
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field
-import httpx
+from pydantic import BaseModel, Field, ConfigDict
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 
 from app.services.pdf_analyzer import PDFAnalyzer
+from app.utils.config import settings
 from app.services.heading_detector import HeadingDetector
 # from app.services.layout_detector import LayoutDetector  # Optional: Requires layoutparser
 from app.services.reading_order import ReadingOrderRestorer, TextBlockOrderRestorer
@@ -51,7 +51,8 @@ router = APIRouter(prefix="/api/pdf", tags=["pdf-structure"])
 # Request/Response models
 class ExtractStructureRequest(BaseModel):
     """Request model for structure extraction"""
-    pdfUrl: str = Field(..., description="URL to download the PDF file")
+    model_config = ConfigDict(extra="forbid")
+    pdfUrl: str = Field(..., min_length=1, max_length=2048, description="Synthetic local PDF URL")
     options: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Extraction options")
 
 
@@ -126,9 +127,10 @@ async def extract_structure(request: ExtractStructureRequest):
     7. Return structured document
     """
     pdf_path = None
+    analyzer = None
 
     try:
-        logger.info(f"Starting structure extraction for PDF: {request.pdfUrl}")
+        logger.info("Starting PDF structure extraction")
 
         # Step 1: Download PDF
         pdf_path = await download_pdf(request.pdfUrl)
@@ -186,7 +188,11 @@ async def extract_structure(request: ExtractStructureRequest):
 
             # Step 5: Extract tables if requested
             if extract_tables:
+                if not TABLE_EXTRACTOR_AVAILABLE:
+                    raise HTTPException(501, "Table extraction is not installed")
                 table_extractor = TableExtractor()
+                if not (table_extractor.camelot_available or table_extractor.tabula_available):
+                    raise HTTPException(501, "Table extraction is not installed")
                 for page_num in range(1, doc_analysis.total_pages + 1):
                     page_tables = table_extractor.extract_tables_from_page(
                         str(pdf_path),
@@ -209,6 +215,8 @@ async def extract_structure(request: ExtractStructureRequest):
                     tiptap_doc["content"].append(table_node)
 
         else:
+            if settings.LOCAL_EXTERNAL_STUBS or not LAYOUT_DETECTOR_AVAILABLE:
+                raise HTTPException(status_code=501, detail="OCR/layout inference is disabled in the local runtime")
             # OCR + LayoutParser path
             logger.info("Using OCR + LayoutParser extraction")
 
@@ -298,18 +306,22 @@ async def extract_structure(request: ExtractStructureRequest):
             tables=tables_json
         )
 
-    except Exception as e:
-        logger.error(f"Error extracting structure: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Structure extraction failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Structure extraction failed")
+        raise HTTPException(status_code=500, detail="Structure extraction unavailable") from None
 
     finally:
+        if analyzer is not None:
+            analyzer.close()
         # Clean up temporary file
         if pdf_path and Path(pdf_path).exists():
             try:
                 Path(pdf_path).unlink()
                 logger.info(f"Cleaned up temporary file: {pdf_path}")
             except Exception as e:
-                logger.warning(f"Failed to delete temporary file: {e}")
+                logger.warning("Temporary PDF cleanup failed")
 
 
 @router.post("/extract-headings")
@@ -319,9 +331,10 @@ async def extract_headings_only(request: ExtractStructureRequest):
     Faster than full structure extraction.
     """
     pdf_path = None
+    analyzer = None
 
     try:
-        logger.info(f"Extracting headings from PDF: {request.pdfUrl}")
+        logger.info("Extracting PDF headings")
 
         # Download PDF
         pdf_path = await download_pdf(request.pdfUrl)
@@ -346,11 +359,15 @@ async def extract_headings_only(request: ExtractStructureRequest):
             }
         })
 
-    except Exception as e:
-        logger.error(f"Error extracting headings: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Heading extraction failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Heading extraction failed")
+        raise HTTPException(status_code=500, detail="Heading extraction unavailable") from None
 
     finally:
+        if analyzer is not None:
+            analyzer.close()
         if pdf_path and Path(pdf_path).exists():
             Path(pdf_path).unlink()
 
@@ -365,24 +382,12 @@ async def download_pdf(url: str) -> Path:
     Returns:
         Path to downloaded PDF file
     """
-    try:
-        async with httpx.AsyncClient(timeout=300.0) as client:  # 5 minute timeout
-            response = await client.get(url)
-            response.raise_for_status()
-
-            # Create temporary file
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-            temp_file.write(response.content)
-            temp_file.close()
-
-            return Path(temp_file.name)
-
-    except httpx.HTTPError as e:
-        logger.error(f"Failed to download PDF from {url}: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to download PDF: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error downloading PDF: {e}")
-        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
+    if settings.LOCAL_EXTERNAL_STUBS:
+        from app.services.local_provider import download_fixture_pdf
+        return download_fixture_pdf(url)
+    # General URL fetching requires a future authorized-object contract and
+    # connection-bound address validation. This service has neither today.
+    raise HTTPException(503, "External PDF downloads are disabled")
 
 
 @router.post("/extract-structured-book")
@@ -407,7 +412,7 @@ async def extract_structured_book(request: ExtractStructureRequest):
     pdf_path = None
 
     try:
-        logger.info(f"Starting structured book extraction for PDF: {request.pdfUrl}")
+        logger.info("Starting structured PDF extraction")
 
         # Download PDF
         pdf_path = await download_pdf(request.pdfUrl)
@@ -429,9 +434,11 @@ async def extract_structured_book(request: ExtractStructureRequest):
 
         return JSONResponse(content=result)
 
-    except Exception as e:
-        logger.error(f"Error extracting structured book: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Structured book extraction failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Structured book extraction failed")
+        raise HTTPException(status_code=500, detail="Structured book extraction unavailable") from None
 
     finally:
         # Clean up temporary file
@@ -440,7 +447,7 @@ async def extract_structured_book(request: ExtractStructureRequest):
                 Path(pdf_path).unlink()
                 logger.info(f"Cleaned up temporary file: {pdf_path}")
             except Exception as e:
-                logger.warning(f"Failed to delete temporary file: {e}")
+                logger.warning("Temporary PDF cleanup failed")
 
 
 @router.post("/debug-toc")
@@ -449,10 +456,13 @@ async def debug_toc_structure(request: ExtractStructureRequest):
     Debug endpoint to analyze TOC structure.
     Returns raw text blocks from first 2 pages for inspection.
     """
+    if settings.APP_ENV not in {"local", "test"}:
+        raise HTTPException(404, "Not found")
     pdf_path = None
+    analyzer = None
 
     try:
-        logger.info(f"Starting TOC debug for PDF: {request.pdfUrl}")
+        logger.info("Starting local PDF diagnostics")
 
         # Download PDF
         pdf_path = await download_pdf(request.pdfUrl)
@@ -502,11 +512,15 @@ async def debug_toc_structure(request: ExtractStructureRequest):
 
         return JSONResponse(content=debug_data)
 
-    except Exception as e:
-        logger.error(f"Error debugging TOC: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"TOC debug failed: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("TOC debug failed")
+        raise HTTPException(status_code=500, detail="TOC debug unavailable") from None
 
     finally:
+        if analyzer is not None:
+            analyzer.close()
         if pdf_path and Path(pdf_path).exists():
             Path(pdf_path).unlink()
 
@@ -515,9 +529,10 @@ async def debug_toc_structure(request: ExtractStructureRequest):
 
 class GeminiParseRequest(BaseModel):
     """Request model for Gemini PDF parsing"""
-    pdfUrl: str = Field(..., description="URL to download the PDF file")
-    outputFormat: Optional[str] = Field(None, description="Custom output JSON format")
-    customPrompt: Optional[str] = Field(None, description="Custom parsing prompt")
+    model_config = ConfigDict(extra="forbid")
+    pdfUrl: str = Field(..., min_length=1, max_length=2048, description="Synthetic local PDF URL")
+    outputFormat: Optional[str] = Field(None, max_length=10000, description="Custom output JSON format")
+    customPrompt: Optional[str] = Field(None, max_length=10000, description="Custom parsing prompt")
 
 
 class GeminiParseResponse(BaseModel):
@@ -548,7 +563,7 @@ async def parse_pdf_with_gemini(request: GeminiParseRequest):
     pdf_path = None
 
     try:
-        logger.info(f"Starting Gemini PDF parsing for: {request.pdfUrl}")
+        logger.info("Starting PDF parsing")
 
         # Step 1: Download PDF
         pdf_path = await download_pdf(request.pdfUrl)
@@ -563,10 +578,10 @@ async def parse_pdf_with_gemini(request: GeminiParseRequest):
         try:
             parser = GeminiPDFParser()
         except ValueError as e:
-            logger.error(f"Gemini API key not configured: {e}")
+            logger.error("PDF provider is not configured")
             raise HTTPException(
                 status_code=500,
-                detail="Gemini API가 설정되지 않았습니다. GEMINI_API_KEY를 환경변수에 설정하세요."
+                detail="PDF provider unavailable"
             )
 
         # Step 3: Parse PDF with Gemini
@@ -587,8 +602,8 @@ async def parse_pdf_with_gemini(request: GeminiParseRequest):
 
         # Prepare metadata
         metadata = {
-            "model": "gemini-2.5-flash",
-            "extractionMethod": "gemini_multimodal",
+            "model": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini-2.5-flash",
+            "extractionMethod": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini_multimodal",
             "customPrompt": request.customPrompt is not None,
             "customFormat": request.outputFormat is not None
         }
@@ -606,10 +621,10 @@ async def parse_pdf_with_gemini(request: GeminiParseRequest):
         raise
 
     except Exception as e:
-        logger.error(f"Error parsing PDF with Gemini: {e}", exc_info=True)
+        logger.error("PDF parsing failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Gemini PDF parsing failed: {str(e)}"
+            detail="PDF parsing unavailable"
         )
 
     finally:
@@ -619,7 +634,7 @@ async def parse_pdf_with_gemini(request: GeminiParseRequest):
                 Path(pdf_path).unlink()
                 logger.info(f"Cleaned up temporary file: {pdf_path}")
             except Exception as e:
-                logger.warning(f"Failed to delete temporary file: {e}")
+                logger.warning("Temporary PDF cleanup failed")
 
 
 @router.post("/parse-pdf-gemini-upload")
@@ -644,29 +659,45 @@ async def parse_pdf_with_gemini_upload(
     temp_path = None
 
     try:
+        if any(value is not None and len(value) > 10000 for value in (output_format, custom_prompt)):
+            raise HTTPException(400, "PDF prompt exceeds the input limit")
         # Validate file type
-        if not file.filename.endswith('.pdf'):
+        if (not file.filename or len(file.filename) > 255
+                or '/' in file.filename or '\\' in file.filename
+                or any(ord(char) < 32 for char in file.filename)
+                or not file.filename.lower().endswith('.pdf')
+                or file.content_type != 'application/pdf'):
             raise HTTPException(
                 status_code=400,
                 detail="PDF 파일만 지원됩니다."
             )
 
-        logger.info(f"Processing uploaded PDF: {file.filename}")
+        logger.info("Processing uploaded PDF")
 
         # Save to temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-            content = await file.read()
-            temp_file.write(content)
             temp_path = temp_file.name
+            size = 0
+            first = True
+            while chunk := await file.read(65536):
+                size += len(chunk)
+                if size > settings.MAX_PDF_SIZE_MB * 1024 * 1024:
+                    raise HTTPException(413, "PDF exceeds the size limit")
+                if first and not chunk.startswith(b'%PDF-'):
+                    raise HTTPException(400, "Invalid PDF content")
+                first = False
+                temp_file.write(chunk)
+            if first:
+                raise HTTPException(400, "Empty PDF")
 
         # Initialize Gemini parser
         try:
             parser = GeminiPDFParser()
         except ValueError as e:
-            logger.error(f"Gemini API key not configured: {e}")
+            logger.error("PDF provider is not configured")
             raise HTTPException(
                 status_code=500,
-                detail="Gemini API가 설정되지 않았습니다. GEMINI_API_KEY를 환경변수에 설정하세요."
+                detail="PDF provider unavailable"
             )
 
         # Parse PDF
@@ -679,8 +710,8 @@ async def parse_pdf_with_gemini_upload(
             "filename": file.filename,
             "parsedData": parsed_data,
             "metadata": {
-                "model": "gemini-2.5-flash",
-                "extractionMethod": "gemini_multimodal"
+                "model": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini-2.5-flash",
+                "extractionMethod": "local_stub" if settings.LOCAL_EXTERNAL_STUBS else "gemini_multimodal"
             }
         })
 
@@ -688,17 +719,18 @@ async def parse_pdf_with_gemini_upload(
         raise
 
     except Exception as e:
-        logger.error(f"Error parsing uploaded PDF with Gemini: {e}", exc_info=True)
+        logger.error("Uploaded PDF parsing failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Gemini PDF parsing failed: {str(e)}"
+            detail="PDF parsing unavailable"
         )
 
     finally:
+        await file.close()
         # Clean up temporary file
         if temp_path and Path(temp_path).exists():
             try:
                 Path(temp_path).unlink()
                 logger.info(f"Cleaned up temporary file: {temp_path}")
             except Exception as e:
-                logger.warning(f"Failed to delete temporary file: {e}")
+                logger.warning("Temporary PDF cleanup failed")

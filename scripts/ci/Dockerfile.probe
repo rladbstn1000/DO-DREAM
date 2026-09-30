@@ -1,0 +1,7 @@
+FROM python:3.11-slim
+WORKDIR /checks
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 ANONYMIZED_TELEMETRY=FALSE
+COPY ai/requirements.local.lock.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && pip check
+COPY scripts/ci/service_probe.py ./
+CMD ["python", "service_probe.py"]

@@ -6,6 +6,10 @@ plugins {
 
 ext {
 	springCloudVersion = "2025.0.0"
+	// Narrow fixes for CVE-2026-22732 (response security headers) and
+	// CVE-2026-77756 (HTTP/1.0 transfer-encoding behind a reverse proxy).
+	set('spring-security.version', '6.5.9')
+	set('tomcat.version', '10.1.60')
 }
 
 group = 'A704'
@@ -22,6 +26,12 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
+}
+
+// Commit the resolved graph; CI fails when dependency declarations drift from the lock.
+dependencyLocking {
+	lockAllConfigurations()
+	lockMode = LockMode.STRICT
 }
 
 repositories {
@@ -85,4 +95,22 @@ dependencyManagement {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// Pre-resolve test runtime jars while the build has dependency-download access.
+// The local test container runs with --offline on the isolated internal network.
+tasks.register('resolveTestRuntime') {
+	doLast {
+		configurations.testRuntimeClasspath.files
+	}
+}
+
+// Explicit maintenance command only: ./gradlew resolveAndLockAll --write-locks
+tasks.register('resolveAndLockAll') {
+	doLast {
+		if (!gradle.startParameter.writeDependencyLocks) {
+			throw new GradleException('Use --write-locks to update the committed dependency graph')
+		}
+		configurations.findAll { it.canBeResolved }.each { it.resolve() }
+	}
 }

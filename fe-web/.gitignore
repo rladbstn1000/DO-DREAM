@@ -10,7 +10,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-showcase
 *.local
+!Dockerfile.local
 
 # Editor directories and files
 .vscode/*

@@ -44,6 +44,8 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 @RequiredArgsConstructor
 @Transactional
 public class MaterialShareService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
+    private final A704.DODREAM.indexing.IndexingStore indexing;
 	private final MaterialShareRepository materialShareRepository;
 	private final MaterialRepository materialRepository;
 	private final UserRepository userRepository;
@@ -61,6 +63,19 @@ public class MaterialShareService {
     @Transactional
     public MaterialShareResponse shareMaterial(MaterialShareRequest request, Long teacherId){
 
+        policy.owned(teacherId, request.getMaterialId());
+        if (request.getShares() == null || request.getShares().isEmpty()) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+        if (policy.owned(teacherId, request.getMaterialId()).getPostStatus() != A704.DODREAM.file.enums.PostStatus.PUBLISHED) throw A704.DODREAM.authorization.AuthorizationPolicy.hidden();
+        java.util.Set<Long> requestedStudents = new java.util.HashSet<>();
+        for (var target : request.getShares().entrySet()) {
+            policy.classroom(teacherId, target.getKey());
+            var info = target.getValue();
+            if (info == null || info.getType() == null || info.getStudentIds() == null || info.getStudentIds().isEmpty()) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+            for (Long studentId : info.getStudentIds()) {
+                var profile = policy.assignedStudent(teacherId, studentId);
+                if (!profile.getClassroom().getId().equals(target.getKey()) || !requestedStudents.add(studentId)) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+            }
+        }
         User teacher = userRepository.getReferenceById(teacherId);
 
 		// 자료 조회
@@ -202,9 +217,11 @@ public class MaterialShareService {
 	}
 
     public MaterialShareListResponse getSharedMaterialByStudent(Long studentId){
+        policy.student(studentId);
         User student = userRepository.getReferenceById(studentId);
 
-		List<MaterialShare> shares = materialShareRepository.findByStudentId(studentId);
+		List<MaterialShare> shares = materialShareRepository.findByStudentId(studentId).stream()
+            .filter(share -> policy.studentCanRead(studentId, share.getMaterial())).toList();
 
 		return MaterialShareListResponse.builder()
 			.studentId(student.getId())
@@ -216,11 +233,13 @@ public class MaterialShareService {
 
 	public MaterialShareListResponse getSharedMaterialByStudentAndTeacher(
 		Long studentId, Long teacherId) {
+        policy.assignedStudent(teacherId, studentId);
 
 		User student = userRepository.findById(studentId)
 			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        List<MaterialShare> shares = materialShareRepository.findByStudentIdAndTeacherId(studentId, teacherId);
+        List<MaterialShare> shares = materialShareRepository.findByStudentIdAndTeacherId(studentId, teacherId).stream()
+            .filter(share -> policy.studentCanRead(studentId, share.getMaterial())).toList();
 
 		return MaterialShareListResponse.builder()
 			.studentId(student.getId())
@@ -231,11 +250,13 @@ public class MaterialShareService {
 	}
 
 	public MaterialShareListResponse getSharedMaterialByClass(Long classId, Long teacherId) {
+        policy.classroom(teacherId, classId);
 
 		Classroom classroom = classroomRepository.findById(classId)
 			.orElseThrow(() -> new CustomException(ErrorCode.CLASSROOM_NOT_FOUND));
 
-        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(classId, teacherId);
+        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(classId, teacherId).stream()
+            .filter(share -> policy.studentCanRead(share.getStudent().getId(), share.getMaterial())).toList();
 
 		return MaterialShareListResponse.builder()
 			.totalCount(shares.size())
@@ -244,6 +265,7 @@ public class MaterialShareService {
 	}
 
 	public Map<String, Object> getSharedMaterialJson(Long studentId, Long materialId) {
+        policy.studentMaterial(studentId, materialId);
 		// 1. 공유 권한 확인
 		MaterialShare share = materialShareRepository.findByStudentIdAndMaterialId(studentId, materialId)
 				.orElseThrow(() -> new RuntimeException("공유받지 않은 자료입니다."));
@@ -270,9 +292,9 @@ public class MaterialShareService {
 					.build();
 
 			ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
-			String jsonString = new String(response.readAllBytes());
+			String jsonString = A704.DODREAM.file.service.ObjectJsonReader.read(response);
 
-			Map<String, Object> jsonData = objectMapper.readValue(jsonString, Map.class);
+			Map<String, Object> jsonData = A704.DODREAM.authorization.StudentContent.document(objectMapper.readValue(jsonString, Map.class));
 
 			List<Map<String, Object>> chapters = (List<Map<String, Object>>) jsonData.get("chapters");
 
@@ -285,7 +307,8 @@ public class MaterialShareService {
 					"materialTitle", material.getTitle(),
 					"filename", uploadedFile.getOriginalFileName(),
 					"parsedAt", uploadedFile.getParsedAt() != null ? uploadedFile.getParsedAt() : LocalDateTime.now(),
-					"chapters", chapters
+					"chapters", chapters,
+                    "indexing", indexing.studentResource(studentId, materialId)
 			);
 
 		} catch (Exception e) {
@@ -293,10 +316,22 @@ public class MaterialShareService {
 		}
 	}
 
+    public void revoke(Long teacherId, Long materialId, Long studentId) {
+        policy.owned(teacherId, materialId);
+        var share = materialShareRepository.findByStudentIdAndMaterialId(studentId, materialId)
+            .orElseThrow(A704.DODREAM.authorization.AuthorizationPolicy::hidden);
+        if (!share.getTeacher().getId().equals(teacherId)) throw A704.DODREAM.authorization.AuthorizationPolicy.hidden();
+        materialShareRepository.delete(share);
+    }
+
 	private List<MaterialShareListResponse.SharedMaterialInfo> toInfoList(
 		List<MaterialShare> shares) {
 		return shares.stream()
-			.map(MaterialShareListResponse.SharedMaterialInfo::from)
+			.map(share -> {
+                var info=MaterialShareListResponse.SharedMaterialInfo.from(share);
+                info.setIndexing(indexing.studentResource(share.getStudent().getId(), share.getMaterial().getId()));
+                return info;
+            })
 			.collect(Collectors.toList());
 	}
 }

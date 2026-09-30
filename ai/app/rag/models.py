@@ -1,10 +1,11 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 from app.rag.database import Base
 from typing import List, Optional# 방금 만든 SQLite용 Base 임포트
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from app.rag.provenance import SourceReference, RuntimeMode
 from datetime import datetime
 
 
@@ -36,15 +37,21 @@ class ChatMessage(Base):
     # --- (신규) 채팅 기록 조회용 응답 스키마 ---
 
 class ChatMessageDto(BaseModel):
+    id: int
     role: str
     content: str
     created_at: datetime
+    sources: List[SourceReference] = Field(default_factory=list)
+    mode: Optional[RuntimeMode] = None
 
     class Config:
         from_attributes = True
 
 class ChatSessionDetailDto(BaseModel):
     session_id: str
+    document_id: str
+    source_revision: Optional[int] = None
+    source_hash: Optional[str] = None
     material_title: str             # ✅ 추가된 자료 제목
     messages: List[ChatMessageDto]  # 기존 메시지 리스트 포함
 
@@ -61,3 +68,27 @@ class ChatSessionDto(BaseModel):
 
     class Config:
         from_attributes = True
+
+class EmbeddingTask(Base):
+    """Additive ownership metadata; pre-existing Celery IDs acquire no guessed owner."""
+    __tablename__ = "embedding_tasks"
+    id = Column(String, primary_key=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    document_id = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ChatSessionIndex(Base):
+    """Additive version binding; legacy sessions remain unchanged and readable."""
+    __tablename__ = 'chat_session_indexes'
+    session_id = Column(String, ForeignKey('chat_sessions.id'), primary_key=True)
+    source_revision = Column(Integer, nullable=False)
+    source_hash = Column(String(64), nullable=False)
+
+
+class ChatMessageSources(Base):
+    """Additive provenance for new answers; no guessed backfill of legacy rows."""
+    __tablename__ = 'chat_message_sources'
+    message_id = Column(Integer, ForeignKey('chat_messages.id'), primary_key=True)
+    sources_json = Column(Text, nullable=False)
+    mode_json = Column(Text, nullable=False)

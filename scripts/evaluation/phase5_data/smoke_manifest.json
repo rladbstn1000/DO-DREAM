@@ -1,0 +1,96 @@
+{
+  "dataset_version": "phase5-eval-v1",
+  "creation_policy": "New material identifiers and candidate indexes through normal initial/publication job path. Never overwrite Phase4 copies. No database identifiers are predefined.",
+  "materials": [
+    {
+      "id": "live-smoke-water-v1",
+      "title": "물의 여행 · 신규 live 평가 복사본",
+      "source_version": "authored-phase5-v1",
+      "source_kind": "internal_synthetic_authored",
+      "sections": [
+        {
+          "source_id": "live-smoke-water-v1-01",
+          "title": "얼음과 물",
+          "text": "물은 주변의 온도에 따라 모습이 달라집니다. 물이 충분히 차가워지면 단단한 얼음이 됩니다. 얼음을 따뜻한 곳에 두면 다시 물이 됩니다."
+        },
+        {
+          "source_id": "live-smoke-water-v1-02",
+          "title": "하늘로 올라가는 물",
+          "text": "젖은 수건을 널어 두면 조금씩 마릅니다. 수건 속 물이 눈에 보이지 않는 수증기가 되어 공기 중으로 나가기 때문입니다. 액체인 물이 기체로 바뀌는 일을 증발이라고 합니다."
+        },
+        {
+          "source_id": "live-smoke-water-v1-03",
+          "title": "다시 땅으로 돌아오는 물",
+          "text": "하늘의 수증기가 차가워지면 작은 물방울이 생깁니다. 작은 물방울이 모여 구름을 이룹니다. 물방울이 커지고 무거워지면 비가 되어 내려옵니다. 물은 이렇게 여러 모습을 바꾸며 여행합니다."
+        }
+      ],
+      "copied_from_version": "student-web-v1",
+      "use_in_retrieval_metrics": false
+    },
+    {
+      "id": "live-smoke-recycling-v1",
+      "title": "생활 속 분리배출 · 신규 live 평가 복사본",
+      "source_version": "authored-phase5-v1",
+      "source_kind": "internal_synthetic_authored",
+      "sections": [
+        {
+          "source_id": "live-smoke-recycling-v1-01",
+          "title": "먼저 비우고 헹구기",
+          "text": "분리배출은 사용한 물건을 재질에 따라 나누어 버리는 일입니다. 음료가 담겼던 용기는 내용물을 먼저 비웁니다. 음식물이 묻었다면 가볍게 헹굽니다. 깨끗하게 나누어 모으면 다시 쓸 수 있는 자원이 됩니다."
+        },
+        {
+          "source_id": "live-smoke-recycling-v1-02",
+          "title": "종이와 용기 살펴보기",
+          "text": "깨끗한 종이는 젖지 않게 모읍니다. 상자에 붙은 테이프처럼 다른 재질은 떼어 냅니다. 용기에도 서로 다른 재질의 뚜껑이나 라벨이 붙어 있을 수 있습니다. 분리할 수 있는 부분은 나누어 모읍니다."
+        },
+        {
+          "source_id": "live-smoke-recycling-v1-03",
+          "title": "안내를 확인하기",
+          "text": "모든 물건을 같은 곳에 버리지는 않습니다. 사는 곳마다 분리배출 장소와 날짜가 다를 수 있습니다. 헷갈릴 때는 거주 지역의 분리배출 안내를 확인합니다. 무조건 재활용함에 넣기보다 안내에 맞게 버리는 것이 중요합니다."
+        }
+      ],
+      "copied_from_version": "student-web-v1",
+      "use_in_retrieval_metrics": false
+    }
+  ],
+  "scenarios": [
+    {
+      "material_id": "live-smoke-water-v1",
+      "question": "물이 공기 중으로 나가는 것을 무엇이라고 하나요?",
+      "history": []
+    },
+    {
+      "material_id": "live-smoke-water-v1",
+      "question": "그 기체가 차가워지면 무엇이 되나요?",
+      "history": [
+        {
+          "role": "user",
+          "content": "물이 수증기가 되는 증발을 읽었어요."
+        },
+        {
+          "role": "assistant",
+          "content": "자료에서는 수증기가 다시 변하는 과정도 설명해요."
+        }
+      ]
+    },
+    {
+      "material_id": "live-smoke-recycling-v1",
+      "question": "이 지역의 다음 수거 날짜는 며칠인가요?",
+      "history": []
+    }
+  ],
+  "grading_cases": [
+    {
+      "material_id": "live-smoke-water-v1",
+      "question": "물이 충분히 차가워지면 무엇이 되나요?",
+      "correct_answer": "얼음",
+      "student_answer": "얼음"
+    },
+    {
+      "material_id": "live-smoke-recycling-v1",
+      "question": "음료 용기를 분리배출하기 전에 내용물을 먼저 어떻게 해야 하나요?",
+      "correct_answer": "비웁니다",
+      "student_answer": "비웁니다"
+    }
+  ]
+}

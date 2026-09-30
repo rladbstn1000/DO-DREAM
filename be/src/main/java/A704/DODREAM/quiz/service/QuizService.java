@@ -34,12 +34,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class QuizService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
 
 	private final QuizRepository quizRepository;
 	private final StudentQuizLogRepository studentQuizLogRepository;
 	private final MaterialRepository materialRepository;
-	private final UserRepository userRepository;
-	private final WebClient webClient;
+	private final org.springframework.jdbc.core.JdbcTemplate gradingDb;
 
 	@Value("${fastapi.url}")
 	private String fastApiUrl;
@@ -48,7 +48,8 @@ public class QuizService {
 	 * 교사가 검토한 퀴즈 리스트를 최종 저장 (기존 퀴즈 덮어쓰기)
 	 */
 	@Transactional
-	public void saveQuizzes(Long materialId, Long userId, List<QuizSaveDto> quizDtos) { // (수정) 파라미터 타입 변경
+	public void saveQuizzes(Long materialId, Long userId, List<QuizSaveDto> quizDtos) {
+        policy.owned(userId, materialId); // (수정) 파라미터 타입 변경
 		Material material = materialRepository.findById(materialId)
 			.orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
 
@@ -57,110 +58,67 @@ public class QuizService {
 			throw new CustomException(ErrorCode.FORBIDDEN);
 		}
 
-		// 기존 퀴즈 삭제
-		quizRepository.deleteAllByMaterialId(materialId);
+        validateEdits(materialId, quizDtos);
+        Map<Integer, Quiz> existing = quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId).stream()
+            .collect(Collectors.toMap(Quiz::getQuestionNumber, q -> q));
+        for (QuizSaveDto dto : quizDtos) {
+            Quiz quiz = existing.remove(dto.getQuestionNumber());
+            if (quiz == null) {
+                quiz = Quiz.builder().material(material).questionNumber(dto.getQuestionNumber()).build();
+            }
+            quiz.edit(dto);
+            quizRepository.save(quiz);
+        }
+        quizRepository.deleteAll(existing.values());
+    }
 
-		// (수정) QuizSaveDto -> Quiz Entity 변환
-		List<Quiz> quizzes = quizDtos.stream()
-			.map(dto -> Quiz.builder()
-				.material(material)
-				.questionNumber(dto.getQuestionNumber())
-				.questionType(dto.getQuestionType())
-				.title(dto.getTitle())
-				.content(dto.getContent())
-				.correctAnswer(dto.getCorrectAnswer())
-				.chapterReference(dto.getChapterReference())
-				.build())
-			.collect(Collectors.toList());
-
-		quizRepository.saveAll(quizzes);
-		log.info("✅ 퀴즈 저장 완료: Material ID {}, 개수 {}", materialId, quizzes.size());
-	}
+    public void validateEdits(Long materialId, List<QuizSaveDto> quizzes) {
+        if (quizzes == null) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+        java.util.Set<Integer> numbers = new java.util.HashSet<>();
+        for (QuizSaveDto quiz : quizzes) {
+            if (quiz == null || quiz.getQuestionNumber() == null || quiz.getQuestionNumber() <= 0
+                || !numbers.add(quiz.getQuestionNumber()) || quiz.getTitle() == null || quiz.getContent() == null
+                || quiz.getCorrectAnswer() == null || quiz.getTitle().length() > 255
+                || quiz.getContent().codePointCount(0, quiz.getContent().length()) > 20000
+                || quiz.getCorrectAnswer().codePointCount(0, quiz.getCorrectAnswer().length()) > 2000) throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
+        }
+        if (materialId != null) {
+            gradingDb.queryForList("SELECT id FROM quizzes WHERE material_id=? ORDER BY id FOR UPDATE", Long.class, materialId);
+            for (Quiz quiz : quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId)) {
+                if (!numbers.contains(quiz.getQuestionNumber()) && (studentQuizLogRepository.existsByQuizId(quiz.getId()) || Boolean.TRUE.equals(gradingDb.queryForObject("SELECT EXISTS(SELECT 1 FROM grading_attempt_items WHERE quiz_id=?)", Boolean.class, quiz.getId()))))
+                    throw new A704.DODREAM.authorization.AuthorizationFailure(org.springframework.http.HttpStatus.CONFLICT);
+            }
+        }
+    }
 
 	/**
 	 * 특정 자료의 퀴즈 목록 조회 (학생/교사 공용)
 	 */
 	@Transactional(readOnly = true)
-	public List<QuizDto> getQuizzes(Long materialId) {
-		return quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId)
-			.stream()
-			.map(QuizDto::from)
-			.collect(Collectors.toList());
-	}
-
-	/**
-	 * 학생 답안 일괄 채점 및 로그 저장
-	 */
-	@Transactional
-	public List<GradingResultDto> gradeAndLog(Long materialId, Long studentId, QuizSubmissionDto submission, String token) {
-		User student = userRepository.findById(studentId)
-			.orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-		List<Quiz> quizzes = quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId);
-		Map<Long, Quiz> quizMap = quizzes.stream()
-			.collect(Collectors.toMap(Quiz::getId, q -> q));
-
-		List<Map<String, Object>> questionList = quizzes.stream()
-			.map(q -> Map.<String, Object>of(
-				"id", q.getId(),
-				"content", q.getContent(),
-				"correct_answer", q.getCorrectAnswer()
-			))
-			.collect(Collectors.toList());
-
-		List<Map<String, Object>> studentAnswerList = submission.getAnswers().stream()
-			.map(ans -> Map.<String, Object>of(
-				"question_id", ans.getQuizId(),
-				"student_answer", ans.getAnswer()
-			))
-			.collect(Collectors.toList());
-
-		Map<String, Object> fastApiRequest = Map.of(
-			"questions", questionList,
-			"student_answers", studentAnswerList
-		);
-
-		log.info("🤖 FastAPI 채점 요청 중... 학생 ID: {}", studentId);
-		List<GradingResultDto> results = webClient.post()
-			.uri(fastApiUrl + "/rag/quiz/grade-batch")
-			.header("Authorization", token)
-			.bodyValue(fastApiRequest)
-			.retrieve()
-			.bodyToMono(new ParameterizedTypeReference<List<GradingResultDto>>() {})
-			.block();
-
-		if (results == null) {
-			throw new RuntimeException("FastAPI 채점 응답이 비어있습니다.");
-		}
-
-		List<StudentQuizLog> logs = results.stream().map(res -> {
-			Quiz quiz = quizMap.get(res.getQuizId());
-			return StudentQuizLog.builder()
-				.quiz(quiz)
-				.student(student)
-				.studentAnswer(res.getStudentAnswer())
-				.isCorrect(res.isCorrect())
-				.aiFeedback(res.getAiFeedback())
-				.build();
-		}).collect(Collectors.toList());
-
-		studentQuizLogRepository.saveAll(logs);
-		log.info("✅ 채점 및 로그 저장 완료: {}건", logs.size());
-
-		return results;
-	}
+    public List<?> getQuizzes(Long materialId, Long actorId) {
+        policy.read(actorId, materialId);
+        boolean teacher = policy.actor(actorId).getRole() == A704.DODREAM.user.entity.Role.TEACHER;
+        return quizRepository.findAllByMaterialIdOrderByQuestionNumber(materialId).stream()
+            .map(quiz -> teacher ? QuizDto.from(quiz) : A704.DODREAM.quiz.dto.StudentQuizDto.from(quiz)).toList();
+    }
 
 	/**
 	 * 학생 퀴즈 풀이 기록 조회
 	 */
 	@Transactional(readOnly = true)
 	public List<GradingResultDto> getStudentLogs(Long materialId, Long studentId) {
+        policy.studentMaterial(studentId, materialId);
+        Map<Long,String> attempts = new java.util.HashMap<>();
+        gradingDb.query("SELECT id,attempt_id FROM grading_attempts WHERE student_id=? AND material_id=?",
+            (org.springframework.jdbc.core.RowCallbackHandler) row -> attempts.put(row.getLong("id"),row.getString("attempt_id")),studentId,materialId);
 		return studentQuizLogRepository.findByStudentIdAndQuizMaterialId(studentId, materialId).stream()
 			.map(log -> GradingResultDto.builder()
-				.quizId(log.getQuiz().getId())
+				.attemptId(attempts.get(log.getAttemptId())).quizId(log.getQuiz().getId()).correctAnswer(log.getSnapshotCorrectAnswer())
+                .snapshotAvailable(log.getAttemptId() != null).version(log.getSnapshotQuizVersion())
+                .questionContent(log.getSnapshotQuestionContent()).gradingVersion(log.getGradingVersion())
 				.studentAnswer(log.getStudentAnswer())
 				.isCorrect(log.isCorrect())
-				.aiFeedback(log.getAiFeedback())
+				.aiFeedback(log.getAiFeedback() == null ? "" : log.getAiFeedback())
 				.build())
 			.collect(Collectors.toList());
 	}
@@ -169,8 +127,9 @@ public class QuizService {
 	 * [API 1 수정] 특정 학생의 '모든 자료별' 퀴즈 성적 통계 리스트 조회
 	 */
 	@Transactional(readOnly = true)
-	public List<StudentMaterialStatsDto> getStudentStatsByMaterialList(Long studentId) {
-		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
+	public List<StudentMaterialStatsDto> getStudentStatsByMaterialList(Long studentId, Long actorId) {
+        policy.historySubject(actorId, studentId);
+        List<StudentQuizLog> logs = visibleHistory(studentId, actorId);
 
 		if (logs.isEmpty()) {
 			return new ArrayList<>();
@@ -194,7 +153,7 @@ public class QuizService {
 						log -> log.getQuiz().getId(), // Key: Quiz ID
 						log -> log,                   // Value: Log 객체
 						// Merge Function: 기존값과 새로운값 중 solvedAt이 더 늦은(큰) 것을 선택
-						(existing, replacement) -> existing.getSolvedAt().isAfter(replacement.getSolvedAt()) ? existing : replacement
+						(existing, replacement) -> latest(existing, replacement)
 					));
 
 				// 필터링된 최신 로그들 중에서 정답 개수 카운트
@@ -208,7 +167,9 @@ public class QuizService {
 					.materialId(materialId)
 					.materialTitle(material.getTitle())
 					.correctCount((int) correctCount)
-					.tryCount(materialLogs.size()) // 시도 횟수는 전체 로그 수 그대로 유지 (노력 지표)
+					.submissionCount((int) materialLogs.stream().map(StudentQuizLog::getAttemptId).filter(java.util.Objects::nonNull).distinct().count())
+                    .legacyLogCount((int) materialLogs.stream().filter(l -> l.getAttemptId() == null).count())
+                    .tryCount(materialLogs.size()) // 시도 횟수는 전체 로그 수 그대로 유지 (노력 지표)
 					.totalQuizCount(totalQuizCount)
 					.correctRate(Math.round(correctRate * 10) / 10.0)
 					.build());
@@ -223,8 +184,9 @@ public class QuizService {
 	 * (각 자료별 정답률을 구하고, 그 정답률들의 평균을 계산)
 	 */
 	@Transactional(readOnly = true)
-	public StudentOverallStatsDto getStudentOverallStats(Long studentId) {
-		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
+	public StudentOverallStatsDto getStudentOverallStats(Long studentId, Long actorId) {
+        policy.historySubject(actorId, studentId);
+        List<StudentQuizLog> logs = visibleHistory(studentId, actorId);
 
 		if (logs.isEmpty()) {
 			return StudentOverallStatsDto.builder()
@@ -251,7 +213,7 @@ public class QuizService {
 					.collect(Collectors.toMap(
 						log -> log.getQuiz().getId(),
 						log -> log,
-						(existing, replacement) -> existing.getSolvedAt().isAfter(replacement.getSolvedAt()) ? existing : replacement
+						(existing, replacement) -> latest(existing, replacement)
 					))
 					.values().stream()
 					.filter(StudentQuizLog::isCorrect)
@@ -271,4 +233,24 @@ public class QuizService {
 			.averageCorrectRate(Math.round(averageRate * 10) / 10.0)
 			.build();
 	}
+    private List<StudentQuizLog> visibleHistory(Long studentId, Long actorId) {
+        // Every row of one material has the same current authorization decision. Resolve it once
+        // within this invocation only; a later request must re-read revoked shares/assignments.
+        Map<Long, Boolean> visible = new java.util.HashMap<>();
+        return studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId).stream()
+            .filter(log -> visible.computeIfAbsent(log.getQuiz().getMaterial().getId(),
+                id -> policy.historyVisible(actorId, studentId, log.getQuiz().getMaterial())))
+            .toList();
+    }
+
+    static StudentQuizLog latest(StudentQuizLog a, StudentQuizLog b) {
+        java.time.LocalDateTime at = a.getSubmittedAt() == null ? a.getSolvedAt() : a.getSubmittedAt();
+        java.time.LocalDateTime bt = b.getSubmittedAt() == null ? b.getSolvedAt() : b.getSubmittedAt();
+        if (at == null) at = java.time.LocalDateTime.MIN;
+        if (bt == null) bt = java.time.LocalDateTime.MIN;
+        int compare = at.compareTo(bt);
+        if (compare == 0) compare = Long.compare(a.getAttemptId() == null ? 0 : a.getAttemptId(), b.getAttemptId() == null ? 0 : b.getAttemptId());
+        if (compare == 0) compare = Long.compare(a.getId(), b.getId());
+        return compare >= 0 ? a : b;
+    }
 }

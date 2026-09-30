@@ -1,0 +1,2 @@
+# Dedicated project tag; no application process mounts this server's storage.
+FROM chromadb/chroma:0.6.3

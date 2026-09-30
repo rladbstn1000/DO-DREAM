@@ -1,8 +1,13 @@
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import text
+from redis import Redis
+from app.config import APP_ENV, LOCAL_EXTERNAL_STUBS, CELERY_BROKER_URL, AI_MODE
+from app.common.db_session import engine as user_engine
 from fastapi.middleware.cors import CORSMiddleware
 from app.rag import models as rag_models
 from app.rag.database import engine as rag_engine
+from app.input_limits import RequestBodyLimit
 
 rag_models.Base.metadata.create_all(bind=rag_engine)
 
@@ -13,7 +18,11 @@ app = FastAPI(
     description="Spring 서버 JWT와 연동된 FastAPI 서버입니다.",
     version="1.0.0",
     root_path="/ai",  # 예: http://<도메인>/ai/docs 로 접속 시
+    docs_url="/docs" if APP_ENV in {"local", "test"} else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if APP_ENV in {"local", "test"} else None,
 )
+app.add_middleware(RequestBodyLimit, max_bytes=2 * 1024 * 1024, json_max_bytes=2 * 1024 * 1024)
 
 # CORS 설정 추가
 app.add_middleware(
@@ -46,8 +55,32 @@ app.include_router(rag_router)
 # 서버가 살아있는지 확인하는 헬스 체크용 엔드포인트
 @app.get("/")
 def read_root():
-    return {"message": "FastAPI RAG 서버가 실행 중입니다."}
+    return {"message": "FastAPI RAG 서버가 실행 중입니다.", "environment": APP_ENV,
+        "external_provider": "local_stub" if AI_MODE == 'LOCAL_FAKE' else "live_openai_files_local"}
 
+
+
+@app.middleware("http")
+async def mark_local_providers(request, call_next):
+    response = await call_next(request)
+    if LOCAL_EXTERNAL_STUBS:
+        response.headers["X-DO-DREAM-External-Provider"] = "local_stub" if AI_MODE == 'LOCAL_FAKE' else 'live_openai_files_local'
+    return response
+
+
+@app.get("/health")
+def health():
+    try:
+        with user_engine.connect() as db:
+            db.execute(text("SELECT 1"))
+        with rag_engine.connect() as db:
+            db.execute(text("SELECT 1"))
+        with Redis.from_url(CELERY_BROKER_URL, socket_connect_timeout=3, socket_timeout=3) as client:
+            client.ping()
+    except Exception:
+        raise HTTPException(status_code=503, detail="A local database or queue dependency is unavailable") from None
+    return {"status": "ok", "mysql": "connected", "rag_database": "connected", "redis": "connected",
+        "external_provider": "local_stub" if AI_MODE == 'LOCAL_FAKE' else "live_openai_files_local"}
 
 # --- 서버 실행 (참고용) ---
 # 이 파일(main.py)을 직접 python app/main.py로 실행할 경우 uvicorn을 구동합니다.

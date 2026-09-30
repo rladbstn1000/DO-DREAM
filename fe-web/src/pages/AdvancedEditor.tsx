@@ -1,6 +1,11 @@
+import { htmlText, htmlLines } from '../utils/htmlText';
+import { authenticatedFetch, authSession } from '../auth/client';
+import { quizDocumentId } from '../utils/quizDocumentId';
+import IndexingStatus from '../component/IndexingStatus';
+import { indexingErrorMessage, indexingPresentation, parseIndexingSummary } from '../indexing/status';
 // src/pages/AdvancedEditor.tsx
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
@@ -119,6 +124,10 @@ export default function AdvancedEditor({
   );
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const publishing = useRef(false);
+  const mounted = useRef(true);
+  const [isPublishing, setIsPublishing] = useState(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [mergeMode, setMergeMode] = useState(false);
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(
     new Set(),
@@ -134,17 +143,12 @@ export default function AdvancedEditor({
   const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
 
   const [chapters, setChapters] = useState<Chapter[]>(() => {
-    console.log('🔍 [AdvancedEditor] chapters 초기화:', {
-      initialChapters,
-      initialChaptersLength: initialChapters?.length,
-    });
 
     if (initialChapters && initialChapters.length > 0) {
-      console.log('✅ initialChapters 사용:', initialChapters.length, '개');
+
       return initialChapters;
     }
 
-    console.log('✅ 기본 챕터 생성');
     const defaultContent = extractedText || '<p>내용을 입력하세요...</p>';
     return [
       {
@@ -158,10 +162,10 @@ export default function AdvancedEditor({
 
   const [activeChapterId, setActiveChapterId] = useState<string>(() => {
     if (initialChapters && initialChapters.length > 0) {
-      console.log('✅ activeChapterId 설정:', initialChapters[0].id);
+
       return initialChapters[0].id;
     }
-    console.log('✅ 기본 activeChapterId: 1');
+
     return '1';
   });
 
@@ -456,7 +460,7 @@ export default function AdvancedEditor({
         let finalContent = content;
         if (originalType === 'quiz') {
           if (!content.trim().startsWith('<h2>') && !content.includes('<h2')) {
-            finalContent = `<h2>${extractedTitle}</h2>\n${content}`;
+            finalContent = `<h2>${htmlText(extractedTitle)}</h2>\n${content}`;
           }
         }
 
@@ -530,10 +534,10 @@ export default function AdvancedEditor({
       html: `
         <div style="text-align: left; margin: 1rem 0;">
           <strong>병합할 챕터:</strong><br/>
-          ${selected.map((ch) => `• ${ch.title}`).join('<br/>')}
+          ${selected.map((ch) => `• ${htmlText(ch.title)}`).join('<br/>')}
         </div>
         <div style="margin-top: 1rem;">
-          <input id="mergedTitle" class="swal2-input" placeholder="병합된 챕터 제목" value="${mergedTitle}" />
+          <input id="mergedTitle" class="swal2-input" placeholder="병합된 챕터 제목" value="${htmlText(mergedTitle)}" />
         </div>
       `,
       showCancelButton: true,
@@ -617,29 +621,17 @@ export default function AdvancedEditor({
     });
 
     try {
-      const url = `https://www.dodream.io.kr/ai/rag/quiz/generate`;
+      const ragBase = (import.meta.env.VITE_RAG_BASE || '/ai').replace(/\/+$/, '');
+      const url = `${ragBase}/rag/quiz/generate`;
 
-      const documentId = materialId
-        ? String(materialId)
-        : mode === 'edit'
-          ? String(pdfId)
-          : `pdf_${pdfId}`;
+      const documentId = quizDocumentId(mode, materialId, pdfId);
 
       const requestBody = {
         document_id: documentId,
         num_questions: 5,
       };
 
-      console.log('🔍 [Quiz API] 요청:', {
-        url,
-        mode,
-        pdfId,
-        materialId,
-        documentId,
-        requestBody,
-      });
-
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -649,44 +641,26 @@ export default function AdvancedEditor({
         body: JSON.stringify(requestBody),
       });
 
-      console.log('📥 [Quiz API] 응답:', {
-        status: response.status,
-        ok: response.ok,
-      });
-
       await Swal.close();
 
       if (!response.ok) {
+        const indexingMessage = indexingErrorMessage(response.status, await response.clone().json().catch(() => null));
+        if (indexingMessage) {
+          await Swal.fire({ icon: 'info', title: '색인 상태를 확인해주세요', text: indexingMessage, confirmButtonColor: '#192b55' });
+          return;
+        }
         if (response.status === 404) {
           await Swal.fire({
             icon: 'error',
-            title: 'DB에서 자료를 찾을 수 없습니다 (404)',
-            html: `
-          <div style="text-align: left; line-height: 1.7;">
-            <p style="margin-bottom: 12px;">
-              <strong>404 오류:</strong> 백엔드 DB에서 해당 자료를 찾을 수 없습니다.
-            </p>
-            <div style="padding: 12px; background: #f3f4f6; border-radius: 8px; font-family: monospace; font-size: 11px; margin-bottom: 12px;">
-              <strong>요청 정보:</strong><br/>
-              • Document ID: <strong>${documentId}</strong><br/>
-              • Material ID: ${materialId || 'null'}<br/>
-              • PDF ID: ${pdfId}<br/>
-              • Mode: ${mode}
-            </div>
-            <div style="font-size: 13px; color: #666; margin-top: 12px;">
-              💡 "<strong>직접 퀴즈 추가</strong>" 버튼을 사용하세요
-            </div>
-          </div>
-        `,
+            title: '자료에 접근할 수 없습니다',
+            text: '자료가 없거나 접근 권한이 없습니다. 자료 목록에서 다시 열어주세요.',
             confirmButtonColor: '#192b55',
-            width: '600px',
           });
           return;
         }
 
         if (response.status === 500) {
-          const errorText = await response.text().catch(() => '');
-          console.error('❌ [Quiz API] 500 에러:', errorText);
+          console.error('❌ [Quiz API] 500 에러:');
 
           await Swal.fire({
             icon: 'warning',
@@ -723,7 +697,6 @@ export default function AdvancedEditor({
       };
 
       const data: QuizAPIResponse = await response.json();
-      console.log('✅ [Quiz API] 응답 데이터:', data);
 
       if (!data.questions || data.questions.length === 0) {
         await Swal.fire({
@@ -757,14 +730,14 @@ export default function AdvancedEditor({
 
         // 각 문제의 HTML 콘텐츠 생성
         const content = `
-      <h2>${q.title}</h2>
+      <h2>${htmlText(q.title)}</h2>
       <div class="quiz-content">
         <ol>
           <li>
-            <p><strong>${q.title}</strong> <span style="color: #666; font-size: 0.9em;">[${typeLabel}]</span></p>
-            <p>${q.content}</p>
-            <p><strong>정답:</strong> ${q.correct_answer}</p>
-            ${q.chapter_reference ? `<p style="color: #666; font-size: 0.9em; margin-top: 8px;">📚 참고: ${q.chapter_reference}</p>` : ''}
+            <p><strong>${htmlText(q.title)}</strong> <span style="color: #666; font-size: 0.9em;">[${htmlText(typeLabel)}]</span></p>
+            <p>${htmlLines(q.content)}</p>
+            <p><strong>정답:</strong> ${htmlLines(q.correct_answer)}</p>
+            ${q.chapter_reference ? `<p style="color: #666; font-size: 0.9em; margin-top: 8px;">📚 참고: ${htmlText(q.chapter_reference)}</p>` : ''}
           </li>
         </ol>
       </div>
@@ -797,7 +770,7 @@ export default function AdvancedEditor({
       });
     } catch (error) {
       await Swal.close();
-      console.error('❌ [Quiz API] 에러:', error);
+      console.error('❌ [Quiz API] 에러:');
 
       await Swal.fire({
         icon: 'error',
@@ -805,7 +778,7 @@ export default function AdvancedEditor({
         html: `
       <div style="text-align: left;">
         <p style="margin-bottom: 12px;">
-          <strong>오류:</strong> ${error instanceof Error ? error.message : '알 수 없는 오류'}
+          <strong>오류:</strong> 요청을 완료하지 못했습니다. 잠시 후 다시 시도해주세요.
         </p>
         <div style="font-size: 13px; color: #666; margin-top: 12px;">
           💡 "<strong>직접 퀴즈 추가</strong>" 기능을 사용하세요
@@ -824,18 +797,18 @@ export default function AdvancedEditor({
       <div class="ae-quiz-form">
         <div class="ae-quiz-field">
           <label class="ae-quiz-label">퀴즈 제목</label>
-          <input 
-            id="quizTitle" 
-            class="ae-quiz-input" 
+          <input
+            id="quizTitle"
+            class="ae-quiz-input"
             placeholder="예: 개념 Check, 서술형 문제"
           />
         </div>
-        
+
         <div class="ae-quiz-field">
           <label class="ae-quiz-label">질문 입력</label>
-          <textarea 
-            id="quizQuestion" 
-            class="ae-quiz-textarea" 
+          <textarea
+            id="quizQuestion"
+            class="ae-quiz-textarea"
             placeholder="질문 내용을 입력하세요...
 
 예시:
@@ -845,9 +818,9 @@ export default function AdvancedEditor({
 
         <div class="ae-quiz-field">
           <label class="ae-quiz-label">답안 입력</label>
-          <textarea 
-            id="quizAnswer" 
-            class="ae-quiz-textarea" 
+          <textarea
+            id="quizAnswer"
+            class="ae-quiz-textarea"
             placeholder="모범 답안을 입력하세요..."></textarea>
         </div>
       </div>
@@ -893,15 +866,15 @@ export default function AdvancedEditor({
           0,
         );
 
-        const formattedQuestion = question.replace(/\n/g, '<br/>');
-        const formattedAnswer = answer.replace(/\n/g, '<br/>');
+        const formattedQuestion = htmlLines(question);
+        const formattedAnswer = htmlLines(answer);
 
         const content = `
-        <h2>${title}</h2>
+        <h2>${htmlText(title)}</h2>
         <div class="quiz-content">
           <ol>
             <li>
-              <p><strong>${title}</strong> <span style="color: #666; font-size: 0.9em;">[사용자 생성]</span></p>
+              <p><strong>${htmlText(title)}</strong> <span style="color: #666; font-size: 0.9em;">[사용자 생성]</span></p>
               <p>${formattedQuestion}</p>
               <p><strong>정답:</strong> ${formattedAnswer}</p>
             </li>
@@ -937,16 +910,16 @@ export default function AdvancedEditor({
         <div class="ae-label-grid" id="labelGrid">
           ${LABEL_OPTIONS.map(
             (label) => `
-            <button 
+            <button
               class="ae-label-option ${
                 selectedLabel === label.id ? 'active' : ''
-              }" 
+              }"
               data-label="${label.id}"
               style="background-color: ${label.color}; ${
                 selectedLabel === label.id
                   ? `border: 3px solid ${label.color};`
                   : ''
-              }" 
+              }"
               title="${label.name}"
             >
               <span>${selectedLabel === label.id ? '✓' : ''}</span>
@@ -996,6 +969,7 @@ export default function AdvancedEditor({
   };
 
   const handlePublish = async () => {
+    if (publishing.current) return;
     if (!materialTitle.trim()) {
       Swal.fire({
         icon: 'warning',
@@ -1049,9 +1023,12 @@ export default function AdvancedEditor({
       quizzes: quizzes.length > 0 ? quizzes : undefined,
     };
 
+    publishing.current = true;
+    setIsPublishing(true);
+    const publishEpoch = authSession.getEpoch();
     try {
       void Swal.fire({
-        title: mode === 'edit' ? '수정 중입니다...' : '발행 중입니다...',
+        title: mode === 'edit' ? '수정을 접수하고 있습니다...' : '발행을 접수하고 있습니다...',
         allowOutsideClick: false,
         showConfirmButton: false,
         didOpen: () => Swal.showLoading(),
@@ -1061,7 +1038,7 @@ export default function AdvancedEditor({
       const url = `${API_BASE}/api/documents/${pdfId}/publish`;
       const method = 'POST';
 
-      const res = await fetch(url, {
+      const res = await authenticatedFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -1072,30 +1049,12 @@ export default function AdvancedEditor({
         body: JSON.stringify(payload),
       });
 
-      const responseText = await res.text();
-      console.log('📤 Publish Response:', {
-        status: res.status,
-        statusText: res.statusText,
-        body: responseText,
-      });
+      const responseBody = await res.json().catch(() => null);
+      if (!mounted.current || authSession.getEpoch() !== publishEpoch) return;
 
       await Swal.close();
 
       if (!res.ok) {
-        if (res.status === 403 || res.status === 401) {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('isLoggedIn');
-          Swal.fire({
-            icon: 'error',
-            title: '인증이 만료되었습니다',
-            text: '다시 로그인해주세요.',
-            confirmButtonColor: '#192b55',
-          }).then(() => {
-            window.location.href = '/';
-          });
-          return;
-        }
-
         if (res.status === 500) {
           Swal.fire({
             icon: 'error',
@@ -1106,28 +1065,33 @@ export default function AdvancedEditor({
           return;
         }
 
-        throw new Error(responseText || '서버에서 오류가 발생했습니다');
+        throw new Error(res.status === 403 || res.status === 404 ? '자료가 없거나 수정 권한이 없습니다.' : '발행 요청을 확인하지 못했습니다. 자료 목록에서 저장 상태를 확인해주세요.');
       }
 
+      const indexing = parseIndexingSummary(responseBody?.indexing);
+      const display = indexingPresentation({ summary: indexing, error: null });
       await Swal.fire({
         icon: 'success',
-        title: mode === 'edit' ? '수정되었습니다!' : '발행되었습니다!',
-        text: `"${materialTitle}" ${mode === 'edit' ? '수정' : '발행'} 완료`,
+        title: mode === 'edit' ? '수정이 접수되었습니다' : '발행이 접수되었습니다',
+        text: `자료가 저장되었습니다. ${display.label}. ${display.hint}`,
         confirmButtonColor: '#192b55',
       });
 
+      if (!mounted.current || authSession.getEpoch() !== publishEpoch) return;
       setHasUnsavedChanges(false);
       onPublish(materialTitle, chapters, selectedLabel);
     } catch (error) {
+      if (!mounted.current || authSession.getEpoch() !== publishEpoch) return;
       await Swal.close();
-      console.error('❌ Publish error:', error);
-
       Swal.fire({
         icon: 'error',
-        title: mode === 'edit' ? '수정 실패' : '발행 실패',
-        text: error instanceof Error ? error.message : '다시 시도해주세요',
+        title: '접수 상태를 확인해주세요',
+        text: error instanceof Error && error.message.startsWith('자료가 없거나') ? error.message : '응답을 확인하지 못했습니다. 다시 발행하기 전에 자료 목록에서 저장 상태를 확인해주세요.',
         confirmButtonColor: '#192b55',
       });
+    } finally {
+      publishing.current = false;
+      if (mounted.current) setIsPublishing(false);
     }
   };
 
@@ -1157,10 +1121,7 @@ export default function AdvancedEditor({
   };
 
   if (chapters.length === 0 || !activeChapterId) {
-    console.log('⏳ 로딩 중:', {
-      chaptersLength: chapters.length,
-      activeChapterId,
-    });
+
     return (
       <div
         style={{
@@ -1176,8 +1137,6 @@ export default function AdvancedEditor({
       </div>
     );
   }
-
-  console.log('✅ 에디터 렌더링:', { chapters, activeChapterId });
 
   return (
     <div className={`ae-root ${darkMode ? 'dark' : ''}`}>
@@ -1242,12 +1201,17 @@ export default function AdvancedEditor({
                 }}
               />
             </button>
-            <button className="ae-btn-publish" onClick={handlePublish}>
+            <button className="ae-btn-publish" onClick={handlePublish} disabled={isPublishing}>
               {mode === 'edit' ? '수정하기' : '발행하기'}
             </button>
           </div>
         </div>
       </header>
+
+      {(mode === 'edit' ? !!materialId : !!pdfId) && <div style={{ padding: '8px 24px' }}>
+        <small>저장된 자료의 AI 기능</small>
+        <IndexingStatus resourcePath={mode === 'edit' ? `/api/documents/${materialId}/indexing` : `/api/pdf/${pdfId}/indexing`} />
+      </div>}
 
       <div className="ae-layout">
         {/* 오른쪽 챕터 사이드바 */}

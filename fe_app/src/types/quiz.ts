@@ -2,11 +2,11 @@ export type QuestionType = 'TERM_DEFINITION' | 'FILL_BLANK' | 'SHORT_ANSWER' | '
 
 export interface QuizQuestion {
   id: number; // 퀴즈 고유 ID
+  version: number; // 정답을 포함하지 않는 서버 문제 버전
   question_type: QuestionType;
   question_number: number;
   title: string;
   content: string;
-  correct_answer: string;
   chapter_reference: string;
 }
 

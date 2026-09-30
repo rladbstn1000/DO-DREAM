@@ -24,7 +24,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "student_quiz_logs", indexes = {
+@Table(name = "student_quiz_logs", uniqueConstraints = @jakarta.persistence.UniqueConstraint(name="uq_quiz_log_attempt", columnNames={"attempt_id", "quiz_id"}), indexes = {
 	@Index(name = "idx_quiz_log_student", columnList = "student_id"),
 	@Index(name = "idx_quiz_log_quiz", columnList = "quiz_id")
 })
@@ -47,7 +47,7 @@ public class StudentQuizLog {
 	@JoinColumn(name = "student_id", nullable = false)
 	private User student;
 
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String studentAnswer; // 학생이 제출한 답
 
 	@Column(nullable = false)
@@ -55,6 +55,13 @@ public class StudentQuizLog {
 
 	@Column(columnDefinition = "TEXT")
 	private String aiFeedback; // AI 피드백
+
+    private Long attemptId;
+    private LocalDateTime submittedAt;
+    @Column(columnDefinition="TEXT") private String snapshotCorrectAnswer;
+    @Column(columnDefinition="TEXT") private String snapshotQuestionContent;
+    private Long snapshotQuizVersion;
+    @Column(length=32) private String gradingVersion;
 
 	@CreatedDate
 	@Column(name = "solved_at", updatable = false)

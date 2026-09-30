@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../auth/client';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
@@ -16,7 +17,7 @@ type ChatSession = {
   messages: ChatMessage[];
 };
 
-const RAG_BASE = 'https://www.dodream.io.kr/ai';
+const RAG_BASE = (import.meta.env.VITE_RAG_BASE || '/ai').replace(/\/+$/, '');
 
 const formatYmdFromIso = (iso: string | null | undefined) => {
   if (!iso) return '';
@@ -52,7 +53,7 @@ export default function ChatHistory() {
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         };
 
-        const chatRes = await fetch(
+        const chatRes = await authenticatedFetch(
           `${RAG_BASE}/rag/chat/sessions/${sessionId}/messages?student_id=${studentId}`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -62,7 +63,6 @@ export default function ChatHistory() {
         }
 
         const raw = await chatRes.json();
-        console.log('💬 대화 기록 raw:', raw);
 
         const chatSession: ChatSession = {
           session_id: raw.session_id || sessionId,
@@ -72,7 +72,7 @@ export default function ChatHistory() {
 
         setSession(chatSession);
       } catch (err: any) {
-        console.error('대화 기록 조회 실패', err);
+        console.error('대화 기록 조회 실패');
         await Swal.fire({
           icon: 'error',
           title: '대화 기록을 불러올 수 없습니다',

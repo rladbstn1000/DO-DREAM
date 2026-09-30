@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../auth/client';
 // src/pages/Classroom.tsx
 import type React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -184,7 +185,7 @@ export default function Classroom() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!API_BASE || !classroomId) return;
+    if (!classroomId) return;
 
     const fetchData = async () => {
       try {
@@ -197,7 +198,7 @@ export default function Classroom() {
         };
 
         // 1) 학생 목록
-        const classRes = await fetch(
+        const classRes = await authenticatedFetch(
           `${API_BASE}/api/classes/${classroomId}/students`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -212,7 +213,7 @@ export default function Classroom() {
         setClassLabel(classLabelText);
 
         // 2) 공유 자료 (classroomId 기준)
-        const sharedRes = await fetch(
+        const sharedRes = await authenticatedFetch(
           `${API_BASE}/api/materials/shared/class/${classroomId}`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -330,15 +331,13 @@ export default function Classroom() {
         await Promise.all(
           baseStudents.map(async (stu) => {
             try {
-              const progressRes = await fetch(
+              const progressRes = await authenticatedFetch(
                 `${API_BASE}/api/progress/students/${stu.studentId}/all`,
                 { method: 'GET', headers, credentials: 'include' },
               );
 
               if (!progressRes.ok) {
-                console.warn(
-                  `진행률 조회 실패 (studentId=${stu.studentId}, status=${progressRes.status})`,
-                );
+                console.warn("화면 요청 처리 실패");
                 progressMap.set(stu.studentId, 0);
                 return;
               }
@@ -372,11 +371,9 @@ export default function Classroom() {
 
               const avgPercent = avgRaw <= 1 ? avgRaw * 100 : avgRaw;
 
-              console.log('student', stu.studentName, 'avgPercent', avgPercent);
-
               progressMap.set(stu.studentId, Math.round(avgPercent));
             } catch (e) {
-              console.error('진행률 API 오류', e);
+              console.error('진행률 API 오류');
               progressMap.set(stu.studentId, 0);
             }
           }),
@@ -421,7 +418,7 @@ export default function Classroom() {
 
         setStudents(finalStudents);
       } catch (err: any) {
-        console.error('데이터 로딩 실패', err);
+        console.error('데이터 로딩 실패');
         await Swal.fire({
           icon: 'error',
           title: '반 정보를 불러오지 못했습니다',
@@ -535,7 +532,7 @@ export default function Classroom() {
 
       const accessToken = localStorage.getItem('accessToken');
 
-      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+      const pdfRes = await authenticatedFetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
         method: 'GET',
         headers: {
           accept: '*/*',
@@ -552,7 +549,6 @@ export default function Classroom() {
       }
 
       const parsedData = await pdfRes.json();
-      console.log('📄 Classroom parsedData:', parsedData);
 
       // chapters 추출
       let chapters: any[] = [];
@@ -618,7 +614,7 @@ export default function Classroom() {
         },
       });
     } catch (err: any) {
-      console.error('자료 조회 실패', err);
+      console.error('자료 조회 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
@@ -641,10 +637,10 @@ export default function Classroom() {
         <div class="ae-label-grid" id="labelGrid">
           ${LABEL_OPTIONS.map(
             (label) => `
-            <button 
-              class="ae-label-option ${picked === label.id ? 'active' : ''}" 
+            <button
+              class="ae-label-option ${picked === label.id ? 'active' : ''}"
               data-label="${label.id}"
-              style="background-color: ${label.color}; ${picked === label.id ? `border: 3px solid  ${label.color};` : ''}" 
+              style="background-color: ${label.color}; ${picked === label.id ? `border: 3px solid  ${label.color};` : ''}"
               title="${label.name}"
             >
               <span>${picked === label.id ? '✓' : ''}</span>
@@ -706,7 +702,7 @@ export default function Classroom() {
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       };
 
-      const res = await fetch(`${API_BASE}/api/documents/label`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/documents/label`, {
         method: 'PATCH',
         headers,
         credentials: 'include',
@@ -739,7 +735,7 @@ export default function Classroom() {
         showConfirmButton: false,
       });
     } catch (err: any) {
-      console.error('라벨 수정 실패', err);
+      console.error('라벨 수정 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',

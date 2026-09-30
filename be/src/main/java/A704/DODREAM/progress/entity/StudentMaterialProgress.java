@@ -72,27 +72,24 @@ public class StudentMaterialProgress {
 	private LocalDateTime completedAt;
 
 	public void updateProgress(int page) {
-		// 진행률은 항상 최대값으로 저장 (뒤로 가더라도 진행률이 줄어들지 않음)
-		if (page > this.currentPage) {
-			this.currentPage = page;
-		}
+        if (page < 0 || totalPages == null || totalPages < 1 || page > totalPages)
+            throw new IllegalArgumentException("Invalid progress range");
+        this.currentPage = Math.min(totalPages,Math.max(this.currentPage == null ? 0 : this.currentPage,page));
+        refreshCompletion();
+    }
 
-		// progressPercentage는 DB에 저장하지 않음 - API에서 실시간 계산
-		// completedAt만 체크
-		if (this.totalPages != null && this.currentPage >= this.totalPages && this.completedAt == null) {
-			this.completedAt = LocalDateTime.now();
-		}
-	}
+    public void updateTotalPages(int totalPages) {
+        if (totalPages < 1) throw new IllegalArgumentException("Invalid total pages");
+        this.totalPages = totalPages;
+        if (this.currentPage != null) this.currentPage = Math.max(0,Math.min(this.currentPage,totalPages));
+        refreshCompletion();
+    }
 
-	/**
-	 * totalPages 업데이트 (진행률은 재계산하지 않음 - API에서 실시간 계산)
-	 */
-	public void updateTotalPages(int totalPages) {
-		this.totalPages = totalPages;
-		
-		// completedAt 체크만 수행
-		if (this.currentPage != null && this.currentPage >= this.totalPages && this.completedAt == null) {
-			this.completedAt = LocalDateTime.now();
-		}
-	}
+    private void refreshCompletion() {
+        if (this.totalPages != null && this.currentPage != null && this.currentPage >= this.totalPages) {
+            if (this.completedAt == null) this.completedAt = LocalDateTime.now();
+        } else {
+            this.completedAt = null;
+        }
+    }
 }

@@ -5,12 +5,13 @@ Google Gemini 2.5 모델을 사용하여 PDF 문서를 구조화된 JSON으로 �
 교육 자료의 계층적 구조(index, title, s_title, ss_title)를 자동으로 추출합니다.
 """
 
-import google.generativeai as genai
 from typing import Dict, Any, Optional
 import json
 import logging
 
 from app.utils.config import settings
+if not settings.LOCAL_EXTERNAL_STUBS:
+    import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,10 @@ class GeminiPDFParser:
         Raises:
             ValueError: API 키가 설정되지 않은 경우
         """
+        if settings.LOCAL_EXTERNAL_STUBS:
+            self.model = None
+            self.api_key = None
+            return
         self.api_key = api_key or settings.GEMINI_API_KEY
 
         if not self.api_key:
@@ -64,6 +69,10 @@ class GeminiPDFParser:
             ValueError: JSON 파싱 실패 또는 PDF 처리 중 오류
         """
         # 기본 출력 형식
+        if settings.LOCAL_EXTERNAL_STUBS:
+            from app.services.local_provider import parse_pdf
+            return parse_pdf(pdf_path)
+
         if output_format is None:
             output_format = self._get_default_output_format()
 
@@ -183,6 +192,10 @@ class GeminiPDFParser:
             파싱된 JSON 데이터
         """
         # PDF 파일 업로드
+        if settings.LOCAL_EXTERNAL_STUBS:
+            from app.services.local_provider import parse_pdf
+            return parse_pdf(pdf_path)
+
         logger.info(f"PDF 파일 업로드 중: {pdf_path}")
         uploaded_file = genai.upload_file(pdf_path)
         logger.info(f"업로드 완료: {uploaded_file.name}")

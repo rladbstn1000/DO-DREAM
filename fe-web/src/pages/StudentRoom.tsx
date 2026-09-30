@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../auth/client';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
@@ -114,7 +115,7 @@ const formatYmdFromIso = (iso: string | null | undefined) => {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
-const RAG_BASE = 'https://www.dodream.io.kr/ai';
+const RAG_BASE = (import.meta.env.VITE_RAG_BASE || '/ai').replace(/\/+$/, '');
 
 export default function StudentRoom() {
   const navigate = useNavigate();
@@ -155,7 +156,7 @@ export default function StudentRoom() {
 
   // ✅ 특정 학생에게 공유된 학습자료 / 진행률 불러오기
   useEffect(() => {
-    if (!student || !API_BASE) return;
+    if (!student) return;
 
     const fetchStudentData = async () => {
       try {
@@ -168,7 +169,7 @@ export default function StudentRoom() {
         };
 
         // 1) 이 학생에게 공유된 학습 자료 조회
-        const sharedRes = await fetch(
+        const sharedRes = await authenticatedFetch(
           `${API_BASE}/api/materials/shared/student/${student.id}`,
           { method: 'GET', headers, credentials: 'include' },
         );
@@ -177,7 +178,6 @@ export default function StudentRoom() {
 
         if (sharedRes.ok) {
           const raw = await sharedRes.json();
-          console.log('📚 학생별 공유 자료 raw:', raw);
 
           // Swagger 스타일 { success, code, message, data } 래핑 처리
           const payload =
@@ -193,9 +193,7 @@ export default function StudentRoom() {
             shared = payload as StudentSharedMaterialsDto;
           }
         } else {
-          console.warn(
-            `학생별 공유 자료 조회 실패 (status: ${sharedRes.status})`,
-          );
+          console.warn("화면 요청 처리 실패");
         }
 
         // 2) 이 학생의 자료별 진행률 조회
@@ -204,14 +202,13 @@ export default function StudentRoom() {
           { progressPercent: number; completedAt: string | null }
         >();
 
-        const progressRes = await fetch(
+        const progressRes = await authenticatedFetch(
           `${API_BASE}/api/progress/students/${student.id}/all`,
           { method: 'GET', headers, credentials: 'include' },
         );
 
         if (progressRes.ok) {
           const raw = await progressRes.json();
-          console.log('📈 진행률 raw:', raw);
 
           const payload =
             raw && typeof raw === 'object' && 'data' in raw
@@ -229,7 +226,7 @@ export default function StudentRoom() {
             });
           });
         } else {
-          console.warn(`학생 진행률 조회 실패 (status: ${progressRes.status})`);
+          console.warn("화면 요청 처리 실패");
         }
 
         // 3) UI에서 사용할 형태로 변환
@@ -261,14 +258,13 @@ export default function StudentRoom() {
         }
 
         // 4) 학생 통계 조회 (평균 정답률)
-        const statsRes = await fetch(
+        const statsRes = await authenticatedFetch(
           `${API_BASE}/api/stats/student/${student.id}/overall`,
           { method: 'GET', headers, credentials: 'include' },
         );
 
         if (statsRes.ok) {
           const raw = await statsRes.json();
-          console.log('📊 학생 통계 raw:', raw);
 
           const payload =
             raw && typeof raw === 'object' && 'data' in raw
@@ -287,19 +283,18 @@ export default function StudentRoom() {
             });
           }
         } else {
-          console.warn(`학생 통계 조회 실패 (status: ${statsRes.status})`);
+          console.warn("화면 요청 처리 실패");
           setStudentStats(null);
         }
 
         // 5) 자료별 퀴즈 성적 조회
-        const quizRes = await fetch(
+        const quizRes = await authenticatedFetch(
           `${API_BASE}/api/stats/student/${student.id}/materials`,
           { method: 'GET', headers, credentials: 'include' },
         );
 
         if (quizRes.ok) {
           const raw = await quizRes.json();
-          console.log('📝 퀴즈 성적 raw:', raw);
 
           const payload =
             raw && typeof raw === 'object' && 'data' in raw
@@ -324,18 +319,17 @@ export default function StudentRoom() {
 
           setQuizResults(quizResults);
         } else {
-          console.warn(`퀴즈 성적 조회 실패 (status: ${quizRes.status})`);
+          console.warn("화면 요청 처리 실패");
           setQuizResults([]);
         }
 
-        const qaRes = await fetch(
+        const qaRes = await authenticatedFetch(
           `${RAG_BASE}/rag/chat/sessions?student_id=${student.id}`,
           { method: 'GET', headers, credentials: 'include' },
         );
 
         if (qaRes.ok) {
           const raw = await qaRes.json();
-          console.log('💬 질문 & 답변 raw:', raw);
 
           const items = Array.isArray(raw) ? raw : [];
 
@@ -357,11 +351,11 @@ export default function StudentRoom() {
 
           setStudentQuestions(questions);
         } else {
-          console.warn(`질문 & 답변 조회 실패 (status: ${qaRes.status})`);
+          console.warn("화면 요청 처리 실패");
           setStudentQuestions([]);
         }
       } catch (err) {
-        console.error('학생 데이터 로딩 실패', err);
+        console.error('학생 데이터 로딩 실패');
         setReceivedMaterials([]);
         setQuizResults([]);
         setStudentQuestions([]);
@@ -430,7 +424,7 @@ export default function StudentRoom() {
       });
 
       const accessToken = localStorage.getItem('accessToken');
-      const pdfRes = await fetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
+      const pdfRes = await authenticatedFetch(`${API_BASE}/api/pdf/${pdfId}/json`, {
         method: 'GET',
         headers: {
           accept: '*/*',
@@ -447,7 +441,6 @@ export default function StudentRoom() {
       }
 
       const parsedData = await pdfRes.json();
-      console.log('📄 StudentRoom parsedData:', parsedData);
 
       let chapters: any[] = [];
       if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
@@ -510,7 +503,7 @@ export default function StudentRoom() {
         },
       });
     } catch (err: any) {
-      console.error('자료 조회 실패', err);
+      console.error('자료 조회 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',

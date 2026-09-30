@@ -2,12 +2,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info, prometheus, metrics
+        include: health
       base-path: /actuator
 
   endpoint:
     health:
-      show-details: always
+      show-details: never
+      show-components: never
 
   prometheus:
     metrics:
@@ -40,6 +41,8 @@ spring:
 
       uri: ${vaultAddr}
   config:
+    activate:
+      on-profile: "!local"
     import: vault://
 
   datasource:
@@ -50,7 +53,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -60,33 +63,34 @@ spring:
   servlet:
     multipart:
       enabled: true
-      max-file-size: 2GB
-      max-request-size: 2GB
+      max-file-size: 10MB
+      max-request-size: 10MB
       file-size-threshold: 2KB
   data:
     redis:
       port: 6379
 
 server:
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
   servlet:
     session:
       cookie:
         same-site: lax
   tomcat:
-    max-http-form-post-size: 2GB  # POST 요청 본문 크기 제한 (바이너리 직접 전송)
-    max-swallow-size: 2GB  # 업로드 중단 시 버퍼 크기
+    connection-timeout: 15s  # Also bounds idle request-body reads (Tomcat disableUploadTimeout=true default).
+    max-http-form-post-size: 10MB
+    max-swallow-size: 10MB
 
 logging:
   level:
-    org:
-      springframework:
-        security: DEBUG
-      hibernate:
-        SQL: DEBUG
-        type:
-          descriptor:
-            sql:
-              BasicBinder: TRACE
+    root: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
 
 # File Storage Configuration
 file:
@@ -102,7 +106,7 @@ clova:
 
 jwt:
   secret: ${jwtSecret}
-  access-exp-seconds: 86400
+  access-exp-seconds: 900
   refresh-exp-seconds: 1209600
 
 aws:
@@ -118,8 +122,10 @@ aws:
 
 springdoc:
   api-docs:
+    enabled: false
     path: /api/v3/api-docs
   swagger-ui:
+    enabled: false
     path: /api/swagger-ui
     url: /api/v3/api-docs      # 스펙 JSON은 이걸로 불러라
     config-url: /api/v3/api-docs/swagger-config

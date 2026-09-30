@@ -1,0 +1,397 @@
+{
+  "dataset_version": "phase5-eval-v1",
+  "access": "evaluator_only_except_server_owned_question_correct_answer_student_answer_snapshot",
+  "cases": [
+    {
+      "id": "G01",
+      "split": "development",
+      "category": "clear_correct",
+      "concept_id": "grade-water-lab-v1-1",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-01"
+      ],
+      "question": "하늘에서 내린 비의 양을 재는 도구는 무엇인가요?",
+      "correct_answer": "우량계",
+      "student_answer": "우량계",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "도구 이름 우량계"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "수위 자를 정답 처리"
+      ]
+    },
+    {
+      "id": "G02",
+      "split": "development",
+      "category": "paraphrase",
+      "concept_id": "grade-water-lab-v1-3",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-03"
+      ],
+      "question": "차가운 컵 바깥 물방울은 공기 중 무엇이 식어 생기나요?",
+      "correct_answer": "공기 중 수증기",
+      "student_answer": "공기 속에 있던 물의 기체가 식어서 생깁니다.",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "수증기와 같은 의미"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "용어 완전 일치만 요구"
+      ]
+    },
+    {
+      "id": "G03",
+      "split": "development",
+      "category": "partial",
+      "concept_id": "grade-water-lab-v1-5",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-05"
+      ],
+      "question": "물 고인 곳을 발견하면 어디서 무엇을 기록하고 누구에게 알려야 하나요?",
+      "correct_answer": "안전한 위치에서 사진과 위치를 기록하고 선생님께 알립니다.",
+      "student_answer": "사진을 찍습니다.",
+      "expected_is_correct": false,
+      "rubric": {
+        "required_meanings": [
+          "안전 위치",
+          "사진과 위치",
+          "선생님 알림"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "한 요소만 있어도 완전 정답 처리"
+      ]
+    },
+    {
+      "id": "G04",
+      "split": "development",
+      "category": "wrong",
+      "concept_id": "grade-water-lab-v1-7",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-07"
+      ],
+      "question": "방류 예고 때 비가 안 오는 하류 하천에는 들어가도 되나요?",
+      "correct_answer": "들어가지 않고 대피 안내를 따릅니다.",
+      "student_answer": "비가 없으니 들어가도 됩니다.",
+      "expected_is_correct": false,
+      "rubric": {
+        "required_meanings": [
+          "입수 금지",
+          "안내 따름"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "비가 없다는 이유로 입수 허용"
+      ]
+    },
+    {
+      "id": "G05",
+      "split": "development",
+      "category": "clear_correct",
+      "concept_id": "grade-reuse-lab-v1-1",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-01"
+      ],
+      "question": "기름이 깊게 밴 종이는 말리면 깨끗한 종이가 되나요?",
+      "correct_answer": "아니요",
+      "student_answer": "아니요",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "아니요"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "기름과 물을 같은 오염으로 간주"
+      ]
+    },
+    {
+      "id": "G06",
+      "split": "development",
+      "category": "paraphrase",
+      "concept_id": "grade-reuse-lab-v1-3",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-03"
+      ],
+      "question": "여러 겹 과자 포장의 표시가 지워져 판단이 어렵다면 누구에게 문의하나요?",
+      "correct_answer": "수거 담당자",
+      "student_answer": "그 포장을 거두는 일을 맡은 분께 물어봅니다.",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "수거 담당자와 동의 의미"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "표현 다르다는 이유로 오답"
+      ]
+    },
+    {
+      "id": "G07",
+      "split": "development",
+      "category": "negation",
+      "concept_id": "grade-reuse-lab-v1-5",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-05"
+      ],
+      "question": "잘게 자른 비닐은 학교 퇴비 관찰통의 재료가 될 수 있나요?",
+      "correct_answer": "아니요",
+      "student_answer": "비닐을 잘게 자르면 퇴비 재료가 안 되는 것은 아닙니다.",
+      "expected_is_correct": false,
+      "rubric": {
+        "required_meanings": [
+          "비닐은 안 됨"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "비닐과 안이라는 단어만 보고 정답 처리"
+      ]
+    },
+    {
+      "id": "G08",
+      "split": "development",
+      "category": "wrong",
+      "concept_id": "grade-reuse-lab-v1-7",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-07"
+      ],
+      "question": "다회용 컵을 반납하면 무엇을 돌려받나요?",
+      "correct_answer": "보증 표 한 장",
+      "student_answer": "현금 만 원",
+      "expected_is_correct": false,
+      "rubric": {
+        "required_meanings": [
+          "보증 표"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "없는 금액을 정답으로 인정"
+      ]
+    },
+    {
+      "id": "G09",
+      "split": "final",
+      "category": "clear_correct",
+      "concept_id": "grade-water-lab-v1-2",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-02"
+      ],
+      "question": "수건의 물이 공기 중으로 나가는 현상을 무엇이라고 하나요?",
+      "correct_answer": "증발",
+      "student_answer": "증발",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "증발"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "응결을 정답 처리"
+      ]
+    },
+    {
+      "id": "G10",
+      "split": "final",
+      "category": "partial",
+      "concept_id": "grade-water-lab-v1-4",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-04"
+      ],
+      "question": "흙의 물 스며듦 실험에서 따로 기록하는 시간과 양은 무엇인가요?",
+      "correct_answer": "표면에 물이 남은 시간과 아래로 나온 물의 양",
+      "student_answer": "아래로 나온 물의 양",
+      "expected_is_correct": false,
+      "rubric": {
+        "required_meanings": [
+          "표면 물 잔류 시간",
+          "아래로 나온 물의 양"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "두 항목 중 하나만으로 정답 처리"
+      ]
+    },
+    {
+      "id": "G11",
+      "split": "final",
+      "category": "negation",
+      "concept_id": "grade-water-lab-v1-6",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-06"
+      ],
+      "question": "맑고 냄새 없는 우물물이라는 관찰만으로 안전하다고 말할 수 있나요?",
+      "correct_answer": "아니요. 정해진 수질 검사가 필요합니다.",
+      "student_answer": "맑고 냄새가 없다고 안전한 것은 아니며 수질 검사가 필요합니다.",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "관찰만으로 안전 판단 불가",
+          "수질 검사 필요"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "안전이라는 단어만 보고 안전 주장으로 오해"
+      ]
+    },
+    {
+      "id": "G12",
+      "split": "final",
+      "category": "paraphrase",
+      "concept_id": "grade-water-lab-v1-8",
+      "material_id": "water-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "water-lab-v1-08"
+      ],
+      "question": "수위 자를 세 번 읽었을 때 어떤 값을 대표값으로 쓰나요?",
+      "correct_answer": "가운데 값",
+      "student_answer": "세 측정값을 크기 순서로 놓았을 때 중간에 오는 수치입니다.",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "가운데 값과 같은 의미"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "가장 큰 값과 혼동"
+      ]
+    },
+    {
+      "id": "G13",
+      "split": "final",
+      "category": "clear_correct",
+      "concept_id": "grade-reuse-lab-v1-2",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-02"
+      ],
+      "question": "이번 행사에서 색 있는 페트병을 투명 병 전용 자루에 넣나요?",
+      "correct_answer": "아니요",
+      "student_answer": "아니요",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "행사에서 제외"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "행사 규칙을 반대로 적용"
+      ]
+    },
+    {
+      "id": "G14",
+      "split": "final",
+      "category": "wrong",
+      "concept_id": "grade-reuse-lab-v1-4",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-04"
+      ],
+      "question": "부풀거나 손상된 충전지를 학생이 발견하면 누구에게 알려야 하나요?",
+      "correct_answer": "선생님",
+      "student_answer": "아무에게도 알리지 않고 제가 눌러 볼게요.",
+      "expected_is_correct": false,
+      "rubric": {
+        "required_meanings": [
+          "선생님에게 알림"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "직접 처리 시도를 정답으로 인정"
+      ]
+    },
+    {
+      "id": "G15",
+      "split": "final",
+      "category": "paraphrase",
+      "concept_id": "grade-reuse-lab-v1-6",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-06"
+      ],
+      "question": "반납한 공유 우산은 정리하기 전에 어떻게 하나요?",
+      "correct_answer": "펼쳐서 물기를 말립니다.",
+      "student_answer": "우산을 펴 두어 젖은 부분이 마른 다음 정리합니다.",
+      "expected_is_correct": true,
+      "rubric": {
+        "required_meanings": [
+          "펼침",
+          "건조"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "어휘 불일치만으로 오답"
+      ]
+    },
+    {
+      "id": "G16",
+      "split": "final",
+      "category": "partial",
+      "concept_id": "grade-reuse-lab-v1-8",
+      "material_id": "reuse-lab-v1",
+      "source_version": "authored-phase5-v1",
+      "evidence_source_ids": [
+        "reuse-lab-v1-08"
+      ],
+      "question": "병 분리배출을 준비할 때 내용물과 분리 가능한 라벨은 어떻게 하나요?",
+      "correct_answer": "내용물을 비우고 라벨을 떼어 냅니다.",
+      "student_answer": "내용물을 비웁니다.",
+      "expected_is_correct": false,
+      "rubric": {
+        "required_meanings": [
+          "내용물 비움",
+          "라벨 제거"
+        ],
+        "policy": "필수 의미를 모두 만족하고 모순이 없어야 정답. 동의 표현은 허용하며 부분 충족은 오답으로 판정한다."
+      },
+      "forbidden_judgments": [
+        "한 요구만 충족해도 정답 처리"
+      ]
+    }
+  ]
+}

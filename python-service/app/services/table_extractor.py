@@ -6,8 +6,6 @@ Extracts structured table data from PDF pages.
 import logging
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
-import pandas as pd
-import numpy as np
 from pathlib import Path
 
 logger = logging.getLogger(__name__)

@@ -26,16 +26,18 @@ public class StatsController {
 	@Operation(summary = "학생의 자료별 성적 리스트 조회", description = "특정 학생이 푼 모든 자료들의 성적(맞춘 개수, 정답률)을 리스트로 조회합니다.")
 	@GetMapping("/student/{studentId}/materials")
 	public ResponseEntity<List<StudentMaterialStatsDto>> getStudentStatsByMaterialList(
-		@PathVariable Long studentId
+		@PathVariable Long studentId,
+        @org.springframework.security.core.annotation.AuthenticationPrincipal A704.DODREAM.auth.dto.request.UserPrincipal actor
 	) {
-		return ResponseEntity.ok(quizService.getStudentStatsByMaterialList(studentId));
+		return ResponseEntity.ok(quizService.getStudentStatsByMaterialList(studentId, actor.userId()));
 	}
 
 	@Operation(summary = "학생의 종합 평균 정답률 조회", description = "학생의 모든 학습 자료에 대한 평균 정답률을 조회합니다.")
 	@GetMapping("/student/{studentId}/overall")
 	public ResponseEntity<StudentOverallStatsDto> getStudentOverallStats(
-		@PathVariable Long studentId
+		@PathVariable Long studentId,
+        @org.springframework.security.core.annotation.AuthenticationPrincipal A704.DODREAM.auth.dto.request.UserPrincipal actor
 	) {
-		return ResponseEntity.ok(quizService.getStudentOverallStats(studentId));
+		return ResponseEntity.ok(quizService.getStudentOverallStats(studentId, actor.userId()));
 	}
 }

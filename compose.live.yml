@@ -1,0 +1,23 @@
+# Only scripts/local/live_ai.py may open this sequential, bounded session.
+# No live dispatcher or Celery worker. The key is never an environment variable.
+services:
+  ai:
+    environment:
+      DODREAM_AI_MODE: LIVE_OPENAI
+      LIVE_API_AUTHORIZED: ${LIVE_API_AUTHORIZED:-false}
+      LIVE_RUN_MANIFEST: /run/dodream-live/manifest.json
+      LIVE_PROVIDER_KEY_FILE: /run/secrets/dodream-provider-live.env
+      LIVE_BUDGET_LEDGER: /app/db_data/live_ai/budget.sqlite3
+      DODREAM_RAG_VARIANT: ${DODREAM_RAG_VARIANT:-A}
+    volumes:
+      - type: bind
+        source: ./.local/phase5/live/manifest.json
+        target: /run/dodream-live/manifest.json
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${DODREAM_LIVE_KEY_CONFIG:?use the guarded live launcher}
+        target: /run/secrets/dodream-provider-live.env
+        read_only: true
+        bind: {create_host_path: false}
+    networks: [default, gateway]

@@ -1,0 +1,31 @@
+name: Keyless integration (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keyless-integration-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  fresh-services:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DODREAM_AI_MODE: LOCAL_FAKE
+      LIVE_API_AUTHORIZED: 'false'
+      LOCAL_EXTERNAL_STUBS: 'true'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Fresh isolated MySQL, Redis and Chroma contracts
+        run: python scripts/ci/integration.py
+      # No uploads: databases, HTTP bodies, credentials, and raw logs stay on
+      # this disposable runner. No deploy job, cloud login, or live API key.

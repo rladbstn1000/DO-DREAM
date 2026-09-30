@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Slf4j
 public class TempPdfDataService {
+    private final A704.DODREAM.authorization.AuthorizationPolicy policy;
 
     private final UserRepository userRepository;
     private final UploadedFileRepository uploadedFileRepository;
@@ -48,7 +49,9 @@ public class TempPdfDataService {
    * @param pdfId PDF ID
    * @param userId 사용자 ID
    */
+  @org.springframework.transaction.annotation.Transactional
   public void save(Long pdfId, Long userId, PublishRequest request) {
+    policy.ownedFile(userId, pdfId);
     try {
         User teacher = userRepository.findById(userId)
                 .orElseThrow(()-> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -92,6 +95,7 @@ public class TempPdfDataService {
    * @return 임시 저장된 JSON 데이터 (없으면 null)
    */
   public Map<String, Object> get(Long pdfId, Long userId) {
+    policy.ownedFile(userId, pdfId);
     try {
       String jsonString = redis.opsForValue().get(key(pdfId, userId));
       if (jsonString == null) {

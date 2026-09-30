@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface MaterialRepository extends JpaRepository<Material, Long> {
+    Optional<Material> findByUploadedFileId(Long fileId);
     Optional<Material> findByIdAndTeacherIdAndDeletedAtIsNull(Long materialId, Long teacherId);
 
     Optional<Material> findByUploadedFileIdAndDeletedAtIsNull(Long pdfId);
