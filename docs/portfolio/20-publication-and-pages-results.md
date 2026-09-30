@@ -19,7 +19,7 @@
 
 신규 캡처 PNG 10개와 기존 이미지 20개를 직접 열어 확인했다. 신규 PNG는 Git blob과 일치하고 text/EXIF metadata가 없으며 직접 작성 교재·합성 학생·샘플 표시만 담았다. 기존 원격과 같은 영상 3개(`fe_app/assets/splash_*.mp4`)와 Gradle wrapper JAR 1개는 전수 재생/역컴파일하지 않았다. 이 네 바이너리는 이미 검증한 원격 main에 있으며 새 공개 blob이 아니다. 기존 팀 저작자·출처·기여 기록을 유지하고 새 라이선스를 임의 부여하지 않았다.
 
-판정은 **PASS_WITH_DOCUMENTED_LIMITATIONS**다. 정규식·문맥·이미지 검토가 모든 비밀이나 저작권 문제의 부재를 보장하는 것은 아니다. 신규 workflow/공개 검사/문서 8개 변경분도 최종 staged diff에서 별도 공개 검토한다. 검토 범위·오탐 유형·미검증 바이너리는 ignored `source-publication-classification.json`에 보존한다. 신규 실제 비밀이 발견되면 최신본만 지워 과거 커밋과 push하는 우회를 하지 않는다.
+판정은 **PASS_WITH_DOCUMENTED_LIMITATIONS**다. 정규식·문맥·이미지 검토가 모든 비밀이나 저작권 문제의 부재를 보장하는 것은 아니다. release workflow/공개 검사/문서 8개 text 파일(86,974 bytes)도 최종 staged diff에서 검토했다. 새 binary는 없고 실제 비밀·신규 개인정보는 없었다. README/결과 문서의 상대 링크 42개가 유효했다. 이후 테스트 시각 한 줄과 실패 기록, 공개 결과를 담는 문서 변경도 별도 diff로 검토한다. 검토 범위·오탐 유형·미검증 바이너리는 ignored `source-publication-classification.json`에 보존한다. 신규 실제 비밀이 발견되면 최신본만 지워 과거 커밋과 push하는 우회를 하지 않는다.
 
 ## 공개 검토 B: 정적 산출물
 
@@ -29,22 +29,22 @@
 
 ## 실행과 확인 상태
 
-소스는 [PR #1](https://github.com/rladbstn1000/DO-DREAM/pull/1)으로 일반 병합했다. 배포 링크는 아직 **배포 준비 중**이다. PR 검사는 성공했지만 병합 후 main 검사에서 실패가 발견되어 배포를 멈추고 최소 수정·새 PR로 재검증한다.
+소스는 PR #1, 초 경계 테스트 최소 수정은 PR #2로 일반 병합했다. 최초 main 실패는 보존했고 수정한 main의 5개 CI 작업이 모두 성공했다. **[공개 showcase](https://rladbstn1000.github.io/DO-DREAM/)** 배포와 공개 인수도 통과했다. README/About에 실제 확인한 URL을 사용하며 아래에서 배포된 앱 SHA와 이후 문서 변경을 구분한다.
 
 | 상태 | 현재 판정 |
 |---|---|
 | SOURCE_PUBLICATION_REVIEW | PASS_WITH_DOCUMENTED_LIMITATIONS — 기준 소스·이력 및 release delta |
-| REMOTE_SOURCE_SYNC | PASS — PR #1 일반 병합, 후속 최소 수정 검증 중 |
-| REMOTE_REQUIRED_CI | FAIL — PR #1 성공 후 main의 AI 시간 경계 검사 1건 실패, 수정·재검증 중 |
+| REMOTE_SOURCE_SYNC | PASS — PR #1·#2 일반 병합 |
+| REMOTE_REQUIRED_CI | PASS — PR #2와 수정 main의 기대 5개 job 전부 성공; 최초 실패 보존 |
 | REMOTE_OPTIONAL_INTEGRATION | NOT_RUN — 정적 배포의 필수 조건이 아닌 별도 서버 통합 범위 |
-| PAGES_WORKFLOW | PASS — 수동/main/최소 권한/산출물 계약 로컬 검증 |
-| PAGES_DEPLOYMENT | NOT_RUN |
-| PUBLIC_SITE_ACCEPTANCE | NOT_RUN |
-| RELEASE_ARTIFACT_PROVENANCE | NOT_RUN |
-| PORTFOLIO_LINKS | 배포 준비 중 |
-| PUBLIC_DEMO_DEPLOYED | false |
+| PAGES_WORKFLOW | PASS — 수동/main/최소 권한/산출물 계약 및 원격 실행 |
+| PAGES_DEPLOYMENT | PASS — 실행 36741020484의 build·deploy success |
+| PUBLIC_SITE_ACCEPTANCE | PASS — 독립 공개 브라우저 24개 검사 |
+| RELEASE_ARTIFACT_PROVENANCE | PASS — 원격 manifest·다운로드 artifact·공개 HTTP/브라우저 bytes 일치 |
+| PORTFOLIO_LINKS | PASS — 실제 데모 URL·About·README/문서 연결 검토 |
+| PUBLIC_DEMO_DEPLOYED | true |
 
-로컬 최종 `verify:showcase`는 2026-09-30 15:38:41 UTC에 PASS했다. 기존 웹 회귀 115개, showcase 계약 50개, 브라우저 92개, Pages 계약 7개, CI 경계 6개를 각각 통과했다. 브라우저 정적 요청 63건, 금지 요청/API 시도/CSP 위반 0건이다. root·저장소 하위 경로의 정적 서버 검사 14개도 통과했다. 검증 전후 소스와 산출물은 같으며 공개 파일 3개/272,609 bytes, 로컬 manifest digest는 `646dfe49c131d283223381db6b71f764d307cdb8c5ecc41bad936a4f58609760`이다. 일반 서버용 빌드의 500 kB chunk 경고는 유지된다. 이 결과는 아직 원격 Linux/공개 사이트 결과가 아니다.
+로컬 최종 `verify:showcase`는 2026-09-30 15:38:41 UTC에 PASS했다. 기존 웹 회귀 115개, showcase 계약 50개, 브라우저 92개, Pages 계약 7개, CI 경계 6개를 각각 통과했다. 브라우저 정적 요청 63건, 금지 요청/API 시도/CSP 위반 0건이다. root·저장소 하위 경로의 정적 서버 검사 14개도 통과했다. 검증 전후 소스와 산출물은 같으며 공개 파일 3개/272,609 bytes, 로컬 manifest digest는 `646dfe49c131d283223381db6b71f764d307cdb8c5ecc41bad936a4f58609760`이다. 일반 서버용 빌드의 500 kB chunk 경고는 유지된다. 이 문단은 로컬 결과이며 아래 원격 Linux/공개 사이트 결과와 구분한다.
 
 ## 원격 소스·CI 기록
 
@@ -53,9 +53,45 @@
 - 실제 PR #1 merge SHA는 `2902335a10b32f17c856ed7deee5c3804c3382c8`이며 2026-09-30 15:46:41 UTC에 일반 merge commit으로 병합했다. PR 검사 SHA와 구분한다. 기존 required checks·review 보호는 없었지만 기대한 다섯 job과 병합 상태를 직접 확인했다. `--admin`/squash/rebase는 사용하지 않았다.
 - 병합 후 자동 push run이 조회되지 않아 승인된 keyless CI를 main에서 한 번 수동 실행했다. [main CI 36739526438](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36739526438), source=`2902335a10b32f17c856ed7deee5c3804c3382c8`, event=`workflow_dispatch`는 **FAIL**이다. 4개 job은 성공했고 `python (ai)`의 `test_five_second_skew_and_maximum_access_lifetime` 한 건에서 기대 401/실제 200을 기록했다. 실패 로그·실행을 보존했으며 이 SHA를 배포하지 않았다.
 
-원인은 만료값 `exp=now+901`만 테스트 시작 시각으로 고정하고 helper의 `iat/nbf`는 새 시각으로 생성한 것이었다. 다음 초로 넘어가면 실제 `exp-iat`가 900초가 되어 정상 토큰을 거부하라는 잘못된 기대를 만든다. 인증 구현의 900초 최대 수명 검사는 유지하고 테스트의 발급·시작·만료 시각만 같은 기준으로 묶는다. 실패 검사를 삭제·skip하거나 허용 수명을 늘리지 않는다. 새 공개 변경은 테스트 한 줄과 이 실패 기록뿐이며 실제 자격정보·비공개 데이터가 없다. 로컬 Python에는 FastAPI/jose/SQLAlchemy 의존성이 없어 실제 HTTP targeted 실행은 BLOCKED로 구분하고, 새 원격 CI에서 기존 전체 테스트를 실행한다.
+원인은 만료값 `exp=now+901`만 테스트 시작 시각으로 고정하고 helper의 `iat/nbf`는 새 시각으로 생성한 것이었다. 다음 초로 넘어가면 실제 `exp-iat`가 900초가 되어 정상 토큰을 거부하라는 잘못된 기대를 만든다. 인증 구현의 900초 최대 수명 검사는 유지하고 테스트의 발급·시작·만료 시각만 같은 기준으로 묶는다. 실패 검사를 삭제·skip하거나 허용 수명을 늘리지 않는다. 새 공개 변경은 테스트 한 줄과 이 실패 기록뿐이며 실제 자격정보·비공개 데이터가 없다. 로컬 Python에는 FastAPI/jose/SQLAlchemy 의존성이 없어 실제 HTTP targeted 실행은 BLOCKED로 구분했다. 새 원격 CI에서는 기존 전체 테스트가 통과했다.
+
+- [PR #2](https://github.com/rladbstn1000/DO-DREAM/pull/2): 수정 head=`7b40c086e971b67e9bb775ce10d58de7ab2f766d`, 실제 5개 job checkout test merge=`3fa307fe933b555a1c6060982394cafdc8c01f4f`, [CI 36740266759](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36740266759) 전부 success. 실제 일반 merge는 `c3d9617768392903085a246a1520229b22eeb674`다.
+- [수정 main CI 36740621696](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36740621696): event=`push`, source=`c3d9617768392903085a246a1520229b22eeb674`, 기대한 `web`·두 `python`·`backend`·`offline-tools`가 모두 success이며 생략된 job은 없다. 바로 이 SHA를 배포 후보로 선택하고 dispatch 직전 main과 다시 대조했다.
+- 추가 로컬 재현은 실제 fixture 함수/호출 AST/수명 비교식을 사용해 시각을 0·1·2·5·30초 진행시켰다. 기존 수명 901·900·899·896·871초가 수정 후 모두 901초로 유지됐고 900초 허용 경계도 유지됐다. 이는 실제 HTTP 검사의 대체가 아니며 HTTP/서명/auth 전체 검증은 위 원격 AI 183개 성공으로 확인했다.
 
 PR #1의 실제 범위는 웹 단위·계약 172개(기존115+Pages7+showcase50), 브라우저 92개, AI 183개, python-service 24개, 오프라인 CI6/평가26/local101개다. backend는 `bootJar`, `testClasses`, 선택된 인증·권한·채점·색인·hardening/file 검사이며 실제 DB crash suite 전체를 실행한 것으로 쓰지 않는다. 로그의 Gradle 6 tasks를 테스트 6개로 해석하지 않는다. Actions가 기존 Node20 기반 checkout/setup action을 Node24로 실행한다는 경고, 일반 phase1 build chunk 경고와 JS module type 경고를 보존한다. 앱 검증 Node 버전은 22.22.0이다.
+
+## 실제 Pages 배포·공개 인수
+
+[Pages 실행 36741020484](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36741020484)는 `workflow_dispatch`/main/attempt 1, source **`c3d9617768392903085a246a1520229b22eeb674`**로 build·deploy 모두 success다. 기존 사이트·환경이 없음을 재확인한 뒤 source=`workflow`로 설정하고 `cname=null`·HTTPS 강제 상태를 확인했으며 `github-pages`에는 정확한 main branch 규칙 하나만 둔다. 기존 저장소/브랜치 보호 규칙은 변경하지 않았다. 공개 사이트를 추측한 주소로 표시하지 않고 deployment `6764043313`의 성공 상태(2026-09-30 16:01:52 UTC)와 Pages API가 반환한 `https://rladbstn1000.github.io/DO-DREAM/`를 대조했다.
+
+원격 도구는 Ubuntu24.04 GitHub-hosted runner, Node22.22.0/npm10.9.4/Playwright1.62.1, `/opt/google/chrome/chrome`의 Google Chrome153.0.8010.52였다. 기존 웹115+Pages7+showcase50, typecheck·두 build·artifact graph 검사·브라우저92개가 성공했고 정적 요청63/금지 요청0이다. 검증 후 재빌드 없이 같은 파일을 업로드했다.
+
+| 같은 실행의 artifact | ID / 보관 | 근거 |
+|---|---|---|
+| [github-pages](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36741020484/artifacts/11109444549) | 11109444549 / 1일 | 공개 디렉토리 3파일만 든 tar; 배포 입력 |
+| [showcase-provenance](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36741020484/artifacts/11109154763) | 11109154763 / 7일 | 선택된 커밋·도구·검증 상태·파일별 해시를 담는 manifest 1개 |
+
+다운로드한 tar의 경로·파일 종류·크기·해시를 확인하고 승인된 3파일만 새 ignored 폴더에 추출했다. manifest source SHA/run ID가 배포와 같고 file count=3, total=272,609 bytes, **manifest digest=`646dfe49c131d283223381db6b71f764d307cdb8c5ecc41bad936a4f58609760`**다. Mac과 Linux 결과가 이번에 실제로 같았지만 과거 Mac 산출물로 대신 판정하지 않았다. Actions 압축 artifact의 digest와 아래 개별 공개 파일 digest는 서로 다른 대상이다.
+
+| 공개 파일 | bytes | SHA-256 |
+|---|---:|---|
+| `index.html` | 891 | `e666a84ec9ff4da9053d2086878bd442bb94fc2f4e5b43bb5c1aea61a578de0a` |
+| `assets/index-BnkY1AWG.css` | 10,227 | `78660cfaac5c006e58655202aeba2679f53acca171c4d726e28c94afd4c5dff9` |
+| `assets/index-SNe9wLPP.js` | 261,491 | `64ecd40ebb0c1ffb0fd0217608d3858339a8bcfe11107e1badb28a582b8039d9` |
+
+공개 인수는 **2026-09-30 16:02:45.692–16:02:48.689 UTC**(KST 10월1일 01:02)에 [별도 공개 harness](../../fe-web/tests/showcase-public-browser.mjs)로 실행했다. 사용자 프로필·로그인 세션 없이 새 Chrome154.0.8037.59 context 두 개, macOS/Node22.14.0에서 **24개 PASS**다. 공개 HTML/JS/CSS 3개를 HTTPS로 직접 내려받아 content type·bytes·SHA-256을 원격 manifest와 비교했고, 브라우저 정적 응답 12건도 같은 파일로 확인했다. 첫 확인에서 일치해 CDN 재시도는 없었다.
+
+- 학생 시작 → 교재 → 단원 → 추천 질문 → 준비된 답변과 정확한 참고 문장 → 퀴즈 → 결과 → 교사 샘플 성공.
+- 해시 경로 직접 접근·새로고침·뒤로 가기·같은 탭 풀이 복구·독립 context 분리·초기화 성공.
+- 320 CSS px의 본문/질문 조작부가 잘리지 않았고, 키보드 이동·보이는 초점·참고 창 Escape/초점 복귀 성공. 결과·좁은 화면 캡처도 직접 열어 확인했다.
+- console/page error 0, CSP 위반 0, 관측한 금지 요청·API·WebSocket 시도 0. provenance HTTP 3건과 브라우저 정적 요청 12건을 따로 센다. 브라우저에서 관측할 수 없는 모든 인터넷 통신이 0이라고 주장하지 않는다.
+
+이 공개24개와 기존 로컬/원격 loopback92개를 더해 하나의 인수 개수로 보고하지 않는다. 정적 데모의 샘플 정답은 공개 JS에 포함되며 실제 로그인·서버 데이터 보호 성과가 아니다. 실제 음성 청취·VoiceOver·모바일 실기기는 **NOT_RUN**이다. 기존 [화면 캡처와 로컬 한계](19-static-showcase-results.md)는 당시 기록으로 보존한다.
+
+## 공개 링크와 후속 문서
+
+About homepage는 위 실제 URL로 갱신했다. README의 첫 링크와 짧은 학생/교사 사용 순서, roadmap·runbook·walkthrough는 최신 배포 근거로 연결하며 이전 단계 기록은 보존한다. 배포 이후 문서만 바꾸는 후속 PR의 commit은 **배포 SHA가 아니다**. 후속 PR/merge/최종 main CI는 해당 PR과 Actions 및 최종 작업 보고에서 확인하며, 이 문서가 자기 commit SHA를 담도록 amend하지 않는다. 문서 변경만으로 Pages를 다시 배포하지 않는다.
 
 ## 재현 명령과 배포 계약
 
@@ -89,6 +125,18 @@ Pages workflow는 수동 `workflow_dispatch`만 허용하고 해당 저장소 ma
 `configure-pages`는 enablement=false와 pages:read로 이미 설정한 metadata만 읽는다. `upload-pages-artifact`는 `fe-web/dist-showcase`만 1일 보관하며, 별도 `showcase-provenance` artifact는 공개 경로·파일 크기·SHA-256·도구/커밋 정보만 든 `release-manifest.json` 한 개를 7일 보관한다. 원시 네트워크·질문·로그·스크린샷을 artifact로 올리지 않는다. 기존 키 없는 CI의 artifact 금지는 유지하며 Pages의 이 두 경로만 계약 검사로 허용한다.
 
 검토한 main SHA를 `expected_sha` 입력으로 전달한다. ref가 main이어도 dispatch 시점의 commit이 입력과 다르면 첫 단계에서 실패한다. 선택 SHA가 필수 CI를 통과했는지는 배포 직전 실제 run 목록과 함께 확인한다. 사용자 Mac은 runner로 등록하지 않으며 Ubuntu24.04 표준 GitHub-hosted runner의 Chrome 경로/버전을 실제 job에서 확인한다.
+
+수동 재배포는 먼저 대상 main SHA의 다섯 keyless job 성공을 확인하고 아래처럼 **실제로 확인한 40자리 SHA**를 전달한다.
+
+```bash
+gh workflow run showcase-pages.yml --repo rladbstn1000/DO-DREAM --ref main -f expected_sha=VERIFIED_MAIN_SHA
+```
+
+해당 실행의 두 artifact를 내려받아 안전하게 추출한 후 공개 인수는 다음 형태로 실행한다. 이 작업의 원시 입력과 결과는 ignored 위치에만 두며, artifact는 보관 기간 이후 만료되므로 위 파일 해시·source SHA·run 링크도 함께 남긴다.
+
+```bash
+node fe-web/tests/showcase-public-browser.mjs --url https://rladbstn1000.github.io/DO-DREAM/ --manifest .local/publication-pages/downloads/RUN/showcase-provenance/release-manifest.json --artifact-dir .local/publication-pages/downloads/RUN/verified-pages
+```
 
 ## 실패·재배포·되돌리기
 
