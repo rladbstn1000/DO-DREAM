@@ -27,7 +27,7 @@ export default defineConfig(({ command, mode }) => {
         // Runs before Vite prepares/empties outputs, including direct CLI overrides.
         assertSafeOutput(webRoot, path.resolve(config.root, config.build.outDir));
         if (!config.isProduction || config.build.ssr || config.root !== showcaseRoot || config.base !== './' || config.envDir !== false || config.publicDir ||
-            config.build.sourcemap || config.server.proxy || Object.keys(config.define ?? {}).length ||
+            config.build.sourcemap || config.build.assetsInlineLimit !== 0 || config.server.proxy || Object.keys(config.define ?? {}).length ||
             Object.keys(config.env).some((key) => !['BASE_URL', 'MODE', 'DEV', 'PROD', 'SSR'].includes(key)) ||
             config.build.rollupOptions.output || config.build.rollupOptions.input !== path.join(showcaseRoot, 'index.html')) {
           throw new Error('Showcase configuration boundary cannot be overridden');
@@ -46,6 +46,8 @@ export default defineConfig(({ command, mode }) => {
       emptyOutDir: true,
       sourcemap: false,
       manifest: false,
+      // Every reviewed image/font/notice remains a separately hashed public file.
+      assetsInlineLimit: 0,
       modulePreload: { polyfill: false },
       rollupOptions: { input: path.join(showcaseRoot, 'index.html') },
     },

@@ -204,6 +204,12 @@ export function createShowcaseStore(storage?: StorageLike) {
       return change(sampleId, (progress, sample) => sample.recommendations.some((question) => question.id === questionId) && !progress.questionIds.includes(questionId)
         ? { ...progress, questionIds: [...progress.questionIds, questionId] } : null);
     },
+    removeQuestion(sampleId: string, questionId: string) {
+      return change(sampleId, progress => progress.questionIds.includes(questionId) ? { ...progress, questionIds: progress.questionIds.filter(id => id !== questionId) } : null);
+    },
+    clearQuestions(sampleId: string) {
+      return change(sampleId, progress => progress.questionIds.length ? { ...progress, questionIds: [] } : null);
+    },
     setAnswer(sampleId: string, questionId: string, choiceId: string) {
       return change(sampleId, (progress, sample) => {
         const question = sample.quiz.find((item) => item.id === questionId);

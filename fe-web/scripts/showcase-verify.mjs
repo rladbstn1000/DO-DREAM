@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { WEB_ROOT, ensureResultsDirectory, listFiles, writeEvidence } from './showcase-paths.mjs';
+import { WEB_ROOT, REPO_ROOT, SHOWCASE_MIME, ensureResultsDirectory, listFiles, writeEvidence } from './showcase-paths.mjs';
 import { auditShowcase, inspectArtifact, SYNTHETIC_SENTINELS } from './showcase-audit.mjs';
 import { startShowcaseServer } from './showcase-server.mjs';
 
@@ -49,19 +49,34 @@ async function run(label, args, sentinel = false) {
   if (exitCode !== 0) throw new Error(`${label} failed with exit ${exitCode}`);
 }
 
-async function serverBoundaries() {
+async function serverBoundaries(artifact) {
   const server = await startShowcaseServer();
+  let checks = 0;
   try {
     for (const prefix of ['', '/DO-DREAM']) {
       const root = await fetch(`${server.origin}${prefix}/`);
       assert.equal(root.status, 200);
       assert.equal(root.headers.get('content-type'), 'text/html; charset=utf-8');
+      checks += 1;
+      // Every current manifest file, including original images/font/notice, must
+      // have the same bytes and MIME at both static deployment prefixes.
+      for (const file of artifact.files) {
+        const response = await fetch(`${server.origin}${prefix}/${file.path}`);
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get('content-type'), SHOWCASE_MIME[path.extname(file.path)]);
+        const bytes = Buffer.from(await response.arrayBuffer());
+        assert.equal(bytes.length, file.bytes);
+        assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), file.sha256);
+        checks += 1;
+      }
       for (const url of ['/missing-route', '/api/session/me', '/.env', '/.git/config', '/src/showcase/main.tsx']) {
         assert.equal((await fetch(`${server.origin}${prefix}${url}`)).status, 404);
+        checks += 1;
       }
       assert.equal((await fetch(`${server.origin}${prefix}/`, { method: 'POST', body: 'synthetic boundary probe' })).status, 405);
+      checks += 1;
     }
-    return { origin: server.origin, checks: 14, requests: server.requests };
+    return { origin: server.origin, checks, requests: server.requests };
   } finally { await server.close(); }
 }
 
@@ -73,7 +88,7 @@ try {
   await run('showcase-build-sentinel', ['run', 'build:showcase'], true);
   await run('phase1-build', ['run', 'build', '--', '--mode', 'phase1']);
   const artifact = auditShowcase();
-  const server = await serverBoundaries();
+  const server = await serverBoundaries(artifact);
   await run('showcase-browser', ['run', 'test:showcase-browser']);
   assert.equal(inspectArtifact().manifestDigest, artifact.manifestDigest, 'Artifact changed during acceptance');
   assert.equal(sourceDigest(), initialSource, 'Application or check sources changed during this single acceptance run');
@@ -83,5 +98,5 @@ try {
   process.exitCode = 1;
 } finally {
   const evidence = writeEvidence('verify-showcase', result);
-  console.log(`Showcase verification ${result.status}; evidence: .local/static-showcase/results/${path.basename(evidence.timestamped)}`);
+  console.log(`Showcase verification ${result.status}; evidence: ${path.relative(REPO_ROOT, evidence.timestamped)}`);
 }

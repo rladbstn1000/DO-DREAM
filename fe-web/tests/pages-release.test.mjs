@@ -6,19 +6,26 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { assertReleaseContext, makeReleaseManifest } from '../scripts/showcase-release.mjs';
+import { artifactManifestDigest } from '../scripts/showcase-audit.mjs';
+import { REVIEWED_ASSETS } from '../scripts/showcase-paths.mjs';
+import { validatePageUrl, validateReleaseManifest } from './showcase-public-browser.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const workflow = yaml.load(fs.readFileSync(path.join(root, '.github/workflows/showcase-pages.yml'), 'utf8'));
-const sha = 'a'.repeat(40), digest = 'b'.repeat(64);
+const sha = 'a'.repeat(40);
 
 function fixture() {
-  const artifact = { fileCount: 1, totalBytes: 12, manifestDigest: digest, files: [{ path: 'index.html', bytes: 12, sha256: 'c'.repeat(64) }] };
+  const image = REVIEWED_ASSETS.find(({ source }) => source.endsWith('.jpg'));
+  const files = [{ path: 'assets/background-original.jpg', bytes: image.bytes, sha256: image.sha256 },
+    { path: 'assets/main.css', bytes: 12, sha256: 'c'.repeat(64) }, { path: 'assets/main.js', bytes: 12, sha256: 'c'.repeat(64) },
+    { path: 'index.html', bytes: 12, sha256: 'c'.repeat(64) }];
+  const artifact = { fileCount: files.length, totalBytes: files.reduce((sum, file) => sum + file.bytes, 0), manifestDigest: artifactManifestDigest(files), files };
   return {
     context: { actions: 'true', runner: 'github-hosted', os: 'Linux', platform: 'linux', repository: 'rladbstn1000/DO-DREAM', event: 'workflow_dispatch', ref: 'refs/heads/main', sourceSha: sha, expectedSha: sha, runId: '12345', runAttempt: '1', serverUrl: 'https://github.com', pagesBaseUrl: 'https://rladbstn1000.github.io/DO-DREAM' },
     gitSha: sha,
     tools: { node: 'v22.22.0', npm: '10.9.4', chromePath: '/opt/google/chrome/chrome', chromeVersion: 'Google Chrome 154.0.1.2', playwright: '1.62.1' },
     verification: { status: 'PASS', sourceAndArtifactUnchanged: true, artifact: structuredClone(artifact), commands: ['typecheck', 'showcase-contracts', 'showcase-build-sentinel', 'phase1-build', 'showcase-browser'].map((label) => ({ label, exitCode: 0, started: '2026-10-01T00:00:00.000Z', finished: '2026-10-01T00:00:02.000Z' })) },
-    browser: { status: 'PASS', timestamp: '2026-10-01T000001000Z', runtime: { node: 'v22.22.0', platform: 'linux', channel: 'chrome', browserVersion: '154.0.1.2' }, artifactDigest: 'd'.repeat(64), checks: [{ status: 'PASS' }], browserErrors: [], counts: { checks: 1, staticRequests: 3, forbiddenRequestAttempts: 0, apiAttemptsBeforeCsp: 0, webSocketAttempts: 0, cspViolations: 0 } },
+    browser: { status: 'PASS', timestamp: '2026-10-01T000001000Z', runtime: { node: 'v22.22.0', platform: 'linux', channel: 'chrome', browserVersion: '154.0.1.2' }, artifactDigest: 'd'.repeat(64), checks: [{ status: 'PASS' }], browserErrors: [], counts: { checks: 1, staticRequests: 3, forbiddenRequestAttempts: 0, apiAttemptsBeforeCsp: 0, webSocketAttempts: 0, cspViolations: 0, microphoneAttempts: 0 } },
     currentArtifact: artifact,
     browserArtifactDigest: 'd'.repeat(64),
   };
@@ -40,10 +47,21 @@ test('provenance contains only selected public fields and verified file digests'
   const manifest = makeReleaseManifest(inputs);
   assert.equal(manifest.schemaVersion, 1);
   assert.equal(manifest.sourceSha, sha);
-  assert.equal(manifest.artifact.manifestDigest, digest);
+  assert.equal(manifest.artifact.manifestDigest, inputs.currentArtifact.manifestDigest);
   assert.equal(manifest.runUrl, 'https://github.com/rladbstn1000/DO-DREAM/actions/runs/12345');
   assert.deepEqual(manifest.artifact.files, inputs.currentArtifact.files);
   assert.ok(!JSON.stringify(manifest).includes('SYNTHETIC_PRIVATE_NOT_FOR_ARTIFACT'));
+});
+
+test('public acceptance validates the dynamic reviewed asset set without contacting any URL', () => {
+  const manifest = makeReleaseManifest(fixture());
+  assert.equal(validateReleaseManifest(manifest), manifest);
+  assert.equal(validatePageUrl('https://rladbstn1000.github.io/DO-DREAM/'), 'https://rladbstn1000.github.io/DO-DREAM/');
+  for (const url of ['http://127.0.0.1:8080/', 'https://unreviewed.invalid/DO-DREAM/', 'https://rladbstn1000.github.io/DO-DREAM/?mode=real']) assert.throws(() => validatePageUrl(url));
+  const malformed = structuredClone(manifest);
+  malformed.artifact.files[0].sha256 = 'e'.repeat(64);
+  malformed.artifact.manifestDigest = artifactManifestDigest(malformed.artifact.files);
+  assert.throws(() => validateReleaseManifest(malformed), /Unreviewed static asset/);
 });
 
 test('provenance refuses changed bytes, unverified source or stale browser evidence', () => {
@@ -51,6 +69,9 @@ test('provenance refuses changed bytes, unverified source or stale browser evide
     (x) => { x.gitSha = 'f'.repeat(40); },
     (x) => { x.currentArtifact.manifestDigest = 'e'.repeat(64); },
     (x) => { x.currentArtifact.files[0].bytes += 1; },
+    (x) => { x.currentArtifact.files.pop(); },
+    (x) => { x.currentArtifact.files[0].sha256 = 'e'.repeat(64); x.currentArtifact.manifestDigest = artifactManifestDigest(x.currentArtifact.files); x.verification.artifact = structuredClone(x.currentArtifact); },
+    (x) => { x.currentArtifact.files[0].path = '../source.env'; x.currentArtifact.manifestDigest = artifactManifestDigest(x.currentArtifact.files); x.verification.artifact = structuredClone(x.currentArtifact); },
     (x) => { x.browserArtifactDigest = 'e'.repeat(64); },
     (x) => { x.verification.sourceAndArtifactUnchanged = false; },
     (x) => { x.browser.timestamp = '2026-09-30T000001000Z'; },
@@ -69,7 +90,7 @@ test('failed, skipped, missing checks and even aborted network attempts prevent 
     (x) => { x.browser.checks[0].status = 'SKIP'; },
     (x) => { x.browser.checks = []; },
     (x) => { x.browser.browserErrors.push('synthetic error'); },
-    ...['forbiddenRequestAttempts', 'apiAttemptsBeforeCsp', 'webSocketAttempts', 'cspViolations'].map((key) => (x) => { x.browser.counts[key] = 1; }),
+    ...['forbiddenRequestAttempts', 'apiAttemptsBeforeCsp', 'webSocketAttempts', 'cspViolations', 'microphoneAttempts'].map((key) => (x) => { x.browser.counts[key] = 1; }),
   ];
   for (const change of changes) { const inputs = fixture(); change(inputs); assert.throws(() => makeReleaseManifest(inputs)); }
 });

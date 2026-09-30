@@ -1,0 +1,165 @@
+/* React DOM port of fe_app team UI at 4c763af: screen StyleSheets, commonStyles,
+   COLORS and HEADER_BTN_HEIGHT. Namespaced to protect the original teacher CSS. */
+.original-student {
+  --app-bg:#fff; --app-elevated:#f5f5f5; --app-paper:#e8ebf2;
+  --app-ink:#1a1a1a; --app-secondary:#424242; --app-muted:#616161;
+  --app-navy:#192b55; --app-navy-dark:#0f1a36; --app-yellow:#fec73d;
+  --app-yellow-dark:#e5a510; --app-yellow-pale:#fff8e6; --app-line:#e0e0e0;
+  --app-green:#2d7a2f; --app-red:#c62828; --app-button-ink:#fff; --app-scale:1;
+  box-sizing:border-box; color:var(--app-ink); font-family:Arial,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  font-size:20px; line-height:1.5; padding:24px 12px 40px; width:100%;
+}
+.original-student.app-high-contrast { --app-bg:#000; --app-elevated:#1a1a1a; --app-paper:#1a1a1a; --app-ink:#fff; --app-secondary:#fec73d; --app-muted:#e0e0e0; --app-navy:#fec73d; --app-navy-dark:#fec73d; --app-line:#424242; --app-green:#8bc34a; --app-red:#ef5350; --app-button-ink:#000; --app-yellow-pale:#1a1a1a; }
+.original-student.app-font-08 {--app-scale:.8}.original-student.app-font-09 {--app-scale:.9}.original-student.app-font-11 {--app-scale:1.1}.original-student.app-font-12 {--app-scale:1.2}.original-student.app-font-13 {--app-scale:1.3}.original-student.app-font-14 {--app-scale:1.4}.original-student.app-font-15 {--app-scale:1.5}.original-student.app-font-16 {--app-scale:1.6}.original-student.app-font-17 {--app-scale:1.7}.original-student.app-font-18 {--app-scale:1.8}.original-student.app-font-19 {--app-scale:1.9}.original-student.app-font-20 {--app-scale:2}
+.original-student *, .original-student *::before, .original-student *::after { box-sizing:border-box; }
+.original-student h1,.original-student h2,.original-student h3,.original-student p { margin:0; font:inherit; }
+.original-student button,.original-student input,.original-student textarea,.original-student select { font:inherit; color:inherit; letter-spacing:normal; }
+.original-student button,.original-student a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.original-student button { cursor:pointer; box-shadow:none; text-transform:none; margin:0; }
+.original-student button:disabled { cursor:default; opacity:.6; }
+.original-student a { color:inherit; text-decoration:none; }
+.original-student :focus-visible { outline:3px solid #1565c0; outline-offset:3px; }
+.original-student.app-high-contrast :focus-visible { outline-color:#fec73d; }
+.original-student .app-phone { position:relative; width:414px; max-width:100%; height:802px; margin:0 auto; padding:9px; border:2px solid #41444b; border-radius:35px; background:#22252c; box-shadow:0 18px 40px #192b5526; }
+.original-student .app-viewport { position:relative; isolation:isolate; height:780px; width:100%; overflow:hidden; border-radius:24px; background:var(--app-bg); }
+.original-student .app-screen { display:flex; flex-direction:column; height:100%; min-height:0; background:var(--app-bg); }
+.original-student .app-header { display:flex; flex-shrink:0; align-items:center; justify-content:space-between; padding:16px 24px; min-height:89px; border-bottom:3px solid var(--app-navy); background:var(--app-bg); gap:4px; }
+.original-student .app-header-right { display:flex; align-items:center; gap:4px; }
+.original-student .app-student-name { font-size:calc(36px * var(--app-scale)); font-weight:700; line-height:54px; white-space:nowrap; }
+.original-student .app-header-title { font-size:calc(28px * var(--app-scale)); font-weight:700; text-align:center; min-width:0; }
+.original-student .app-header-button { display:flex; justify-content:center; align-items:center; width:106px; min-height:54px; padding:12px 10px; border:3px solid var(--app-navy); border-radius:12px; background:var(--app-paper); color:var(--app-navy); font-size:18px; font-weight:700; line-height:22px; white-space:nowrap; }
+.original-student .app-voice { border-color:var(--app-yellow-dark); background:var(--app-yellow-pale); color:var(--app-ink); }
+.original-student .app-back { min-width:88px; min-height:54px; padding:8px 4px 8px 0; background:transparent; color:var(--app-navy); border:0; text-align:left; font-size:calc(22px * var(--app-scale)); font-weight:700; line-height:1.25; }
+.original-student .app-bookmark { border-color:#1565c0; background:#e3f2fd; color:#1a1a1a; }
+.original-student .app-bookmark[aria-pressed=true] { border-color:#43a047; background:#e8f5e9; color:#1b5e20; }
+.original-student .app-clear { background:#ffebee; border-color:#c62828; color:#c62828; width:80px; }
+.original-student .app-scroll { min-height:0; flex:1; overflow-y:auto; overscroll-behavior-y:contain; scrollbar-width:thin; }
+.original-student .app-library-list { padding:20px 24px 40px; }
+.original-student .app-material { display:flex; width:100%; align-items:center; justify-content:space-between; text-align:left; background:var(--app-paper); border:3px solid var(--app-navy); border-radius:16px; padding:20px 24px; margin-bottom:20px; min-height:100px; gap:12px; }
+.original-student .app-material strong { overflow-wrap:anywhere; display:block; font-size:calc(24px * var(--app-scale)); font-weight:600; line-height:1.3; margin-bottom:4px; }
+.original-student .app-material small { display:block; color:var(--app-secondary); font-size:calc(18px * var(--app-scale)); margin-bottom:2px; }
+.original-student .app-material .app-count { font-size:calc(15px * var(--app-scale)); color:var(--app-muted); margin-top:2px; }
+.original-student .app-continue { border-radius:16px; background:var(--app-green); color:var(--app-button-ink); padding:6px 12px; font-size:calc(14px * var(--app-scale)); font-weight:600; white-space:nowrap; }
+.original-student .app-playback { background:var(--app-elevated); }
+.original-student .app-playback-content { padding:0 24px 24px; }
+.original-student .app-subject { font-size:calc(40px * var(--app-scale)); font-weight:700; text-align:center; padding-top:8px; margin:24px 0; line-height:1.3; }
+.original-student .app-chapter-select { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:24px; margin-bottom:24px; border:3px solid var(--app-navy); border-radius:16px; background:var(--app-paper); }
+.original-student .app-chapter-select .app-chapter-info { text-align:center; flex:1; min-width:0; }
+.original-student .app-chapter-info strong { display:block; font-size:24px; font-weight:700; line-height:1.4; margin-bottom:8px; }
+.original-student .app-chapter-info span { display:block; font-size:18px; color:var(--app-secondary); }
+.original-student .app-round { display:flex; justify-content:center; align-items:center; flex-shrink:0; width:60px; height:60px; border:3px solid var(--app-navy-dark); border-radius:50%; background:var(--app-navy); color:var(--app-button-ink); font-size:24px; }
+.original-student .app-choice { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:left; min-height:100px; border:3px solid var(--app-navy); border-radius:12px; background:var(--app-paper); padding:24px; margin-bottom:16px; }
+.original-student .app-choice strong { font-size:calc(26px * var(--app-scale)); line-height:1.4; }
+.original-student .app-choice small { font-size:calc(20px * var(--app-scale)); line-height:1.4; font-weight:600; color:var(--app-secondary); }
+.original-student .app-player-info { padding:28px 20px 16px; border-bottom:2px solid var(--app-line); background:var(--app-elevated); flex-shrink:0; }
+.original-student .app-player-info h1 { font-size:calc(32px * var(--app-scale)); line-height:1.2; font-weight:700; margin-bottom:6px; }
+.original-student .app-mode { border:0; background:transparent; color:var(--app-secondary); padding:0; text-align:left; font-size:calc(20px * var(--app-scale)); font-weight:600; }
+.original-student .app-reader { padding:20px 20px 36px; }
+.original-student .app-paragraph { font-size:calc(28px * var(--app-scale)); line-height:1.57; font-weight:500; margin-bottom:24px; white-space:pre-line; overflow-wrap:anywhere; }
+.original-student .app-counter { color:var(--app-muted); text-align:center; font-size:22px; font-weight:700; padding-top:20px; }
+.original-student .app-controls { display:flex; align-items:stretch; gap:8px; padding:12px; border-top:3px solid #bdbdbd; flex-shrink:0; background:var(--app-bg); }
+.original-student .app-control { flex:1; min-width:0; min-height:80px; padding:18px 6px; border:3px solid var(--app-navy-dark); border-radius:14px; background:var(--app-navy); color:var(--app-button-ink); font-size:22px; font-weight:700; white-space:nowrap; }
+.original-student .app-control:disabled { background:#bdbdbd; border-color:#bdbdbd; }
+.original-student .app-play { flex:1.2; background:var(--app-green); border-color:var(--app-green); font-weight:900; }
+.original-student .app-complete { background:var(--app-yellow); border-color:var(--app-yellow-dark); color:#1a1a1a; }
+.original-student .app-bottom { flex-shrink:0; padding:16px 20px 20px; background:var(--app-bg); }
+.original-student .app-large { display:block; width:100%; min-height:68px; padding:18px 20px; border:3px solid var(--app-yellow-dark); border-radius:16px; color:#1a1a1a; background:var(--app-yellow); font-size:calc(26px * var(--app-scale)); line-height:1.35; font-weight:700; text-align:center; }
+.original-student .app-primary { background:var(--app-navy); border-color:var(--app-navy-dark); color:var(--app-button-ink); }
+.original-student .app-success { background:var(--app-green); border-color:var(--app-green); color:var(--app-button-ink); }
+.original-student .app-danger { background:var(--app-red); border-color:var(--app-red); color:var(--app-button-ink); }
+.original-student .app-note { font-size:16px; line-height:1.55; color:var(--app-secondary); margin:12px 0; }
+.original-student .app-chat { background:var(--app-paper); padding:16px; display:flex; flex-direction:column; }
+.original-student .app-welcome { border-radius:12px; padding:20px; max-width:95%; background:var(--app-yellow); color:#1a1a1a; font-size:calc(20px * var(--app-scale)); line-height:1.5; }
+.original-student .app-messages { margin-top:auto; }
+.original-student .app-message-row { display:flex; margin-bottom:12px; }
+.original-student .app-user-row { justify-content:flex-end; }
+.original-student .app-bubble { border-radius:12px; padding:12px 16px; max-width:85%; font-size:calc(20px * var(--app-scale)); line-height:1.5; overflow-wrap:anywhere; }
+.original-student .app-user-bubble { background:var(--app-navy); color:var(--app-button-ink); }
+.original-student .app-answer-bubble { background:var(--app-yellow); color:#1a1a1a; }
+.original-student .app-bubble small { display:block; font-size:13px; margin-top:8px; }
+.original-student .app-source { background:transparent; padding:6px 0; border:0; font-size:16px; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.original-student .app-input-row { display:flex; align-items:flex-end; gap:10px; padding:12px 16px; border-top:2px solid #bdbdbd; background:var(--app-bg); flex-shrink:0; }
+.original-student .app-question-input { flex:1; min-width:0; min-height:54px; max-height:180px; resize:vertical; padding:12px 16px; font-size:calc(18px * var(--app-scale)); line-height:1.4; border:2px solid var(--app-line); border-radius:12px; background:var(--app-elevated); }
+.original-student .app-send { min-height:54px; min-width:72px; padding:12px; border:2px solid var(--app-navy-dark); border-radius:12px; background:var(--app-navy); color:var(--app-button-ink); font-size:16px; font-weight:700; }
+.original-student .app-list-info { padding:20px 24px; background:var(--app-elevated); border-bottom:2px solid var(--app-navy); }
+.original-student .app-list-info h1 { font-size:calc(26px * var(--app-scale)); font-weight:700; margin-bottom:8px; }
+.original-student .app-list-info p { font-size:calc(17px * var(--app-scale)); color:var(--app-secondary); }
+.original-student .app-history-list { padding:16px; }
+.original-student .app-history-card { margin-bottom:16px; border:2px solid var(--app-navy); border-radius:12px; overflow:hidden; }
+.original-student .app-history-open { display:block; text-align:left; width:100%; padding:16px; border:0; background:var(--app-bg); }
+.original-student .app-history-open small { display:block; font-size:16px; color:var(--app-navy); font-weight:700; }
+.original-student .app-history-open strong { display:block; font-size:calc(24px * var(--app-scale)); line-height:1.35; }
+.original-student .app-history-open span { display:block; font-size:16px; color:var(--app-muted); margin-top:12px; }
+.original-student .app-delete { display:block; width:100%; border:0; background:var(--app-red); color:var(--app-button-ink); padding:12px 16px; font-size:16px; font-weight:700; }
+.original-student .app-empty { font-size:calc(24px * var(--app-scale)); color:var(--app-muted); text-align:center; padding:60px 12px; }
+.original-student .app-quiz-content { padding:24px; }
+.original-student .app-quiz-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:24px; }
+.original-student .app-quiz-heading h1 { font-size:32px; font-weight:700; color:var(--app-navy-dark); }
+.original-student .app-quiz-heading span { white-space:nowrap; font-size:22px; font-weight:600; color:var(--app-secondary); }
+.original-student .app-quiz-prompt { font-size:calc(28px * var(--app-scale)); line-height:1.43; font-weight:600; margin-bottom:32px; }
+.original-student .app-answer-input { display:block; width:100%; padding:20px; min-height:88px; margin-bottom:16px; border:3px solid var(--app-line); border-radius:12px; background:var(--app-elevated); font-size:24px; }
+.original-student .app-quiz-content .app-large { min-height:80px; border-width:4px; font-size:24px; margin-bottom:12px; }
+.original-student .app-quiz-badge { border:2px solid var(--app-green); border-radius:8px; color:var(--app-green); background:var(--app-elevated); padding:4px 8px; font-size:14px; white-space:nowrap; }
+.original-student .app-result-content { padding:28px 24px 24px; }
+.original-student .app-result-summary { text-align:center; border-bottom:3px solid var(--app-navy); padding-bottom:32px; margin-bottom:32px; }
+.original-student .app-result-summary h1 { font-size:40px; font-weight:700; margin-bottom:8px; }
+.original-student .app-result-summary p { font-size:22px; color:var(--app-secondary); margin-bottom:24px; }
+.original-student .app-score { border:8px solid var(--app-navy); border-radius:20px; padding:20px; background:var(--app-paper); color:var(--app-navy); font-size:40px; font-weight:600; margin-bottom:20px; }
+.original-student .app-score strong { font-size:56px; font-weight:700; }
+.original-student .app-result-summary .app-percentage { font-size:30px; color:var(--app-ink); font-weight:600; margin:0; }
+.original-student .app-perfect,.original-student .app-wrong { text-align:center; padding:24px; border:3px solid var(--app-green); border-radius:12px; background:#e8f5e9; color:#2d7a2f; margin-bottom:32px; }
+.original-student .app-perfect h2,.original-student .app-wrong h2 { font-size:30px; font-weight:700; }
+.original-student .app-wrong { background:#ffebee; border-color:#c62828; color:#c62828; }
+.original-student .app-result-toggle { width:100%; padding:20px; border:2px solid #2d7a2f; border-radius:12px; background:#e8f5e9; color:#2d7a2f; font-size:24px; font-weight:600; margin-bottom:16px; }
+.original-student .app-result-card { border:3px solid #2d7a2f; border-radius:16px; padding:20px; margin-bottom:20px; background:#e8f5e9; color:#1a1a1a; }
+.original-student .app-result-card.app-incorrect { border:4px solid #c62828; background:#ffebee; }
+.original-student .app-result-card h3 { font-size:24px; font-weight:700; margin-bottom:16px; }
+.original-student .app-result-card p { font-size:20px; margin-bottom:12px; }
+.original-student .app-result-card dl { margin:0; }.original-student .app-result-card dt { font-size:16px; font-weight:700; }.original-student .app-result-card dd { font-size:22px; margin:0 0 12px; }
+.original-student .app-settings-content { padding:20px 20px 60px; }
+.original-student .app-settings-section { background:var(--app-elevated); border:3px solid var(--app-line); border-radius:16px; padding:20px; margin-bottom:32px; }
+.original-student .app-settings-section h2 { font-size:calc(30px * var(--app-scale)); font-weight:700; padding-bottom:12px; margin-bottom:24px; border-bottom:3px solid #bdbdbd; }
+.original-student .app-setting { margin-bottom:28px; }
+.original-student .app-setting h3 { font-size:calc(26px * var(--app-scale)); font-weight:700; margin-bottom:16px; }
+.original-student .app-setting-row { display:flex; align-items:center; gap:12px; }
+.original-student .app-setting-value { flex:1; min-width:0; padding:20px 6px; border:3px solid var(--app-navy); border-radius:12px; background:var(--app-paper); color:var(--app-navy); text-align:center; font-size:30px; font-weight:700; white-space:nowrap; }
+.original-student .app-setting-control { width:70px; min-height:80px; border:3px solid var(--app-navy-dark); border-radius:12px; background:var(--app-navy); color:var(--app-button-ink); font-size:44px; font-weight:700; }
+.original-student .app-switch { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:28px; font-size:calc(26px * var(--app-scale)); font-weight:700; }
+.original-student .app-switch input { width:32px; height:32px; accent-color:var(--app-navy); }
+.original-student .app-modal-overlay { position:absolute; inset:0; background:#000b; display:flex; align-items:center; justify-content:center; padding:24px; z-index:10; }
+.original-student .app-modal { background:var(--app-bg); color:var(--app-ink); width:100%; max-height:94%; overflow-y:auto; border:3px solid var(--app-navy); border-radius:24px; padding:24px; }
+.original-student .app-modal h2 { font-size:28px; font-weight:700; margin-bottom:16px; line-height:1.35; }
+.original-student .app-modal p { font-size:20px; line-height:1.5; margin-bottom:20px; }
+.original-student .app-modal .app-large { font-size:20px; min-height:64px; margin:12px 0 0; padding:14px 12px; }
+.original-student .app-modal .app-plain { background:var(--app-elevated); border-color:var(--app-line); color:var(--app-secondary); }
+.original-student .app-option { display:block; width:100%; text-align:left; border:3px solid var(--app-navy); border-radius:12px; background:var(--app-paper); padding:12px; margin:10px 0; font-size:20px; }
+.original-student .app-option[aria-pressed=true] { background:var(--app-navy); color:var(--app-button-ink); }
+.original-student .app-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+@media(max-width:540px) {
+  .original-student { padding:0; }
+  .original-student .app-phone { padding:0; border:0; border-radius:0; width:100%; height:max(640px,calc(100dvh - 64px)); box-shadow:none; }
+  .original-student .app-viewport { height:100%; border-radius:0; }
+}
+@media(max-width:380px) {
+  .original-student .app-header { padding:16px 12px; }
+  .original-student .app-header-button { width:88px; padding:12px 4px; }
+  .original-student .app-back { min-width:78px; font-size:20px; }
+  .original-student .app-student-name { font-size:32px; }
+  .original-student .app-header-title { font-size:24px; }
+  .original-student .app-library-list,.original-student .app-playback-content,.original-student .app-quiz-content,.original-student .app-result-content { padding-left:16px; padding-right:16px; }
+  .original-student .app-material { padding:20px 16px; }
+  .original-student .app-chapter-select { padding:16px 12px; gap:10px; }
+  .original-student .app-round { width:48px; height:48px; }
+  .original-student .app-chapter-info strong { font-size:22px; }
+  .original-student .app-controls { padding:12px 8px; gap:6px; }
+  .original-student .app-control { padding:18px 3px; font-size:19px; }
+  .original-student .app-settings-content { padding:20px 12px; }
+  .original-student .app-settings-section { padding:16px 12px; }
+  .original-student .app-setting-row { gap:8px; }.original-student .app-setting-control { width:60px; }
+  .original-student .app-modal-overlay { padding:16px; }.original-student .app-modal { padding:20px; }
+}
+
+.original-student .app-subject,.original-student .app-player-info h1,.original-student .app-history-open strong { overflow-wrap:anywhere; }
+/* Route headings receive screen-reader focus but are not interactive controls. */
+.original-student h1[tabindex="-1"]:focus { outline:none; }
+.original-student .app-welcome small { display:block; margin:12px 0 0; }
