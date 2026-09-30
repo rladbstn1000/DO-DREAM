@@ -4,10 +4,12 @@
 
 ## 서버 없는 공개 샘플 체험 (showcase)
 
-Docker·DB·계정·API 키 없이 웹 산출물만 실행한다. 기존 로컬 통합 실행과 다른 진입점이며, 실제 인증·저장·RAG·공급자 호출을 대신 검증하는 경로가 아니다. 공개 배포는 아직 수행하지 않았다. 구현과 인수 증거는 [19 결과](19-static-showcase-results.md)에 기록한다.
+[공개 샘플 체험](https://rladbstn1000.github.io/DO-DREAM/)은 Docker·DB·계정·API 키 없이 사용할 수 있다. 기존 로컬 통합 실행과 다른 진입점이며, 실제 인증·저장·RAG·공급자 호출을 대신 검증하는 경로가 아니다. 구현과 로컬 인수 증거는 [19 결과](19-static-showcase-results.md), 원격 CI·배포·공개 접속 검증은 [20 결과](20-publication-and-pages-results.md)에 기록한다.
+
+로컬 재현은 저장소 루트에서 시작한다.
 
 ```bash
-cd /Users/yoonsu/Desktop/projects/DO-DREAM/fe-web
+cd fe-web
 # 의존성이 없는 환경에서만, 기존 lock 기준 설치
 npm ci --ignore-scripts --no-audit --no-fund
 npm run build:showcase
@@ -22,9 +24,13 @@ npm run verify:showcase
 
 `verify:showcase`는 타입·showcase 계약·합성 환경값 빌드·기존 phase1 빌드·모듈/산출물 검사·정적 서버 경계·독립 브라우저 인수를 한 실행으로 묶는다. `.local/static-showcase/results/`에 실행별 증거를 남기고 실행 중 소스·산출물 불변을 확인한다. 단독 명령은 `test:showcase`, `test:showcase-browser`다. 기존 auth/authorization/grading/indexing/student/hardening 단위 검사는 별도로 유지한다.
 
+공개 배포는 검증한 `fe-web/dist-showcase/`만 게시하는 [수동 Pages workflow](../../.github/workflows/showcase-pages.yml)를 사용한다. 원격 산출물 대조·공개 인수·재배포 절차는 [20 결과](20-publication-and-pages-results.md)를 따른다.
+
 학생 화면의 **데모 초기화**는 `dodream.showcase.v1.state`만 제거한다. 다른 저장소 키를 지우지 않는다. 기록은 같은 탭의 임시 상태이고 실제 로그인·권한·서버 동기화가 아니다. 저장소 오류 시 제한을 안내하며 메모리로 체험한다.
 
 ## 실제 백엔드 로컬 통합 실행 (phase1)
+
+아래 4~5단계의 미배포·미실행 판정은 당시 실행 기록이며, 현재 공개된 정적 showcase의 배포 결과와 구분한다.
 
 이하 절차는 키 없는 `LOCAL_FAKE`와 실제 자체 백엔드/DB를 사용한다. 실제 AI 호출·모델 평가·비용 측정은 현재 완료 조건이 아니며 `REAL_AI_INTEGRATION=NOT_RUN`이다. 공급자 adapter·오프라인 계약·평가셋과 과거 재개 절차를 보존한다. 키 탐색·읽기·설정·live 활성화는 이번 showcase 작업에서 수행하지 않았다. live 오류를 대역 성공으로 숨기거나 키 존재로 자동 전환하지 않는다.
 
