@@ -29,13 +29,13 @@
 
 ## 실행과 확인 상태
 
-아직 원격 CI·Pages 배포·공개 URL 확인을 완료하지 않았다. 배포 링크는 **배포 준비 중**이며 성공 배지나 추측한 주소를 넣지 않는다.
+소스는 [PR #1](https://github.com/rladbstn1000/DO-DREAM/pull/1)으로 일반 병합했다. 배포 링크는 아직 **배포 준비 중**이다. PR 검사는 성공했지만 병합 후 main 검사에서 실패가 발견되어 배포를 멈추고 최소 수정·새 PR로 재검증한다.
 
 | 상태 | 현재 판정 |
 |---|---|
 | SOURCE_PUBLICATION_REVIEW | PASS_WITH_DOCUMENTED_LIMITATIONS — 기준 소스·이력 및 release delta |
-| REMOTE_SOURCE_SYNC | NOT_RUN |
-| REMOTE_REQUIRED_CI | NOT_RUN |
+| REMOTE_SOURCE_SYNC | PASS — PR #1 일반 병합, 후속 최소 수정 검증 중 |
+| REMOTE_REQUIRED_CI | FAIL — PR #1 성공 후 main의 AI 시간 경계 검사 1건 실패, 수정·재검증 중 |
 | REMOTE_OPTIONAL_INTEGRATION | NOT_RUN — 정적 배포의 필수 조건이 아닌 별도 서버 통합 범위 |
 | PAGES_WORKFLOW | PASS — 수동/main/최소 권한/산출물 계약 로컬 검증 |
 | PAGES_DEPLOYMENT | NOT_RUN |
@@ -45,6 +45,17 @@
 | PUBLIC_DEMO_DEPLOYED | false |
 
 로컬 최종 `verify:showcase`는 2026-09-30 15:38:41 UTC에 PASS했다. 기존 웹 회귀 115개, showcase 계약 50개, 브라우저 92개, Pages 계약 7개, CI 경계 6개를 각각 통과했다. 브라우저 정적 요청 63건, 금지 요청/API 시도/CSP 위반 0건이다. root·저장소 하위 경로의 정적 서버 검사 14개도 통과했다. 검증 전후 소스와 산출물은 같으며 공개 파일 3개/272,609 bytes, 로컬 manifest digest는 `646dfe49c131d283223381db6b71f764d307cdb8c5ecc41bad936a4f58609760`이다. 일반 서버용 빌드의 500 kB chunk 경고는 유지된다. 이 결과는 아직 원격 Linux/공개 사이트 결과가 아니다.
+
+## 원격 소스·CI 기록
+
+- 공개 release 커밋 `4ad7b356f35573389e4ebe5ef03d3640326dbbfd`는 기준 개인 개선 11개 커밋을 그대로 잇는다. 첫 push는 `codex/dodream-pages-release` 하나였으며 태그·다른 로컬 브랜치를 보내지 않았다.
+- [PR #1 CI 36738964317](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36738964317): event=`pull_request`, head=`4ad7b356f35573389e4ebe5ef03d3640326dbbfd`, 실제 5개 job checkout test merge SHA=`1bf93c8e48cff3eb216cae2fe27f5bec60eb40a7`. `web`, `python (ai)`, `python (python-service)`, `backend`, `offline-tools` 모두 success. [동일 branch push CI](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36738944271)도 성공했다.
+- 실제 PR #1 merge SHA는 `2902335a10b32f17c856ed7deee5c3804c3382c8`이며 2026-09-30 15:46:41 UTC에 일반 merge commit으로 병합했다. PR 검사 SHA와 구분한다. 기존 required checks·review 보호는 없었지만 기대한 다섯 job과 병합 상태를 직접 확인했다. `--admin`/squash/rebase는 사용하지 않았다.
+- 병합 후 자동 push run이 조회되지 않아 승인된 keyless CI를 main에서 한 번 수동 실행했다. [main CI 36739526438](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36739526438), source=`2902335a10b32f17c856ed7deee5c3804c3382c8`, event=`workflow_dispatch`는 **FAIL**이다. 4개 job은 성공했고 `python (ai)`의 `test_five_second_skew_and_maximum_access_lifetime` 한 건에서 기대 401/실제 200을 기록했다. 실패 로그·실행을 보존했으며 이 SHA를 배포하지 않았다.
+
+원인은 만료값 `exp=now+901`만 테스트 시작 시각으로 고정하고 helper의 `iat/nbf`는 새 시각으로 생성한 것이었다. 다음 초로 넘어가면 실제 `exp-iat`가 900초가 되어 정상 토큰을 거부하라는 잘못된 기대를 만든다. 인증 구현의 900초 최대 수명 검사는 유지하고 테스트의 발급·시작·만료 시각만 같은 기준으로 묶는다. 실패 검사를 삭제·skip하거나 허용 수명을 늘리지 않는다. 새 공개 변경은 테스트 한 줄과 이 실패 기록뿐이며 실제 자격정보·비공개 데이터가 없다. 로컬 Python에는 FastAPI/jose/SQLAlchemy 의존성이 없어 실제 HTTP targeted 실행은 BLOCKED로 구분하고, 새 원격 CI에서 기존 전체 테스트를 실행한다.
+
+PR #1의 실제 범위는 웹 단위·계약 172개(기존115+Pages7+showcase50), 브라우저 92개, AI 183개, python-service 24개, 오프라인 CI6/평가26/local101개다. backend는 `bootJar`, `testClasses`, 선택된 인증·권한·채점·색인·hardening/file 검사이며 실제 DB crash suite 전체를 실행한 것으로 쓰지 않는다. 로그의 Gradle 6 tasks를 테스트 6개로 해석하지 않는다. Actions가 기존 Node20 기반 checkout/setup action을 Node24로 실행한다는 경고, 일반 phase1 build chunk 경고와 JS module type 경고를 보존한다. 앱 검증 Node 버전은 22.22.0이다.
 
 ## 재현 명령과 배포 계약
 

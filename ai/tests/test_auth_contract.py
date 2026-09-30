@@ -135,7 +135,7 @@ class AccessTokenContractTests(unittest.TestCase):
             {"iat": now, "nbf": now, "exp": now + 900},
         ):
             self.assertEqual(self.request(encode(access_claims("102", **times))).status_code, 200)
-        self.assert_denied(encode(access_claims("102", exp=now + 901)))
+        self.assert_denied(encode(access_claims("102", iat=now, nbf=now, exp=now + 901)))
 
     def test_compact_token_segments_must_be_unpadded_base64url(self):
         token = encode(access_claims("102"))
