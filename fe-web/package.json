@@ -20,7 +20,12 @@
     "preview": "vite preview --config vite.config.ts",
     "test:student": "node --experimental-strip-types --test tests/student-*.test.ts",
     "test:browser-student": "node tests/browser-student.mjs",
-    "test:hardening": "node --experimental-strip-types --test tests/html-boundaries.test.ts"
+    "test:hardening": "node --experimental-strip-types --test tests/html-boundaries.test.ts",
+    "build:showcase": "node scripts/showcase-build.mjs",
+    "preview:showcase": "node scripts/showcase-server.mjs",
+    "test:showcase": "node --experimental-strip-types --test tests/showcase-state.test.ts tests/showcase-build.test.mjs",
+    "test:showcase-browser": "node tests/showcase-browser.mjs",
+    "verify:showcase": "node scripts/showcase-verify.mjs"
   },
   "dependencies": {
     "@tiptap/extension-code-block-lowlight": "3.30.5",
@@ -60,6 +65,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.22",
     "globals": "^16.4.0",
+    "playwright-core": "1.62.1",
     "prettier": "^3.6.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",

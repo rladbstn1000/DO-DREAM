@@ -25,7 +25,7 @@ env:
 jobs:
   web:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -42,8 +42,10 @@ jobs:
           npm run test:indexing
           npm run test:student
           npm run test:hardening
-          npm run typecheck
-          npm run build -- --mode phase1
+          # verify includes typecheck, both explicit builds, graph/artifact checks,
+          # and an isolated Chrome session against built static files only.
+          # Hosted Ubuntu supplies Chrome; no user profile or browser installation.
+          npm run verify:showcase
         working-directory: fe-web
   python:
     runs-on: ubuntu-24.04

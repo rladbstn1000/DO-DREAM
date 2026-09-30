@@ -1,14 +1,34 @@
 # 02. 격리 로컬 실행
 
-저장소 루트에서 실행한다. 이 구성은 공개 배포용이 아니다. 팀의 기존 배포 설정과 비밀 파일을 재사용하지 않는다.
+아래에서 서버 없는 showcase와 실제 백엔드 통합 실행을 구분한다. phase1 통합 구성은 저장소 루트에서 실행하며 공개 배포용이 아니다. 팀의 기존 배포 설정과 비밀 파일을 재사용하지 않는다.
 
-## 현재 작업 기준 (2026-09-30)
+## 서버 없는 공개 샘플 체험 (showcase)
 
-기본 검증은 키 없는 `LOCAL_FAKE`와 실제 자체 백엔드/DB를 사용한다. 실제 AI 호출·모델 평가·비용 측정은 현재 완료 조건이 아니며 `REAL_AI_INTEGRATION=NOT_RUN`이다. 공급자 adapter·오프라인 계약·평가셋과 아래 과거 재개 절차는 보존하지만, 이번 작업에서는 키 탐색·읽기·설정·예산 승인·live 활성화를 수행하지 않는다. live 오류를 대역 성공으로 숨기거나 키 존재로 자동 전환하지 않는다.
+Docker·DB·계정·API 키 없이 웹 산출물만 실행한다. 기존 로컬 통합 실행과 다른 진입점이며, 실제 인증·저장·RAG·공급자 호출을 대신 검증하는 경로가 아니다. 공개 배포는 아직 수행하지 않았다. 구현과 인수 증거는 [19 결과](19-static-showcase-results.md)에 기록한다.
 
-이번 리뷰 증거는 `DODREAM_RESULTS_DIR=.local/portfolio-hardening/results`로 분리한다. 기존 결과를 덮어쓰지 않고, 시작 전 자원 비교와 기존 데이터 보존 절차를 재사용한다. 종료 시 이번에 시작한 자체 서비스만 시작 당시 상태로 복구한다.
+```bash
+cd /Users/yoonsu/Desktop/projects/DO-DREAM/fe-web
+# 의존성이 없는 환경에서만, 기존 lock 기준 설치
+npm ci --ignore-scripts --no-audit --no-fund
+npm run build:showcase
+npm run preview:showcase
+# 별도 터미널에서 단일 인수 실행
+npm run verify:showcase
+```
 
-프로젝트 코드의 실제 통합 검증, 다음 작업의 서버 없는 공개 showcase, 전체 백엔드 운영 준비는 별도 판정이다. 공개 showcase는 의도적으로 공개 가능한 샘플과 브라우저 임시 상태를 사용하도록 설계하며 실제 JWT나 인증을 흉내 내지 않는다. 이번에는 전체 showcase 구현·배포를 하지 않는다. 현재 리뷰와 후속 경계는 [18 코드 리뷰](18-portfolio-code-review.md)에 정리한다.
+호스트 Node 22 계열과 독립 테스트용 Chrome이 필요하다. 검증 시 호스트 Node는 22.14.0, 기존 CI 고정값은 22.22.0이다. 테스트 도구는 같은 lock의 `playwright-core`를 사용하며 브라우저나 모델을 자동 설치하지 않는다. 브라우저 검사는 Playwright의 `chrome` 채널에서 찾는 기본 설치 Chrome을 사용한다. 사용자 프로필이나 기존 탭을 사용하지 않는다.
+
+`preview:showcase`는 `127.0.0.1`의 빈 포트를 골라 주소를 출력한다. 같은 `dist-showcase/`를 `/`와 `/DO-DREAM/`에서 제공하며 API proxy·SPA rewrite는 없다. 예: 출력 주소 뒤 `DO-DREAM/#/learn/water-journey?section=water-2`. 종료는 해당 터미널의 Ctrl+C이며 공개 운영용 서버가 아니다. 이 절차는 기존 백엔드 서비스를 시작하거나 종료하지 않는다.
+
+`verify:showcase`는 타입·showcase 계약·합성 환경값 빌드·기존 phase1 빌드·모듈/산출물 검사·정적 서버 경계·독립 브라우저 인수를 한 실행으로 묶는다. `.local/static-showcase/results/`에 실행별 증거를 남기고 실행 중 소스·산출물 불변을 확인한다. 단독 명령은 `test:showcase`, `test:showcase-browser`다. 기존 auth/authorization/grading/indexing/student/hardening 단위 검사는 별도로 유지한다.
+
+학생 화면의 **데모 초기화**는 `dodream.showcase.v1.state`만 제거한다. 다른 저장소 키를 지우지 않는다. 기록은 같은 탭의 임시 상태이고 실제 로그인·권한·서버 동기화가 아니다. 저장소 오류 시 제한을 안내하며 메모리로 체험한다.
+
+## 실제 백엔드 로컬 통합 실행 (phase1)
+
+이하 절차는 키 없는 `LOCAL_FAKE`와 실제 자체 백엔드/DB를 사용한다. 실제 AI 호출·모델 평가·비용 측정은 현재 완료 조건이 아니며 `REAL_AI_INTEGRATION=NOT_RUN`이다. 공급자 adapter·오프라인 계약·평가셋과 과거 재개 절차를 보존한다. 키 탐색·읽기·설정·live 활성화는 이번 showcase 작업에서 수행하지 않았다. live 오류를 대역 성공으로 숨기거나 키 존재로 자동 전환하지 않는다.
+
+18번 리뷰 증거는 `.local/portfolio-hardening/results`에 보존한다. showcase 작업의 증거는 별도 경로이며 DB·Docker·기존 서비스에 접근하지 않았다(`BACKEND_DATA=NOT_TOUCHED`). 이전 방문자 카운터 strict FAIL과 별도 대조 PASS는 [18 코드 리뷰](18-portfolio-code-review.md)의 당시 판정 그대로다.
 
 ## 준비와 첫 기동
 

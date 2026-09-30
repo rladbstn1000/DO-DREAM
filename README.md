@@ -1,10 +1,10 @@
 # 📱 DO:DREAM - AI 기반 시각장애인 음성 학습 플랫폼
 
-> 팀 구현 기준은 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e`입니다. 이후 개인 개선은 [로드맵](docs/portfolio/01-roadmap.md)과 [코드 최종 리뷰](docs/portfolio/18-portfolio-code-review.md)에 구분했습니다. 현재 검증 경로는 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적인 외부 경계 대역을 쓰는 **키 없는 로컬 통합 모드**입니다. 실제 AI 정확도·모바일 기기·전체 백엔드 운영은 검증하지 않았습니다.
+> 팀 구현 기준은 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e`입니다. 이후 개인 개선은 [로드맵](docs/portfolio/01-roadmap.md), [백엔드 코드 리뷰](docs/portfolio/18-portfolio-code-review.md), [정적 체험 결과](docs/portfolio/19-static-showcase-results.md)에 구분했습니다. 실제 AI 정확도·모바일 기기·전체 백엔드 운영은 검증하지 않았습니다.
 >
-> 공개 페이지는 다음 작업에서 샘플 데이터와 브라우저 임시 상태로 화면 흐름을 보여주는 **정적 showcase**로 만들 예정입니다. 아직 구현·배포하지 않았으며, 실제 AI API 키는 그 준비의 필수 조건이 아닙니다. 실제 AI adapter·오프라인 계약 검사·평가셋은 비활성 상태로 보존합니다.
+> **서버 없는 공개 샘플 체험(showcase)**: 같은 웹 프로젝트의 별도 진입점으로 시작·자료함·본문·준비된 답변과 참고 문장·선택형 퀴즈·교사 샘플 화면을 제공합니다. `cd fe-web` → `npm run build:showcase` → `npm run preview:showcase`로 실행하고 출력된 loopback 주소를 엽니다. 질문과 답안은 메모리와 같은 탭의 임시 저장소에서만 처리합니다. 공개 배포·push는 하지 않았습니다.
 >
-> 로컬 체험은 [실행 절차](docs/portfolio/02-local-runbook.md)와 [시연 안내](docs/portfolio/15-demo-walkthrough.md)를 따릅니다. 실행 절차의 첫 기동·V003/V004 마이그레이션을 완료한 뒤 `python3 scripts/local/manage.py demo-up` → `demo-prepare`로 준비하여 [학생 체험](http://127.0.0.1:15173/demo)에 접속합니다. 이는 향후 서버 없는 showcase와 다른 실행 경로입니다.
+> **실제 백엔드가 동작하는 로컬 통합 실행(phase1)**: 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적인 외부 공급자 대역을 사용합니다. [실행 절차](docs/portfolio/02-local-runbook.md)의 첫 기동·마이그레이션 후 `python3 scripts/local/manage.py demo-up` → `demo-prepare`로 준비하고 [학생 체험](http://127.0.0.1:15173/demo)을 엽니다. [시연 안내](docs/portfolio/15-demo-walkthrough.md)는 두 실행 경로를 구분합니다. 선택적인 실제 AI adapter·오프라인 계약 검사·평가셋은 비활성 상태로 보존합니다.
 
 ![web-main](./img/DODREAM_main_page.png)
 ![app-main](./img/DODREAM_app_library.jpg)|![app-main](./img/DODREAM_app_player.jpg)

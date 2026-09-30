@@ -1,0 +1,24 @@
+html { color-scheme:light; }
+body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+button,input,textarea { font-family:inherit; }
+.showcase-app .learn-shell { padding-top:1.5rem; }
+.showcase-banner { display:flex; align-items:center; gap:1rem; border-bottom:1px solid #d5dfd0; padding:0 0 1.3rem; margin-bottom:2rem; }
+.showcase-banner .learn-pill { flex-shrink:0; }
+.showcase-banner p { font-size:.85rem; color:#50664e; margin:0; max-width:50rem; }
+.showcase-font-18 { font-size:18px; }.showcase-font-22 { font-size:22px; }.showcase-font-26 { font-size:26px; }
+.showcase-recommendations { display:flex; flex-direction:column; align-items:flex-start; gap:.65rem; }
+.showcase-recommendations button { text-align:left; justify-content:flex-start; }
+.showcase-app .learn-question form button { margin-top:.6rem; }
+.showcase-app .learn-message h3 { margin-top:1rem; }
+.showcase-choices { min-width:0; padding-top:.8rem; }
+.showcase-choices legend { padding:.4rem .5rem; font-weight:750; font-size:1.1rem; max-width:100%; }
+.showcase-choices label { display:flex; align-items:center; gap:.7rem; min-height:48px; font-weight:500; padding:.5rem; border-radius:10px; }
+.showcase-choices label:has(input:checked) { background:#e9f1e3; }
+.showcase-choices input { flex-shrink:0; width:20px; height:20px; accent-color:#2f654e; }
+.showcase-process { padding-left:1.2rem; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.5rem; }
+.showcase-process span,.showcase-list span { display:block; color:#617465; font-size:.9rem; }
+.showcase-list { margin:0; padding:0; list-style:none; }
+.showcase-list li { padding:.85rem 0; border-bottom:1px solid #e3eadd; }.showcase-list li:last-child { border-bottom:0; }
+.showcase-list p { margin-top:.6rem; }
+@media(max-width:700px) { .showcase-banner { display:block; }.showcase-banner p { margin-top:.6rem; }.showcase-process { grid-template-columns:1fr; gap:.8rem; } }
+@media(max-width:400px) { .showcase-app .learn-header { flex-wrap:wrap; }.showcase-app .learn-header nav { justify-content:flex-start; width:100%; }.showcase-app .learn-chapters nav button { width:100%; } }

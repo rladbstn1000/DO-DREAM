@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { recordBuildGraph } from './scripts/showcase-graph.mjs';
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: [react(), ...(mode === 'phase1' ? [recordBuildGraph('phase1')] : [])],
   // The phase-1 path never loads existing deployment .env files.
   envDir: mode === 'phase1' ? path.resolve(__dirname, 'local-env') : undefined,
   define: mode === 'phase1' ? {
