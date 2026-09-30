@@ -155,3 +155,47 @@ DODREAM_SHOWCASE_EVIDENCE=original-ui npm --prefix fe-web run preview:showcase
 최종 확인용 loopback 미리보기: `http://127.0.0.1:59134/`와 `http://127.0.0.1:59134/DO-DREAM/#/app/library`. 이 주소는 현재 컴퓨터의 임시 로컬 서버이며 재실행하면 포트가 달라질 수 있다. 위 재현 명령으로 새 주소를 확인할 수 있다. [현재 공개 페이지](https://rladbstn1000.github.io/DO-DREAM/)는 기존 배포 그대로이며 이번 UI를 표시하지 않는다.
 
 사용자가 비교 캡처와 로컬 화면을 확인한 뒤에도 별도의 공개 반영 요청이 있어야 새 원격 검증·배포를 진행한다. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다.
+
+## 시각 검수 후 표시 보완
+
+2026-10-01, 전달받은 브랜치 `codex/dodream-original-ui-showcase`와 HEAD `1586b7e56b0a9ba99ab14883996c51acc5417ddb`가 실제 상태와 일치함을 확인하고 소폭 보완했다. 기존 미추적 `docs/.DS_Store`는 작업에서 제외했다. 아래는 이번 추가 검증이며 위 복원 기록과 판정을 덮어쓰지 않는다.
+
+- **교사 학급 상세:** 실제 수정 전 정적 빌드의 1280px 화면에서 제목·인원·정렬 문구 분리를 재현했다. 줄바꿈 없는 헤더 flex 안에서 검색 input의 기본 최소 폭과 양쪽 그룹의 `flex-shrink`가 제목/버튼을 압축했다. `teacher/teacher.css`에서 학급 상세에만 제목·정렬 버튼의 축소/줄바꿈을 막고 검색 그룹에 `flex: 1 1 288px`, 검색 래퍼에 `flex: 1 1 172px`와 `min-width: 0`을 적용했다. 고정 viewport 분기 대신 실제 내용 폭이 부족하면 그룹이 다음 행으로 이동한다. 1280px에서는 두 행, 1366/1440px에서는 한 행이며 제목 18px·정렬 12px는 그대로다. 긴 자료명이 grid item의 기본 최소 폭을 밀어내던 문제는 패널의 `min-width: 0`으로 해결했다. 원래 두 열 폭(각 448/491/528px), 패널·색·서체를 유지했다.
+- **학생 어절:** 기본 `word-break: normal`이 한글 음절 사이 줄바꿈을 허용했다. `student/original-student.css`의 본문·질문 안내·문제 제목에만 `word-break: keep-all; overflow-wrap: anywhere`를 적용했다. `StudentExperience.tsx`는 퀴즈 링크에 전용 클래스만 추가했다. 제목은 남은 폭을 사용하고 단답형 배지는 축소하지 않는다. 기본 392px 화면에서 보이지·말하기·눌러·차가워지면·되나요?가 어절 단위로 표시된다. 320px/150%에서는 어절 자체가 제목 열보다 긴 경우에만 fallback으로 나뉜다(관측 168.675px > 165.656px). 글자 크기·본문·휴대폰 폭/프레임·큰 버튼·남색/노란색·주요 컨트롤은 유지했고, 카드 높이는 내용에 따라 증가한다. 앱 축소·문제 생략·전역 nowrap·추가 `!important`는 사용하지 않았다.
+- **재생 방식 스크롤:** 수정 전부터 정상이다. 내부 392px, 320px 모바일, 각각 기본/150% 글자와 짧은 PC 높이를 확인했다. 내부를 끝까지 스크롤하면 저장 목록과 실제 마지막 메뉴인 퀴즈 풀기가 완전히 보이고, 클릭·Tab/Enter 및 초점 자동 노출이 동작한다. 수정 전후 5조건의 scrollHeight/clientHeight가 같아 Playback DOM/CSS는 변경하지 않았다. 최종 회귀에서는 높이 500px 조합도 확인했다.
+- **실제 체험 기록:** 새 샘플 탭의 초기 0%/빈 결과를 확인한 뒤 말하기의 추천 질문 1개와 퀴즈 1회(두 문제)를 실행했다. 교사 학생 상세에 질문 1개·퀴즈 1회·2개 정답이 표시된다. 기존 완료 자료 1/2 정의에 따라 진도는 50%이며 전체 완료로 바꾸지 않았다. 음성 답하기의 예시 선택/마이크 미사용 안내도 확인했다. 가짜 성과를 초기 상태에 채우거나 실제 마이크·AI를 구현하지 않았다.
+
+아래 10개 PNG를 직접 열어 검토했다. 수정 전은 전달된 HEAD의 정적 산출물이며, 수정 후 집중 검토 산출물 13파일은 최종 전체 검증 산출물과 SHA-256이 모두 같다. 교사 전후는 1280×900, 학생 전후는 1280×1000/내부 392px로 조건을 맞췄다. 최하단과 체험 기록은 최종 전체 실행의 캡처다(1280×920 viewport, 학생 상세는 전체 페이지 978px 높이).
+
+| 화면 | 수정 전 | 수정 후 / 확인 결과 |
+|---|---|---|
+| 교사 학급 상세 | [이전](assets/original-ui-polish/teacher-classroom-before.png) | [제목·도구 영역](assets/original-ui-polish/teacher-classroom-after.png) |
+| 학생 퀴즈 목록 | [이전](assets/original-ui-polish/student-quizzes-before.png) | [어절·배지](assets/original-ui-polish/student-quizzes-after.png) |
+| 학생 플레이어 본문 | [이전](assets/original-ui-polish/student-player-before.png) | [어절 유지](assets/original-ui-polish/student-player-after.png) |
+| 학생 질문 안내 | [이전](assets/original-ui-polish/student-question-before.png) | [어절 유지](assets/original-ui-polish/student-question-after.png) |
+| 재생 방식 최하단 | 레이아웃 유지 | [저장 목록·마지막 메뉴](assets/original-ui-polish/playback-bottom.png) |
+| 질문·풀이 후 교사 학생 상세 | 초기 0%/빈 기록 유지 | [실제 체험 후 기록](assets/original-ui-polish/teacher-student-history.png) |
+
+최종 `verify:showcase`는 **2026-09-30 17:31:47–17:32:03 UTC (10월 1일 02:31–02:32 KST)**에 단일 실행 PASS했다. 기존 교사 자료 목록·편집기·학생 서재/재생 방식/플레이어/질문/퀴즈 목록/문제/결과와 교사 상세 흐름, 모드 분리·CSP·키보드 기대값을 유지했다. `tests/showcase-layout.mjs`를 기존 브라우저 검증에 연결해 1280/1366/1440px의 제목/검색/버튼, 긴 검색어/자료명, 392/320px와 큰 글자, 내부 스크롤 및 체험 후 기록을 검사한다. 검증용 긴 단일 문자열은 저장하지 않는 DOM 레이아웃 점검이며 샘플 콘텐츠나 성과로 남기지 않는다.
+
+| 이번 실행 | 결과 |
+|---|---|
+| 타입 검사 / showcase sentinel 빌드 / 기존 phase1 웹 빌드 | PASS (서버·DB 실행 없음) |
+| 상태·빌드 경계 계약 / 정적 서버 경계 | 66 PASS / 40 PASS |
+| 최종 정적 산출물 Chrome 전체 인수 | 184 PASS |
+| 기존 웹 인증·권한·제출·색인·학생·HTML 경계 회귀 | 115 PASS |
+| 정적 요청 / 금지 요청 / API / WebSocket / 마이크 / CSP 위반 | 117 / 0 / 0 / 0 / 0 / 0 |
+| 브라우저 page/console/HTTP 오류 / 소스·산출물 실행 전후 동일 | 0 / PASS |
+| 별도 집중 시각 검토(전체 인수 수에 합산하지 않음) | 교사 36 PASS, 학생 35 PASS |
+| push / PR / merge / Pages 재배포 | NOT_RUN |
+
+기존 build/preview/verify를 재사용하며 `scripts/showcase-paths.mjs`와 해당 계약 검사는 고정 증거 경로 `original-ui-polish`만 추가했다. 새 기록은 `.local/original-ui-polish/`의 `before/`, `after/`, `results/verify-showcase-2026-09-30T17-32-03-223Z.json`, `results/showcase-browser-2026-09-30T173151833Z.json`, `existing-web-regression.log`에 보존한다. 이전 `.local/original-ui/results/`와 `assets/original-ui/`의 209파일 SHA-256은 작업 시작과 동일하다. 재현 과정의 진단 기록도 남겼다. 의존성·lock·원본 자산은 변경하지 않았으며 기존 500kB chunk 경고는 남아 있다.
+
+최종 산출물 **13파일 / 6,720,716 bytes**, manifest SHA-256 `df92f54237021357c8faa78e2de42a1544aac9fa450bb216886fe53984b60d42`, 전체 검증 소스 digest `847b00cbf524c54a365e0cb0b1ce744ffd1a69c9c570da7c6944bb369db49412`이다. 추가 PNG는 문서 전용이며 공개 번들에 들어가지 않는다.
+
+```sh
+DODREAM_SHOWCASE_EVIDENCE=original-ui-polish npm --prefix fe-web run verify:showcase
+DODREAM_SHOWCASE_EVIDENCE=original-ui-polish npm --prefix fe-web run preview:showcase
+```
+
+이번 로컬 미리보기는 `http://127.0.0.1:61097/DO-DREAM/#/teacher/classroom/1-1`이다(임시 loopback 서버, 재실행 시 포트 변경 가능). 검토한 파일만 로컬 커밋 대상으로 삼으며 현재 공개 사이트는 변경하지 않는다. **USER_VISUAL_APPROVAL=PENDING**, **UPDATED_PUBLIC_DEPLOYMENT=false**를 유지한다. 이번 시각 검토 의견은 공개 배포 승인이 아니다.

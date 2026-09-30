@@ -231,7 +231,7 @@ function Bookmarks({ sample }: { sample: Sample }) {
 
 function QuizList({ sample }: { sample: Sample }) {
   const { uiState } = useStudent(); const questions = writtenQuestions(sample.id);
-  return <><Header back={materialPath(sample, 'playback')} /><div className="app-scroll app-library-list"><h1 className="app-subject" tabIndex={-1}>{uiState.materials[sample.id].title}</h1><p className="app-note">전체 퀴즈 목록</p>{questions.map((question, index) => <Link to={`${materialPath(sample, 'quiz')}?question=${index + 1}`} key={question.id} className="app-choice"><strong>{index + 1}. {question.prompt}</strong><span className="app-quiz-badge">단답형</span></Link>)}</div></>;
+  return <><Header back={materialPath(sample, 'playback')} /><div className="app-scroll app-library-list"><h1 className="app-subject" tabIndex={-1}>{uiState.materials[sample.id].title}</h1><p className="app-note">전체 퀴즈 목록</p>{questions.map((question, index) => <Link to={`${materialPath(sample, 'quiz')}?question=${index + 1}`} key={question.id} className="app-choice app-quiz-choice"><strong>{index + 1}. {question.prompt}</strong><span className="app-quiz-badge">단답형</span></Link>)}</div></>;
 }
 
 function Quiz({ sample }: { sample: Sample }) {

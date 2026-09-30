@@ -100,6 +100,10 @@
 .original-student .app-answer-input { display:block; width:100%; padding:20px; min-height:88px; margin-bottom:16px; border:3px solid var(--app-line); border-radius:12px; background:var(--app-elevated); font-size:24px; }
 .original-student .app-quiz-content .app-large { min-height:80px; border-width:4px; font-size:24px; margin-bottom:12px; }
 .original-student .app-quiz-badge { border:2px solid var(--app-green); border-radius:8px; color:var(--app-green); background:var(--app-elevated); padding:4px 8px; font-size:14px; white-space:nowrap; }
+.original-student .app-quiz-choice strong { flex:1 1 0; min-width:0; }
+.original-student .app-quiz-choice .app-quiz-badge { flex:0 0 auto; }
+/* Keep Korean words together; only an overlong unbroken word falls back to wrapping. */
+.original-student .app-paragraph,.original-student .app-welcome,.original-student .app-quiz-prompt,.original-student .app-quiz-choice strong { word-break:keep-all; overflow-wrap:anywhere; }
 .original-student .app-result-content { padding:28px 24px 24px; }
 .original-student .app-result-summary { text-align:center; border-bottom:3px solid var(--app-navy); padding-bottom:32px; margin-bottom:32px; }
 .original-student .app-result-summary h1 { font-size:40px; font-weight:700; margin-bottom:8px; }

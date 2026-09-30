@@ -8,7 +8,7 @@ export const REPO_ROOT = path.dirname(WEB_ROOT);
 export const SHOWCASE_ROOT = path.join(WEB_ROOT, 'showcase');
 export const SHOWCASE_OUT = path.join(WEB_ROOT, 'dist-showcase');
 export function evidenceDirectory(selection = process.env.DODREAM_SHOWCASE_EVIDENCE) {
-  if (selection !== undefined && !['static-showcase', 'original-ui'].includes(selection)) throw new Error('Unreviewed showcase evidence directory');
+  if (selection !== undefined && !['static-showcase', 'original-ui', 'original-ui-polish'].includes(selection)) throw new Error('Unreviewed showcase evidence directory');
   return path.join(REPO_ROOT, '.local', selection ?? 'static-showcase', 'results');
 }
 export const RESULTS_DIR = evidenceDirectory();

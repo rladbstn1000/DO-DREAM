@@ -277,10 +277,6 @@
   white-space: nowrap;
 }
 @media (max-width: 1200px) {
-  .original-teacher .classroom-page .cl-card-head {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   .original-teacher .cl-head-right {
     flex-wrap: wrap;
   }
@@ -434,3 +430,41 @@
 
 /* Original Classroom.getFilledStudents keeps six grid slots for short lists. */
 .original-teacher .cl-student-card-empty { visibility: hidden; }
+
+/* Keep long sample titles inside the existing two equal classroom panels. */
+.original-teacher .classroom-page .cl-card {
+  min-width: 0;
+}
+.original-teacher .classroom-page .cl-material-date {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Preserve short classroom headings/actions; wrap their control group as a unit. */
+.original-teacher .classroom-page .cl-card-head {
+  flex-wrap: wrap;
+}
+.original-teacher .classroom-page .cl-card-head .cl-head-left {
+  flex: 0 0 auto;
+}
+.original-teacher .classroom-page .cl-card-head h3 {
+  white-space: nowrap;
+}
+.original-teacher .classroom-page .cl-card-head .cl-head-right {
+  flex: 1 1 288px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.original-teacher .classroom-page .cl-card .cl-card-head .cl-head-right .cl-input-wrap {
+  flex: 1 1 172px;
+  min-width: 0;
+}
+.original-teacher .classroom-page .cl-card .cl-card-head .cl-head-right .cl-input {
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+}
+.original-teacher .classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
