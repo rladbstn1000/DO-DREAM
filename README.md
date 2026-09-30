@@ -1,10 +1,25 @@
 # 📱 DO:DREAM - AI 기반 시각장애인 음성 학습 플랫폼
 
-> 팀 구현 기준은 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e`입니다. 이후 개인 개선은 [로드맵](docs/portfolio/01-roadmap.md), [백엔드 코드 리뷰](docs/portfolio/18-portfolio-code-review.md), [정적 체험 결과](docs/portfolio/19-static-showcase-results.md)에 구분했습니다. 실제 AI 정확도·모바일 기기·전체 백엔드 운영은 검증하지 않았습니다.
->
-> **서버 없는 공개 샘플 체험(showcase)**: 같은 웹 프로젝트의 별도 진입점으로 시작·자료함·본문·준비된 답변과 참고 문장·선택형 퀴즈·교사 샘플 화면을 제공합니다. `cd fe-web` → `npm run build:showcase` → `npm run preview:showcase`로 실행하고 출력된 loopback 주소를 엽니다. 질문과 답안은 메모리와 같은 탭의 임시 저장소에서만 처리합니다. 공개 배포·push는 하지 않았습니다.
->
-> **실제 백엔드가 동작하는 로컬 통합 실행(phase1)**: 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적인 외부 공급자 대역을 사용합니다. [실행 절차](docs/portfolio/02-local-runbook.md)의 첫 기동·마이그레이션 후 `python3 scripts/local/manage.py demo-up` → `demo-prepare`로 준비하고 [학생 체험](http://127.0.0.1:15173/demo)을 엽니다. [시연 안내](docs/portfolio/15-demo-walkthrough.md)는 두 실행 경로를 구분합니다. 선택적인 실제 AI adapter·오프라인 계약 검사·평가셋은 비활성 상태로 보존합니다.
+시각장애 학생의 학습을 돕기 위해, 교사의 자료 준비와 학생의 읽기·질문·퀴즈 풀이를 연결한 팀 프로젝트입니다. 아래 공개 체험과 실제 서버 구현의 검증 범위를 구분합니다.
+
+**공개 showcase: 배포 준비 중.** 학생은 샘플 교재 읽기 → 추천 질문과 참고 문장 → 선택형 퀴즈 → 결과를 체험하고, 교사는 같은 탭의 질문·풀이를 살펴봅니다. 준비된 답변과 샘플 채점 규칙을 사용하며 실제 AI 운영·회원가입·문서 변환·서버 저장은 제공하지 않습니다.
+
+| 실제 백엔드의 개인 개선 | 설계·검증 근거 |
+|---|---|
+| JWT 종류 검증·Refresh 회전과 현재 객체 접근권한 | [인증 설계](docs/portfolio/04-auth-security-design.md), [권한 정책](docs/portfolio/07-authorization-policy.md), [실제 검증](docs/portfolio/08-phase2b-results.md) |
+| 퀴즈 제출 멱등성·고정 snapshot·결과 복구 | [채점 설계](docs/portfolio/09-grading-reliability-design.md), [동시 제출·복구 검증](docs/portfolio/10-phase3a-results.md) |
+| 검증된 후보 색인만 활성화·기존 정상 색인 보존 | [색인 설계](docs/portfolio/11-indexing-reliability-design.md), [장애·복구 검증](docs/portfolio/12-phase3b-results.md) |
+
+팀 구현 기준은 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e`이며 원래 팀원·기여 기록을 아래에 보존했습니다. 이후 개인 개선은 [로드맵](docs/portfolio/01-roadmap.md), [코드 리뷰](docs/portfolio/18-portfolio-code-review.md), [정적 체험 검증과 캡처](docs/portfolio/19-static-showcase-results.md)에 구분합니다. JWT·권한·채점·색인은 별도의 실제 서버 검증이며 정적 데모가 이 기능을 수행한다고 주장하지 않습니다.
+
+동일 합성 조건에서 통계 쿼리는 **85→9**, AI 이력의 history 부분은 **23→3**(권한 포함 총 **30→10**)으로 줄었습니다. 이는 쿼리 수이며 응답속도 개선율이 아닙니다. 실제 AI 정확도·비용, 모바일 실기기, VoiceOver/WCAG 인증, 전체 백엔드 운영 준비는 미검증입니다.
+
+| 실행 경로 | 시작 방법·범위 |
+|---|---|
+| 서버 없는 공개 샘플 | `cd fe-web` → `npm ci --ignore-scripts --no-audit --no-fund` → `npm run build:showcase` → `npm run preview:showcase`. 검증은 `npm run verify:showcase`. Docker·계정·API 키 없이 실행합니다. |
+| 실제 서버 로컬 통합 | [실행 절차](docs/portfolio/02-local-runbook.md)의 격리 환경·마이그레이션 후 `python3 scripts/local/manage.py demo-up` → `demo-prepare`. 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적 외부 공급자 대역을 사용합니다. |
+
+[시연 순서](docs/portfolio/15-demo-walkthrough.md) · [소스 공개·배포 근거](docs/portfolio/20-publication-and-pages-results.md). 실제 AI adapter·오프라인 계약 검사·평가셋은 비활성 상태로 보존하며, 키 존재만으로 실제 공급자를 호출하지 않습니다.
 
 ![web-main](./img/DODREAM_main_page.png)
 ![app-main](./img/DODREAM_app_library.jpg)|![app-main](./img/DODREAM_app_player.jpg)

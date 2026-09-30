@@ -66,7 +66,17 @@ class CIIsolationContract(unittest.TestCase):
             self.assertIn("contents: read", text)
             self.assertNotIn("secrets.", text)
             self.assertNotIn("pull_request_target", text)
-            self.assertNotIn("upload-artifact", text)
+            if path.name == "showcase-pages.yml":
+                # The approved release adds exactly one sanitized manifest artifact.
+                # Detailed parsed workflow/permission contracts run in the web job.
+                self.assertEqual(1, text.count("uses: actions/upload-artifact@"))
+                self.assertEqual(1, text.count("uses: actions/upload-pages-artifact@"))
+                self.assertIn("path: fe-web/dist-showcase\n", text)
+                self.assertIn("path: .local/static-showcase/results/release-manifest.json\n", text)
+                self.assertNotIn("path: .local/\n", text)
+                self.assertNotIn("path: docs\n", text)
+            else:
+                self.assertNotIn("upload-artifact", text)
             for line in text.splitlines():
                 if "uses:" in line:
                     self.assertRegex(line, r"uses: actions/[a-z-]+@[0-9a-f]{40}(?:\s|$)")

@@ -42,6 +42,7 @@ jobs:
           npm run test:indexing
           npm run test:student
           npm run test:hardening
+          node --test tests/pages-release.test.mjs
           # verify includes typecheck, both explicit builds, graph/artifact checks,
           # and an isolated Chrome session against built static files only.
           # Hosted Ubuntu supplies Chrome; no user profile or browser installation.

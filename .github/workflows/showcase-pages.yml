@@ -1,0 +1,146 @@
+name: Showcase Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Reviewed main commit whose required CI has passed
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dodream-showcase-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      source_sha: ${{ steps.provenance.outputs.source_sha }}
+      manifest_digest: ${{ steps.provenance.outputs.manifest_digest }}
+      pages_artifact_id: ${{ steps.pages_artifact.outputs.artifact_id }}
+    steps:
+      - name: Require the approved repository and a manual main run
+        env:
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          test "$RELEASE_REPOSITORY" = 'rladbstn1000/DO-DREAM'
+          test "$RELEASE_EVENT" = 'workflow_dispatch'
+          test "$RELEASE_REF" = 'refs/heads/main'
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$RELEASE_SHA" = "$EXPECTED_SHA"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.22.0'
+      - name: Read existing Pages metadata without enabling or changing the site
+        id: pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: false
+      - name: Confirm hosted Linux Chrome
+        run: |
+          test "$RUNNER_ENVIRONMENT" = 'github-hosted'
+          test "$RUNNER_OS" = 'Linux'
+          test -x /opt/google/chrome/chrome
+          command -v google-chrome
+          readlink -f "$(command -v google-chrome)"
+          /opt/google/chrome/chrome --version
+          node --version
+          npm --version
+      - run: npm ci --no-audit --no-fund
+        working-directory: fe-web
+      - name: Run existing web regression and release contracts
+        working-directory: fe-web
+        run: |
+          npm run test:auth
+          npm run test:authorization
+          npm run test:grading
+          npm run test:indexing
+          npm run test:student
+          npm run test:hardening
+          node --test tests/pages-release.test.mjs
+      - name: Build and verify the exact static output
+        working-directory: fe-web
+        run: npm run verify:showcase
+      - name: Recheck verified bytes and write minimal release provenance
+        id: provenance
+        env:
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+          EXPECTED_SOURCE_SHA: ${{ inputs.expected_sha }}
+        run: node fe-web/scripts/showcase-release.mjs
+      # No build or artifact mutation is allowed between verification and upload.
+      - name: Upload only the verified Pages directory
+        id: pages_artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          name: github-pages
+          path: fe-web/dist-showcase
+          retention-days: 1
+          include-hidden-files: false
+      - name: Upload the small public manifest separately from the site
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: showcase-provenance
+          path: .local/static-showcase/results/release-manifest.json
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: true
+          overwrite: false
+
+  deploy:
+    needs: build
+    if: github.repository == 'rladbstn1000/DO-DREAM' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.build.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the already verified artifact
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: github-pages
+          timeout: '540000'
+      - name: Record the actual deployment output
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
+          MANIFEST_DIGEST: ${{ needs.build.outputs.manifest_digest }}
+          PAGES_ARTIFACT_ID: ${{ needs.build.outputs.pages_artifact_id }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from urllib.parse import urlsplit
+          url = os.environ['PAGE_URL']
+          parsed = urlsplit(url)
+          assert parsed.scheme == 'https' and parsed.netloc == 'rladbstn1000.github.io'
+          assert parsed.path.rstrip('/') == '/DO-DREAM' and not parsed.query and not parsed.fragment
+          assert re.fullmatch(r'[0-9a-f]{40}', os.environ['SOURCE_SHA'])
+          assert re.fullmatch(r'[0-9a-f]{64}', os.environ['MANIFEST_DIGEST'])
+          assert re.fullmatch(r'[0-9]+', os.environ['PAGES_ARTIFACT_ID'])
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('\n### Actual Pages deployment\n\n')
+              summary.write(f"- Source: `{os.environ['SOURCE_SHA']}`\n")
+              summary.write(f"- Verified manifest: `{os.environ['MANIFEST_DIGEST']}`\n")
+              summary.write(f"- Pages artifact ID: `{os.environ['PAGES_ARTIFACT_ID']}`\n")
+              summary.write(f'- URL returned by deploy-pages: {url}\n')
+          PY
