@@ -183,17 +183,22 @@ def require_quizzes(db, user, material_id, question_ids):
 def require_object_url(url, key):
     """Bind supplied capability URL to the authorized DB object's exact storage key.
 
-    Host binding is deliberately narrow; redirect/IP/operational SSRF controls
-    remain a separately documented task. Local providers never use the network.
+    This checks the authorized object identity; it is not a network SSRF filter.
+    Both supported modes use network-free local storage. External file download
+    fails closed until a separately reviewed connected-address policy exists.
     """
     if not key:
         denied()
-    parsed = urlsplit(str(url))
+    try:
+        parsed = urlsplit(str(url))
+        port = parsed.port
+    except ValueError:
+        raise HTTPException(400, "Invalid object URL") from None
     host = "local-fixture.invalid" if LOCAL_EXTERNAL_STUBS else OBJECT_STORAGE_HOST
     if not host:
         raise HTTPException(503, "Object storage host is not configured")
     path = unquote(parsed.path)
-    if (parsed.scheme != "https" or parsed.hostname != host or parsed.port not in (None, 443)
+    if (parsed.scheme != "https" or parsed.hostname != host or port not in (None, 443)
             or parsed.username is not None or parsed.password is not None or parsed.fragment
             or (LOCAL_EXTERNAL_STUBS and parsed.query) or path != "/" + key):
         # Backward-compatible synthetic fixture alias is bound only to its one DB key.

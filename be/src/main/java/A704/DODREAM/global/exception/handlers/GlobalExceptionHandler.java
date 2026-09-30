@@ -79,13 +79,23 @@ public class GlobalExceptionHandler {
         return HttpStatus.BAD_REQUEST;
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStatus(org.springframework.web.server.ResponseStatusException ex) {
+        // Retain the intended status, never publish a provider's reason or raw response.
+        return ResponseEntity.status(ex.getStatusCode())
+            .body(ApiResponse.error(ErrorCode.INVALID_INPUT, "요청을 처리할 수 없습니다."));
+    }
+
     // 4. 알 수 없는 예외 (최종 fallback)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception ex, HttpServletRequest request) {
-        log.error("Unexpected error at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+        // Provider exceptions may contain signed URLs, response bodies or credentials.
+        String errorId = java.util.UUID.randomUUID().toString();
+        log.error("Unexpected error id={} type={}", errorId, ex.getClass().getSimpleName());
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .header("X-Error-Id", errorId)
                 .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR, "서버 내부 오류가 발생했습니다."));
     }
 

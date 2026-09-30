@@ -96,13 +96,8 @@ public class PdfService {
         indexingStore.teacher(userId);
 		try {
 			// 1. 파일 검증
-			if (pdfBytes == null || pdfBytes.length == 0) {
-				throw new RuntimeException("파일이 비어있습니다.");
-			}
-
-			if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
-				throw new RuntimeException("PDF 파일만 업로드 가능합니다.");
-			}
+            PdfInputPolicy.filename(filename);
+            PdfInputPolicy.content(pdfBytes);
 
 			// 2. S3 키 생성
             String s3Key=environment.acceptsProfiles(org.springframework.core.env.Profiles.of("local"))
@@ -456,7 +451,7 @@ public class PdfService {
 				.build();
 
 			ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
-			String jsonString = new String(response.readAllBytes());
+			String jsonString = A704.DODREAM.file.service.ObjectJsonReader.read(response);
 
 			// JSON 파싱
 			Map<String, Object> jsonData = objectMapper.readValue(jsonString, Map.class);
@@ -509,7 +504,7 @@ public class PdfService {
 		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
             throw denied;
         } catch (Exception e) {
-			log.error("❌ CloudFront signed URL 생성 실패: {}", e.getMessage(), e);
+			log.error("❌ CloudFront signed URL 생성 실패: {}", e.getClass().getSimpleName());
 			throw new RuntimeException("CloudFront signed URL 생성 실패: " + e.getMessage());
 		}
 	}
@@ -631,7 +626,7 @@ public class PdfService {
 				.build();
 
 			ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
-			String jsonString = new String(response.readAllBytes());
+			String jsonString = A704.DODREAM.file.service.ObjectJsonReader.read(response);
 
 			// 5. JSON 파싱
 			Map<String, Object> jsonData = objectMapper.readValue(jsonString, Map.class);
@@ -658,7 +653,7 @@ public class PdfService {
 		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
             throw denied;
         } catch (Exception e) {
-			log.error("❌ 개념 Check 조회 실패: {}", e.getMessage(), e);
+			log.error("❌ 개념 Check 조회 실패: {}", e.getClass().getSimpleName());
 			throw new RuntimeException("개념 Check 조회 실패: " + e.getMessage());
 		}
 	}
@@ -757,7 +752,7 @@ public class PdfService {
 						conceptCheck = objectMapper.readValue((String)conceptCheckObj, Map.class);
 						log.info("🔄 concept_check를 JSON 문자열에서 파싱했습니다.");
 					} catch (JsonProcessingException e) {
-						log.warn("⚠️ concept_check JSON 파싱 실패: {}", e.getMessage());
+						log.warn("⚠️ concept_check JSON 파싱 실패: {}", e.getClass().getSimpleName());
 						continue;
 					}
 				} else if (conceptCheckObj instanceof Map) {
@@ -784,7 +779,7 @@ public class PdfService {
 							questions = objectMapper.readValue((String)questionsObj, List.class);
 							log.info("🔄 questions를 JSON 문자열에서 파싱했습니다.");
 						} catch (JsonProcessingException e) {
-							log.warn("⚠️ questions JSON 파싱 실패: {}", e.getMessage());
+							log.warn("⚠️ questions JSON 파싱 실패: {}", e.getClass().getSimpleName());
 							continue;
 						}
 					} else if (questionsObj instanceof List) {
@@ -801,7 +796,7 @@ public class PdfService {
 								try {
 									question = objectMapper.readValue((String)questionObj, Map.class);
 								} catch (JsonProcessingException e) {
-									log.warn("⚠️ question JSON 파싱 실패: {}", e.getMessage());
+									log.warn("⚠️ question JSON 파싱 실패: {}", e.getClass().getSimpleName());
 									continue;
 								}
 							} else if (questionObj instanceof Map) {
@@ -875,7 +870,7 @@ public class PdfService {
 				.build();
 
 			ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
-			String jsonString = new String(response.readAllBytes());
+			String jsonString = A704.DODREAM.file.service.ObjectJsonReader.read(response);
 
 			// 5. JSON 파싱
 			Map<String, Object> jsonData = objectMapper.readValue(jsonString, Map.class);
@@ -930,7 +925,7 @@ public class PdfService {
 		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException denied) {
             throw denied;
         } catch (Exception e) {
-			log.error("❌ 개념 Check 추출 실패: {}", e.getMessage(), e);
+			log.error("❌ 개념 Check 추출 실패: {}", e.getClass().getSimpleName());
 			throw new RuntimeException("개념 Check 추출 실패: " + e.getMessage());
 		}
 	}
@@ -1104,7 +1099,7 @@ public class PdfService {
 								try {
 									questions = objectMapper.readValue((String)questionsObj, List.class);
 								} catch (JsonProcessingException e) {
-									log.warn("questions JSON 파싱 실패: {}", e.getMessage());
+									log.warn("questions JSON 파싱 실패: {}", e.getClass().getSimpleName());
 								}
 							}
 

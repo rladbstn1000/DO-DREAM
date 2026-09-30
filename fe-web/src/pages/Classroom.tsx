@@ -337,9 +337,7 @@ export default function Classroom() {
               );
 
               if (!progressRes.ok) {
-                console.warn(
-                  `진행률 조회 실패 (studentId=${stu.studentId}, status=${progressRes.status})`,
-                );
+                console.warn("화면 요청 처리 실패");
                 progressMap.set(stu.studentId, 0);
                 return;
               }
@@ -373,11 +371,9 @@ export default function Classroom() {
 
               const avgPercent = avgRaw <= 1 ? avgRaw * 100 : avgRaw;
 
-              console.log('student', stu.studentName, 'avgPercent', avgPercent);
-
               progressMap.set(stu.studentId, Math.round(avgPercent));
             } catch (e) {
-              console.error('진행률 API 오류', e);
+              console.error('진행률 API 오류');
               progressMap.set(stu.studentId, 0);
             }
           }),
@@ -422,7 +418,7 @@ export default function Classroom() {
 
         setStudents(finalStudents);
       } catch (err: any) {
-        console.error('데이터 로딩 실패', err);
+        console.error('데이터 로딩 실패');
         await Swal.fire({
           icon: 'error',
           title: '반 정보를 불러오지 못했습니다',
@@ -553,7 +549,6 @@ export default function Classroom() {
       }
 
       const parsedData = await pdfRes.json();
-      console.log('📄 Classroom parsedData:', parsedData);
 
       // chapters 추출
       let chapters: any[] = [];
@@ -619,7 +614,7 @@ export default function Classroom() {
         },
       });
     } catch (err: any) {
-      console.error('자료 조회 실패', err);
+      console.error('자료 조회 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
@@ -642,10 +637,10 @@ export default function Classroom() {
         <div class="ae-label-grid" id="labelGrid">
           ${LABEL_OPTIONS.map(
             (label) => `
-            <button 
-              class="ae-label-option ${picked === label.id ? 'active' : ''}" 
+            <button
+              class="ae-label-option ${picked === label.id ? 'active' : ''}"
               data-label="${label.id}"
-              style="background-color: ${label.color}; ${picked === label.id ? `border: 3px solid  ${label.color};` : ''}" 
+              style="background-color: ${label.color}; ${picked === label.id ? `border: 3px solid  ${label.color};` : ''}"
               title="${label.name}"
             >
               <span>${picked === label.id ? '✓' : ''}</span>
@@ -740,7 +735,7 @@ export default function Classroom() {
         showConfirmButton: false,
       });
     } catch (err: any) {
-      console.error('라벨 수정 실패', err);
+      console.error('라벨 수정 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',

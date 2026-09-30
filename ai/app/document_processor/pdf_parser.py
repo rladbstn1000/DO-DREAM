@@ -1,9 +1,7 @@
 import json
 from typing import Dict, Any, List
 
-from app.config import OPENAI_API_KEY, LOCAL_EXTERNAL_STUBS
-if not LOCAL_EXTERNAL_STUBS:
-    from openai import OpenAI
+from app.config import LOCAL_EXTERNAL_STUBS
 
 
 class PDFParser:
@@ -18,8 +16,7 @@ class PDFParser:
             self.client = None
             self.model = "local_stub"
             return
-        self.client = OpenAI(api_key=api_key or OPENAI_API_KEY)
-        self.model = model
+        raise RuntimeError("External PDF parsing is disabled")
 
     def _extract_text_from_response(self, response) -> str:
         """

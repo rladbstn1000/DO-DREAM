@@ -1,6 +1,10 @@
 # 📱 DO:DREAM - AI 기반 시각장애인 음성 학습 플랫폼
 
-> 개인 개선 로컬 데모: 기존 팀 구현을 보존하고 학생 웹 체험을 추가했습니다. `python3 scripts/local/manage.py demo-up` → `python3 scripts/local/manage.py demo-prepare`로 준비한 뒤 [학생 체험](http://127.0.0.1:15173/demo)에 접속합니다. 최초 빌드와 자세한 절차는 [시연 안내](docs/portfolio/15-demo-walkthrough.md), 검사 범위와 한계는 [4단계 결과](docs/portfolio/14-phase4-results.md)를 참고하세요. 실제 서버·DB·Chroma를 사용하며 답변·임베딩·채점은 명시적인 로컬 대역입니다. 공개 배포·실제 AI 품질·VoiceOver 인증을 의미하지 않습니다. 아래 팀 소개와 기존 성과는 팀 구현 당시 기록입니다.
+> 팀 구현 기준은 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e`입니다. 이후 개인 개선은 [로드맵](docs/portfolio/01-roadmap.md)과 [코드 최종 리뷰](docs/portfolio/18-portfolio-code-review.md)에 구분했습니다. 현재 검증 경로는 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적인 외부 경계 대역을 쓰는 **키 없는 로컬 통합 모드**입니다. 실제 AI 정확도·모바일 기기·전체 백엔드 운영은 검증하지 않았습니다.
+>
+> 공개 페이지는 다음 작업에서 샘플 데이터와 브라우저 임시 상태로 화면 흐름을 보여주는 **정적 showcase**로 만들 예정입니다. 아직 구현·배포하지 않았으며, 실제 AI API 키는 그 준비의 필수 조건이 아닙니다. 실제 AI adapter·오프라인 계약 검사·평가셋은 비활성 상태로 보존합니다.
+>
+> 로컬 체험은 [실행 절차](docs/portfolio/02-local-runbook.md)와 [시연 안내](docs/portfolio/15-demo-walkthrough.md)를 따릅니다. 실행 절차의 첫 기동·V003/V004 마이그레이션을 완료한 뒤 `python3 scripts/local/manage.py demo-up` → `demo-prepare`로 준비하여 [학생 체험](http://127.0.0.1:15173/demo)에 접속합니다. 이는 향후 서버 없는 showcase와 다른 실행 경로입니다.
 
 ![web-main](./img/DODREAM_main_page.png)
 ![app-main](./img/DODREAM_app_library.jpg)|![app-main](./img/DODREAM_app_player.jpg)
@@ -8,10 +12,10 @@
 
 ## 프로젝트 소개
 
-- 시각장애를 가진 학생들이 공평하게 학습할 수 있도록, AI 기반 맞춤형 학습 자료를 제공하는 교육 플랫폼입니다.
-- RAG(Retrieval-Augmented Generation) 기술과 ChromaDB 벡터 데이터베이스를 활용하여 학습 자료에서 핵심 개념을 추출하고, Cross-EncoderReranker로 최적화된 정보를 기반으로 학생 수준에 맞는 퀴즈를 자동 생성하며 AI가 답안을 즉시 채점합니다.
-- 교실 관리 페이지에서 학생별 학습 진행률과 통계를 확인하고, 공유한 학습 자료와 퀴즈 결과를 실시간으로 모니터링할 수 있습니다.
-- PDF OCR 기술로 교재를 업로드하면 자동으로 텍스트를 추출하고, LangChain 기반 대화형 AI를 통해 학생이 학습 내용에 대해 질문하면 TTS로 음성 답변을 제공받을 수 있으며, Firebase 푸시 알림과 JWT 인증, AWS S3 파일 관리로 안전하고 편리한 학습 환경을 제공합니다.
+- 시각장애 학생의 학습을 돕기 위해 교사의 자료 편집·공유와 학생의 음성 학습·질문·퀴즈 풀이를 연결한 팀 프로젝트입니다.
+- 팀 구현에는 PDF/OCR 처리, LangChain·ChromaDB 기반 자료 검색과 질의응답, LLM 퀴즈 생성·채점, TTS·Firebase 알림, JWT 인증, AWS 파일 저장소가 포함되었습니다. 기능 구현과 효과 검증은 구분합니다. 검색 출처가 있다는 사실만으로 답변의 정확성이 보장되지는 않습니다.
+- 교사는 공유 자료·진도·풀이 기록을 조회할 수 있습니다. 진도는 저장된 학습 위치, 정답률은 채점 결과의 집계이며 실제 이해도 측정값이 아닙니다.
+- 개인 개선에서는 인증·현재 객체 권한·제출 중복 방지·당시 기준 보존·후보 색인 검증을 강화하고, 기존 웹에 학생 체험 화면을 추가했습니다. 실제 외부 API 품질·비용·운영 배포 검증은 현재 범위에서 제외합니다.
 
 ## `DO:DREAM` 팀원 구성
 
@@ -27,16 +31,17 @@
 
 </div>
 
-## 1. 개발 환경
+## 1. 팀 개발 환경과 현재 검증 스택
 
 - Frontend
    - Web: React, Vite, TypeScript
-   - App: React Native, Expo, TypeScript
+   - App: React Native, TypeScript (네이티브 전체 설치·기기 실행은 이번 검증 제외)
 - Backend: Spring Boot 3.5.7, Spring Data JPA, Spring Security, MySQL 8.x, Redis
-- AI: FastAPI, Python, LangChain, ChromaDB, HuggingFace
+- 팀 AI 구현: FastAPI, Python, LangChain, ChromaDB, HuggingFace
+- 현재 로컬 검증: Java 17·Gradle 8.14.3, Node 22.22.0, Python 3.11, 실제 MySQL 8.4·Redis 7.4·Chroma 0.6.3. 정확한 라이브러리 버전은 `be/build.gradle`, `fe-web/package-lock.json`, 각 Python `requirements.local.lock.txt`를 기준으로 합니다. 외부 모델과 운영 연결은 기본 비활성입니다.
 - 버전 및 이슈관리: GitLab, Jira
 - 협업 툴: Discord, Notion
-- 서비스 배포 환경: AWS EC2, Docker, Nginx, HashiCorp Vault, AWS S3, CloudFront, Jenkins
+- 팀 당시 배포 구성(이번 운영 재검증 제외): AWS EC2, Docker, Nginx, HashiCorp Vault, AWS S3, CloudFront, Jenkins
 - 외부 API: Naver Clova OCR, Firebase Cloud Messaging, OpenAI API
 
 
@@ -82,7 +87,7 @@
     - 퀴즈 풀기 및 음성 질문/답변
 
 - 접근성 최적화
-    - TalkBack/VoiceOver 스크린 리더 완벽 지원
+    - TalkBack/VoiceOver 대응 구현 (현재 기기별 완전성·접근성 인증은 미검증)
     - 음성 중심 UI/UX 설계
     - 오프라인 학습 지원 (MMKV 로컬 스토리지)
 
@@ -120,13 +125,12 @@
 
 #### 담당 역할 : 백엔드 개발
 
-- 보안 인증 시스템 구축: Spring Security와 JWT를 도입하여 토큰 기반 인증/인가 로직을 구현하고, Redis를 활용한 Refresh Token 관리(저장/만료/삭제)를 통해 안전한 로그인 및 로그아웃 프로세스 구축
+아래는 팀 당시 담당 범위입니다. 뒤의 개인 보안·신뢰성 개선을 팀 당시 성과로 소급하지 않습니다.
 
-- 맥락 인식 AI 튜터 구현: LangChain과 ChromaDB를 활용하여 학습 자료 기반 실시간 질의응답(Chatbot) 기능 개발. 대화 히스토리 반영 및 Re-ranking 기술 도입으로 답변 정확도 고도화
-
-- RAG 기반 퀴즈 및 채점 엔진: 학습 자료에서 맞춤형 문제를 자동 생성하고, 의미 기반(Semantic) 유사도 분석을 통해 서술형 답안을 정밀하게 채점
-
-- 학습 성취도 분석: 퀴즈 중복 풀이 방지(Latest Attempt) 알고리즘을 적용하여, 왜곡 없는 정확한 학습 정답률 통계 및 오답 분석 데이터 제공
+- Spring Security·JWT 인증/인가와 Redis Refresh Token 저장·만료·로그아웃 로직 구현
+- LangChain·ChromaDB 기반 자료 질의응답, 대화 이력 반영과 reranking 연결 (정확도 개선 수치 미측정)
+- 자료 기반 퀴즈 생성과 LLM 서술형 채점 흐름 구현 (의미 유사도 점수 알고리즘 또는 검증된 정밀 채점으로 표현하지 않음)
+- 문제별 최신 풀이를 선택하는 학습 통계와 오답 조회 구현 (재풀이 자체를 차단하는 기능과 구분)
 
 ### 🐬 양세희
 
@@ -181,81 +185,23 @@
 
 <br>
 
-## 5. 신경 쓴 부분
+## 5. 팀 구현의 기술 설명과 현재 차이
 
-### 1. PDF 바이너리 직접 처리 및 파일명 인코딩 안정성 확보
+- PDF 바이너리는 `application/pdf`로 받습니다. Multipart 제한이 원시 본문까지 제한하지 않는 문제는 개인 리뷰에서 별도 bounded read와 파일 검증으로 수정했습니다.
+- CloudFront PEM 처리의 Base64 디코딩은 **암호 해독이 아닌 인코딩 해제**이며, DER 바이트로 RSA PrivateKey를 구성하는 과정입니다. URL 서명은 별도 동작입니다. 실제 AWS 연결은 이번에 실행하지 않았습니다.
+- WebClient는 비동기 API를 제공하지만 현재 호출자의 `.block()`은 응답을 동기적으로 기다립니다. timeout이나 DB 트랜잭션만으로 DB·객체 저장소·외부 AI 사이의 원자성이 보장되지 않습니다.
+- Redis 임시 편집본의 24시간 TTL은 임시 데이터 만료 정책입니다. JSON 직렬화나 사용자 ID 기반 키 이름 자체가 접근권한 검증을 대신하지 않습니다.
+- 팀 당시 임베딩 오류를 로그로만 남기는 경로는 개인 3-B에서 영속 작업 원장·후보 검증·활성 포인터 전환으로 보완했습니다. Redis/Celery 전달과 실제 Chroma 저장을 검증했으며, 외부 모델의 exactly-once는 보장하지 않습니다.
 
-  - Content-Type 직접 지정: Content-Type: application/pdf로 바이너리 직접 전송하여 Multipart 오버헤드 제거
-  - 한글 파일명 처리: URLEncoder.encode(filename, StandardCharsets.UTF_8)로 한글 파일명 URL 인코딩
-  - S3 메타데이터 관리: Map.of("original-filename", encodedFilename)로 S3 객체에 원본 파일명 보존
-  - 동적 S3 Key 생성: UUID.randomUUID()로 중복 없는 고유 키 생성 및 사용자별 디렉토리 구조화
+## 6. 팀 프로젝트 이후 개인 개선과 근거
 
-### 2. CloudFront Signed URL 생성의 Private Key 파싱
+| 사례 | 선택과 검증 근거 | 한계 |
+|---|---|---|
+| 인증·객체 권한 | AT/RT 종류와 공통 JWT 계약, Redis 원자 회전, 현재 담당·공유 관계를 양 서버에서 확인. [설계04](docs/portfolio/04-auth-security-design.md), [정책07](docs/portfolio/07-authorization-policy.md), [결과05](docs/portfolio/05-phase2a-results.md)·[08](docs/portfolio/08-phase2b-results.md). | 브라우저 localStorage/MMKV 매체 위험과 운영 HTTPS·기기 검증은 별개. |
+| 제출 멱등성·당시 기준 | 같은 key·문제 버전·답안과 DB unique, 고정 snapshot, 짧은 접수/확정 트랜잭션. 결과 불명을 0점으로 숨기지 않음. [설계09](docs/portfolio/09-grading-reliability-design.md)·[결과10](docs/portfolio/10-phase3a-results.md). | 외부 호출 중 장애의 UNKNOWN은 중복 실행 가능성을 남김. |
+| 후보 검증·활성 전환 | 새 실행을 별도 Chroma 후보에 만들고 개수·차원·내용 검증 후 현재 원본 조건부 전환. [설계11](docs/portfolio/11-indexing-reliability-design.md)·[결과12](docs/portfolio/12-phase3b-results.md). | 구원본 물리 보존이 현재 열람 허용을 뜻하지 않으며 HA/디스크 손실 복구는 미검증. |
+| 학생 웹·최종 코드 리뷰 | 서버 확인 기반 진입, 본문·참고 청크·제출 복구·저장 결과를 기존 웹에 연결. [결과14](docs/portfolio/14-phase4-results.md), 입력·오류·설정·의존성·쿼리와 CI는 [최종 리뷰18](docs/portfolio/18-portfolio-code-review.md). | 실제 음성/모바일·외부 모델 품질과 정적 UI 시뮬레이션을 통합 성과로 합산하지 않음. |
 
-  - PEM 형식 정규화: replace("\\n", "\n")로 Vault에 저장된 줄바꿈 이스케이프 처리
-  - Base64 디코딩: Base64.getDecoder().decode(normalized)로 Private Key 복호화
-  - RSA KeyFactory 활용: KeyFactory.getInstance("RSA").generatePrivate()로 PrivateKey 객체 생성
-  - 만료 시간 설정: Instant.now().plus(1, ChronoUnit.HOURS)로 1시간 유효 Signed URL 발급
+각 사례의 문제·원인·대안·트레이드오프·코드/테스트 연결과 재현 명령은 [최종 리뷰](docs/portfolio/18-portfolio-code-review.md)에 제공합니다. 원시 DB·로그·사용자 이력을 공개용 샘플로 내보내지 않습니다.
 
- ### 3. Redis 기반 임시 저장 시스템의 TTL 관리
-
-  - Redis Key 전략: "temp-pdf:%d:%d".formatted(pdfId, userId)로 사용자별 격리된 키 구조
-  - TTL 자동 만료: Duration.ofHours(24)로 24시간 후 자동 삭제
-  - JSON 직렬화/역직렬화: ObjectMapper.writeValueAsString()로 복잡한 객체를 Redis에 안전하게 저장
-  - 예외 처리: 임시 저장 실패 시에도 메인 프로세스 롤백 방지
-
-### 4. FastAPI 외부 API 연동 및 타임아웃 관리
-
-  - WebClient 비동기 통신: Spring WebFlux WebClient로 FastAPI 호출
-  - 타임아웃 설정: .timeout(Duration.ofMinutes(5))로 대용량 PDF 파싱 시간 확보
-  - 에러 핸들링: onStatus().map(errorBody -> RuntimeException)으로 4xx/5xx 에러 감지 및 처리
-  - 블로킹 제어: .block()으로 동기식 응답 대기 및 트랜잭션 정합성 보장
-
-### 5. 복잡한 JSON 필터링 및 퀴즈 데이터 분리 로직
-
-  - 타입별 콘텐츠 분리: filterQuizChapters()로 type: "quiz"인 챕터만 추출
-  - 이중 저장 전략: 전체 JSON과 퀴즈 전용 JSON을 별도 S3 경로에 저장
-  - 동적 S3 Key 생성: String.format("quiz-json/%s/%s_quiz.json", userId, pdfId)로 사용자/파일별 구조화
-  - 독립적 에러 처리: 퀴즈 저장 실패 시 발행 프로세스는 정상 진행
-
-### 6. S3 업로드 프로세스의 메타데이터 관리
-
-  - PutObjectRequest 빌더 패턴: AWS SDK v2의 빌더로 타입 안전한 요청 생성
-  - 메타데이터 타임스탬프: LocalDateTime.now().toString()로 업로드/파싱 시간 기록
-  - RequestBody 인코딩: RequestBody.fromString(json, StandardCharsets.UTF_8)로 UTF-8 보장
-
-### 7. 초기 RAG 임베딩 비동기 처리 및 장애 격리
-
-  - 임베딩 비동기 호출: PDF 파싱 완료 후 FastAPI RAG 임베딩 API 즉시 호출
-  - 장애 격리: try-catch로 임베딩 실패 시에도 파일 업로드는 성공 처리
-  - Authorization 헤더 전달: authorizationHeader로 JWT 토큰을 FastAPI에 전달하여 사용자 인증 유지
-  - 로그 기반 추적: 임베딩 실패 시 로그 남기고 별도 재처리 가능하도록 설계
-
-
-<br>
-
-## 6. 개선 목표
-
-### 1. RAG 임베딩 실패 시 재처리 메커니즘 구현
-
-  현재 PDF 파싱 후 RAG 임베딩 생성 시 실패하면 로그만 남기고 파일 업로드는 성공 처리됩니다. 이로 인해 임베딩이 없는 자료는 AI 챗봇 질의응답이 불가능한 문제가 있습니다.
-  이를 해결하기 위해 Redis Queue를 활용한 재처리 시스템을 구현하고, Spring Scheduler로 주기적으로 실패한 임베딩을
-  재시도하는 기능을 추가할 예정입니다.
-
-### 2. AI 퀴즈 채점 병렬 처리 최적화
-
-  현재 퀴즈 채점은 안정성을 위해 순차 처리되어 10문제 채점 시 약 30초 이상 소요되는 문제가 있습니다. 이를 해결하기 위해 FastAPI의
-  asyncio.gather()를 활용하여 여러 답안을 병렬로 채점하고, Spring WebClient의 타임아웃을 동적으로 조정하여 응답 속도를 3~5배 개선할 계획입니다.     
-
-### 3. CloudFront Signed URL 캐싱 전략 도입
-
-  현재 PDF/JSON 조회 시마다 CloudFront Signed URL을 새로 생성하여 Private Key 파싱 및 서명 작업이 반복되는 문제가 있습니다. 이를 해결하기 위해 Spring Cache(Caffeine)를 활용하여 URL을 50분간 캐싱하고, 만료 10분 전에 자동 갱신하는 방식으로 API 응답 속도를 개선할 예정입니다.
-
-### 4. PDF 파싱 타임아웃 동적 조정 및 진행률 피드백
-
-  현재 FastAPI 호출 시 5분 고정 타임아웃으로 인해 대용량 PDF(50페이지 이상) 파싱 시 실패하는 경우가 발생합니다. 이를 해결하기 위해 파일 크기에 따라 타임아웃을 동적으로 계산하고(1MB당 30초), WebSocket 또는 SSE를 통해 클라이언트에 파싱 진행률을 실시간으로 전달하는 기능을 구현할
-  계획입니다.
-
-### 5. 학습 진행률 조회 쿼리 N+1 문제 해결
-
-  현재 학생의 전체 교재 진행률 조회 시 MaterialShare와 Material, Progress를 개별 쿼리로 조회하여 N+1 문제가 발생하는 상황입니다. 이를 해결하기 위해 JPA의 @EntityGraph 또는 Querydsl의 Fetch Join을 활용하여 한 번의 쿼리로 모든 데이터를 조회하고, DTO Projection을 통해 불필요한 필드 로딩을 최소화할 예정입니다.
+다음 범위는 같은 `fe-web`의 명시적인 showcase build mode와 샘플 adapter입니다. 실제 JWT를 흉내 내지 않고 역할 선택·준비된 답변·예시 채점이 시연임을 표시합니다. 실제 API 실패를 데모 성공으로 바꾸지 않습니다. 키 없는 CI 작성과 로컬 명령 검증은 원격 GitHub Actions 성공과 다르며, **REMOTE_CI_EXECUTION=NOT_RUN**, **REAL_AI_INTEGRATION=NOT_RUN**입니다.

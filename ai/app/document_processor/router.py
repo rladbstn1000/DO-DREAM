@@ -7,8 +7,6 @@ from app.security.authorization import require_file, require_object_url
 from pydantic import BaseModel, HttpUrl, ConfigDict, Field, StrictInt
 import tempfile
 import os
-import httpx
-from urllib.parse import urlparse
 from typing import List, Dict, Any
 
 from app.document_processor.pdf_parser import PDFParser
@@ -24,7 +22,7 @@ class CloudFrontPDFRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     uploaded_file_id: StrictInt = Field(gt=0, le=9223372036854775807)
     cloudfront_url: HttpUrl  # CloudFront URL
-    output_format: str = """
+    output_format: str = Field(max_length=10000, default="""
 {
     "indexes": ["01 사회 문화 현상의 이해", "02 사회 문화현상의 연구 방법", ...],
     "data": [
@@ -62,13 +60,13 @@ class CloudFrontPDFRequest(BaseModel):
         }
     ]
 }
-"""
+""")
 
 # 개념 Check 가공 요청 모델
 class ConceptCheckRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     uploaded_file_id: StrictInt = Field(gt=0, le=9223372036854775807)
-    concept_checks: List[Dict[str, Any]]  # s_title == "개념 Check"인 항목 리스트
+    concept_checks: List[Dict[str, Any]] = Field(min_length=1, max_length=100)
 
 async def download_from_cloudfront(url: str, local_path: str) -> None:
     """
@@ -85,53 +83,9 @@ async def download_from_cloudfront(url: str, local_path: str) -> None:
         from app.local_providers import write_fixture_pdf
         write_fixture_pdf(url, local_path)
         return
-    try:
-        print("Authorized object download started")
-        
-        # httpx 비동기 클라이언트 생성
-        async with httpx.AsyncClient(timeout=60.0) as client:  # 60초 타임아웃
-            response = await client.get(url, follow_redirects=True)
-            
-            # HTTP 상태 코드 확인
-            if response.status_code == 404:
-                raise HTTPException(status_code=404, detail="CloudFront에 해당 파일이 존재하지 않습니다.")
-            elif response.status_code == 403:
-                raise HTTPException(status_code=403, detail="CloudFront 파일 접근 권한이 없습니다. (URL이 만료되었거나 권한이 없습니다)")
-            elif response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail="Object download failed"
-                )
-            
-            # Content-Type 검증 (선택사항이지만 안전함)
-            content_type = response.headers.get('content-type', '')
-            if 'application/pdf' not in content_type and not url.endswith('.pdf'):
-                print(f"⚠️ 경고: Content-Type이 PDF가 아닙니다: {content_type}")
-                # 경고만 하고 진행 (확장자로 판단)
-            
-            # 파일 크기 확인 (100MB 제한)
-            content_length = response.headers.get('content-length')
-            if content_length and int(content_length) > 100 * 1024 * 1024:
-                raise HTTPException(
-                    status_code=413,
-                    detail="파일 크기가 너무 큽니다. (최대 100MB)"
-                )
-            
-            # 파일로 저장
-            with open(local_path, 'wb') as f:
-                f.write(response.content)
-            
-            print(f"다운로드 완료: {local_path} ({len(response.content)} bytes)")
-            
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="CloudFront 다운로드 시간 초과 (60초)")
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail="Object provider unavailable")
-    except HTTPException:
-        # HTTPException은 그대로 재발생
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Object download failed")
+    # External file fetching is not part of either currently supported mode.
+    # Do not retain a dormant redirect-following arbitrary-URL downloader.
+    raise HTTPException(503, "External PDF downloads are disabled")
 
 @router.post("/parse-pdf-from-cloudfront")
 async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest,
@@ -206,7 +160,7 @@ async def parse_pdf_from_cloudfront(request: CloudFrontPDFRequest,
                 os.remove(temp_path)
                 print(f"✅ 임시 파일 삭제: {temp_path}")
             except Exception as e:
-                print(f"⚠️ 임시 파일 삭제 실패: {e}")
+                print("Temporary PDF cleanup failed")
 
 @router.post("/process-concept-check")
 async def process_concept_check(request: ConceptCheckRequest,

@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 
 # 환경 설정
 from app.utils.config import settings
+from app.input_limits import RequestBodyLimit
 
 # 라우터 임포트
 from app.routers import pdf_structure
@@ -49,8 +50,12 @@ app = FastAPI(
     title="PDF Structure Extraction Service",
     description="PDF 문서를 분석하여 목차/표/그림을 추출하고 TipTap JSON으로 변환",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if settings.APP_ENV in {"local", "test"} else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if settings.APP_ENV in {"local", "test"} else None,
 )
+app.add_middleware(RequestBodyLimit, max_bytes=settings.MAX_PDF_SIZE_MB * 1024 * 1024 + 65536)
 
 # CORS 설정 (Java Spring Boot와 통신)
 app.add_middleware(
@@ -81,7 +86,7 @@ async def root():
         "status": "running",
         "endpoints": {
             "health": "/health",
-            "extract": "/api/extract-structure (POST)"
+            "extract": "/api/pdf/extract-structure (POST)"
         }
     }
 
@@ -108,6 +113,8 @@ async def health_check():
 @app.get("/api/test")
 async def test_endpoint():
     """테스트용 엔드포인트"""
+    if settings.APP_ENV not in {"local", "test"}:
+        raise HTTPException(404, "Not found")
     return {
         "message": "PDF 구조화 서비스가 정상 작동 중입니다!",
         "test": "OK"
@@ -135,12 +142,11 @@ async def http_exception_handler(request, exc):
 @app.exception_handler(Exception)
 async def general_exception_handler(request, exc):
     """일반 예외 핸들러"""
-    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    logger.error("Unhandled PDF processing failure")
     return JSONResponse(
         status_code=500,
         content={
-            "error": "Internal server error",
-            "detail": str(exc)
+            "error": "Internal server error"
         }
     )
 

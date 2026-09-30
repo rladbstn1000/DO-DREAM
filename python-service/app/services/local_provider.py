@@ -24,7 +24,16 @@ def download_fixture_pdf(url):
 
 def parse_pdf(path):
     with fitz.open(path) as doc:
-        text = "\n".join(page.get_text() for page in doc)
+        if not doc.is_pdf or doc.needs_pass or not 1 <= len(doc) <= settings.MAX_PDF_PAGES:
+            raise ValueError("Unsupported PDF or page limit exceeded")
+        parts, length = [], 0
+        for page in doc:
+            part = page.get_text()
+            length += len(part)
+            if length > settings.MAX_EXTRACTED_TEXT_CHARS:
+                raise ValueError("Extracted PDF text exceeds the limit")
+            parts.append(part)
+        text = "\n".join(parts)
     if not text.strip():
         raise ValueError("Local parser requires a PDF text layer; OCR/model inference is not run")
     return {"external_provider": "local_stub", "indexes": ["01 LOCAL STUB"], "data": [{"index": "01", "index_title": "LOCAL STUB: real AI not run", "titles": [{"title": "Synthetic local extraction", "s_titles": [{"s_title": "PDF text", "contents": text, "ss_titles": []}]}], "concept_checks": []}]}

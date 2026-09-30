@@ -145,7 +145,7 @@ public class ProgressReportService {
                     .build();
 
             ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
-            String jsonString = new String(response.readAllBytes());
+            String jsonString = A704.DODREAM.file.service.ObjectJsonReader.read(response);
 
             log.info("S3에서 JSON 조회 성공: materialId={}, size={} bytes",
                     material.getId(), jsonString.length());
@@ -409,6 +409,9 @@ public class ProgressReportService {
     @Transactional
     public UpdateProgressResponse updateProgress(Long studentId, Long materialId, Integer currentPage, Integer totalPages) {
         policy.studentMaterial(studentId, materialId);
+        if (currentPage == null || currentPage < 0 || currentPage > 100000
+            || (totalPages != null && (totalPages < 1 || totalPages > 100000 || currentPage > totalPages)))
+            throw A704.DODREAM.authorization.AuthorizationPolicy.invalid();
         // 1. 학생 조회
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -419,18 +422,15 @@ public class ProgressReportService {
 
         Material material = share.getMaterial();
 
-        // 3. totalPages 기본값 설정 (앱이 안 보낸 경우)
-        if (totalPages == null) {
-            log.warn("앱이 totalPages를 보내지 않음. currentPage를 기본값으로 사용: {}", currentPage);
-            totalPages = currentPage;
-        }
-        
-        log.info("진행률 업데이트: currentPage={}, totalPages={}", currentPage, totalPages);
-
-        // 4. 진행 상태 조회 또는 생성
         StudentMaterialProgress progress = progressRepository
                 .findByStudentIdAndMaterialId(studentId, materialId)
                 .orElse(null);
+
+        // An omitted total is not a request to shrink a previously known document length.
+        if (totalPages == null) {
+            int previousTotal = progress != null && progress.getTotalPages() != null ? progress.getTotalPages() : 0;
+            totalPages = Math.max(1,Math.max(previousTotal,currentPage));
+        }
 
         if (progress == null) {
             // 새로운 진행 기록 생성

@@ -63,7 +63,6 @@ export default function ChatHistory() {
         }
 
         const raw = await chatRes.json();
-        console.log('💬 대화 기록 raw:', raw);
 
         const chatSession: ChatSession = {
           session_id: raw.session_id || sessionId,
@@ -73,7 +72,7 @@ export default function ChatHistory() {
 
         setSession(chatSession);
       } catch (err: any) {
-        console.error('대화 기록 조회 실패', err);
+        console.error('대화 기록 조회 실패');
         await Swal.fire({
           icon: 'error',
           title: '대화 기록을 불러올 수 없습니다',

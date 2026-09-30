@@ -1,3 +1,4 @@
+import { htmlText, htmlLines } from '../utils/htmlText';
 import { authenticatedFetch } from '../auth/client';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -243,40 +244,22 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
   const clearLabels = () => setActiveLabels([]);
 
-  const simulateExtract = async (file: File): Promise<string> => {
-    const name = file.name.toLowerCase();
-    if (name.endsWith('.txt')) {
-      const text = await file.text();
-      return text.slice(0, 5000) || '내용이 비어있습니다.';
-    }
-    return [
-      `<h1>${file.name}</h1>`,
-      '<h2>자동 추출 요약 (Demo)</h2>',
-      '<p>이 본문은 화면 흐름 확인을 위한 더미 텍스트입니다.</p>',
-      '<ul>',
-      '<li>원문에서 문단/제목/리스트를 탐지하여 편집 가능한 형태로 변환</li>',
-      '<li>수식/표/이미지는 1차 텍스트로 대체</li>',
-      '<li>필요 시 에디터에서 챕터 분할선으로 다중 챕터 구성</li>',
-      '</ul>',
-    ].join('');
+  const readTextFile = async (file: File): Promise<string> => {
+    if (!/\.txt$/i.test(file.name)) throw new Error('PDF 또는 TXT 파일을 선택해주세요.');
+    if (file.size > 1024 * 1024) throw new Error('TXT 파일은 1MiB까지 열 수 있습니다.');
+    return `<p>${htmlLines(await file.text())}</p>`;
   };
 
   async function uploadAndParsePdf(
     file: File,
     API_BASE: string,
   ): Promise<ParsedPdfResponse> {
-    const token = localStorage.getItem('accessToken'); // ✅ 토큰 가져오기
+    if (file.size > 10 * 1024 * 1024) throw new Error('PDF 파일은 10MiB까지 올릴 수 있습니다.');
+    const token = localStorage.getItem('accessToken');
 
     const url = `${API_BASE}/api/pdf/upload-and-parse?filename=${encodeURIComponent(
       file.name,
     )}`;
-
-    console.log('📤 [PDF Upload] 요청 시작:', {
-      url,
-      filename: file.name,
-      fileSize: file.size,
-      hasToken: !!token,
-    });
 
     const res = await authenticatedFetch(url, {
       method: 'POST',
@@ -289,26 +272,15 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       credentials: 'include',
     });
 
-    console.log('📥 [PDF Upload] 응답:', {
-      status: res.status,
-      statusText: res.statusText,
-      ok: res.ok,
-    });
-
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      console.error('❌ [PDF Upload] 오류:', {
-        status: res.status,
-        responseText: text,
-      });
+      console.error('❌ [PDF Upload] 오류:');
 
       throw new Error(
-        text || `PDF 파싱 요청에 실패했습니다. (status: ${res.status})`,
+        `PDF 파싱 요청에 실패했습니다. (status: ${res.status})`,
       );
     }
 
     const json = (await res.json()) as ParsedPdfResponse;
-    console.log('✅ [PDF Upload] 성공:', json);
 
     return json;
   }
@@ -328,20 +300,20 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
         t.s_titles?.forEach((s: any) => {
           if (s.s_title) {
-            htmlParts.push(`<h3>${s.s_title}</h3>`);
+            htmlParts.push(`<h3>${htmlText(s.s_title)}</h3>`);
           }
 
           if (s.contents) {
-            htmlParts.push(`<p>${s.contents.replace(/\n/g, '<br/>')}</p>`);
+            htmlParts.push(`<p>${htmlLines(s.contents)}</p>`);
           }
 
           if (s.ss_titles && s.ss_titles.length > 0) {
             htmlParts.push('<ul>');
             s.ss_titles.forEach((ss: any) => {
               const strong = ss.ss_title
-                ? `<strong>${ss.ss_title}</strong> `
+                ? `<strong>${htmlText(ss.ss_title)}</strong> `
                 : '';
-              const text = (ss.contents || '').replace(/\n/g, '<br/>');
+              const text = htmlLines(ss.contents);
               htmlParts.push(`<li>${strong}${text}</li>`);
             });
             htmlParts.push('</ul>');
@@ -406,24 +378,11 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       if (!pdfRes.ok) {
         const text = await pdfRes.text().catch(() => '');
         throw new Error(
-          text || `자료 내용을 불러오지 못했습니다. (status: ${pdfRes.status})`,
+          `자료 내용을 불러오지 못했습니다. (status: ${pdfRes.status})`,
         );
       }
 
       const parsedData = await pdfRes.json();
-
-      console.log('🔍 Raw parsedData:', parsedData);
-      console.log('🔍 parsedData 구조 분석:');
-      console.log('  - parsedData.chapters:', parsedData.chapters);
-      console.log('  - parsedData.parsedData:', parsedData.parsedData);
-      console.log(
-        '  - parsedData.parsedData?.chapters:',
-        parsedData.parsedData?.chapters,
-      );
-      console.log(
-        '  - parsedData.editedJson?.chapters:',
-        parsedData.editedJson?.chapters,
-      );
 
       // 올바른 경로에서 chapters 추출
       let chapters: any[] = [];
@@ -431,7 +390,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       // 1) parsedData.chapters가 배열이면 사용
       if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
         chapters = parsedData.chapters;
-        console.log('✅ parsedData.chapters 사용:', chapters.length);
+
       }
       // 2) parsedData.parsedData.chapters가 배열이면 사용
       else if (
@@ -439,7 +398,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         Array.isArray(parsedData.parsedData.chapters)
       ) {
         chapters = parsedData.parsedData.chapters;
-        console.log('✅ parsedData.parsedData.chapters 사용:', chapters.length);
+
       }
       // 3) parsedData.editedJson?.chapters가 배열이면 사용 (발행된 자료일 경우)
       else if (
@@ -447,15 +406,12 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         Array.isArray(parsedData.editedJson.chapters)
       ) {
         chapters = parsedData.editedJson.chapters;
-        console.log('✅ parsedData.editedJson.chapters 사용:', chapters.length);
+
       }
       // 4) chapters가 객체 형태라면 Object.values로 변환
       else if (parsedData.chapters && typeof parsedData.chapters === 'object') {
         chapters = Object.values(parsedData.chapters);
-        console.log(
-          '✅ Object.values(parsedData.chapters) 사용:',
-          chapters.length,
-        );
+
       }
       // 5) parsedData.parsedData.chapters가 객체라면 변환
       else if (
@@ -463,10 +419,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         typeof parsedData.parsedData.chapters === 'object'
       ) {
         chapters = Object.values(parsedData.parsedData.chapters);
-        console.log(
-          '✅ Object.values(parsedData.parsedData.chapters) 사용:',
-          chapters.length,
-        );
+
       }
       // 6) parsedData.editedJson?.chapters가 객체라면 변환
       else if (
@@ -474,19 +427,10 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         typeof parsedData.editedJson.chapters === 'object'
       ) {
         chapters = Object.values(parsedData.editedJson.chapters);
-        console.log(
-          '✅ Object.values(parsedData.editedJson.chapters) 사용:',
-          chapters.length,
-        );
-      } else {
-        console.error(
-          '❌ chapters를 찾을 수 없습니다. parsedData 구조:',
-          parsedData,
-        );
-      }
 
-      console.log('🎯 Final chapters:', chapters);
-      console.log('🎯 First chapter structure:', chapters[0]);
+      } else {
+        console.error('❌ chapters를 찾을 수 없습니다. parsedData 구조:');
+      }
 
       // 라벨 정보 추출
       let labelColor: string | undefined = undefined;
@@ -494,27 +438,25 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       // 1) parsedData.labelColor 확인
       if (parsedData.labelColor) {
         labelColor = parsedData.labelColor.toLowerCase();
-        console.log('✅ parsedData.labelColor 사용:', labelColor);
+
       }
       // 2) parsedData.label 확인
       else if (parsedData.label) {
         labelColor = parsedData.label.toLowerCase();
-        console.log('✅ parsedData.label 사용:', labelColor);
+
       }
       // 3) material.label 사용 (로컬 state - 가장 확실!)
       else if (material.label) {
         labelColor = material.label;
-        console.log('✅ material.label 사용:', labelColor);
-      }
 
-      console.log('🎨 Final labelColor:', labelColor);
+      }
 
       // 검증: chapters가 올바른 형태인지 확인
       if (chapters.length > 0) {
         if (chapters[0]?.id !== undefined && chapters[0]?.title !== undefined) {
-          console.log('✅ 올바른 Chapter 객체입니다!');
+
         } else {
-          console.warn('⚠️ Chapter 객체 구조가 예상과 다릅니다:', chapters[0]);
+          console.warn('⚠️ Chapter 객체 구조가 예상과 다릅니다:');
         }
       }
 
@@ -530,9 +472,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         return;
       }
 
-      console.log('🚀 Navigating to editor with chapters:', chapters);
-      console.log('🚀 Navigating to editor with labelColor:', labelColor);
-
       // 에디터로 이동
       navigate('/editor', {
         state: {
@@ -546,7 +485,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         },
       });
     } catch (err: any) {
-      console.error('자료 조회 실패', err);
+      console.error('자료 조회 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
@@ -592,7 +531,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 
       if (isPdf) {
-        console.log('📄 PDF 파일 업로드 시작:', file.name);
 
         const [parsed] = await Promise.all([
           uploadAndParsePdf(file, API_BASE),
@@ -614,12 +552,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           return;
         }
 
-        console.log('✅ [handlePickFile] 파싱 완료:', {
-          fileName: docTitle,
-          chaptersCount: chapters.length,
-          pdfId,
-        });
-
         navigate('/editor', {
           state: {
             fileName: docTitle,
@@ -630,7 +562,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         });
       } else {
         const [text] = await Promise.all([
-          simulateExtract(file),
+          readTextFile(file),
           sleep(MIN_SHOW_MS),
         ]);
 
@@ -645,7 +577,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         });
       }
     } catch (err) {
-      console.error('❌ [handlePickFile] 파일 처리 실패:', err);
+      console.error('❌ [handlePickFile] 파일 처리 실패:');
 
       await Swal.close();
       await Swal.fire({
@@ -654,7 +586,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         html: `
         <div style="text-align: left;">
           <p style="margin-bottom: 12px;">
-            <strong>오류:</strong> ${err instanceof Error ? err.message : '알 수 없는 오류'}
+            <strong>오류:</strong> 요청을 완료하지 못했습니다. PDF·TXT 형식과 파일 크기를 확인해주세요.
           </p>
           <p style="margin-bottom: 12px; font-size: 14px; color: #666;">
             다음을 확인해 주세요:
@@ -725,7 +657,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       if (!pdfRes.ok) {
         const text = await pdfRes.text().catch(() => '');
         throw new Error(
-          text || `자료 내용을 불러오지 못했습니다. (status: ${pdfRes.status})`,
+          `자료 내용을 불러오지 못했습니다. (status: ${pdfRes.status})`,
         );
       }
 
@@ -883,7 +815,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         timer: 2000,
       });
     } catch (err: any) {
-      console.error('워드 다운로드 실패', err);
+      console.error('워드 다운로드 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
@@ -928,10 +860,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         });
 
         if (!res.ok) {
-          const text = await res.text().catch(() => '');
           throw new Error(
-            text ||
-              `발행 자료 목록 조회에 실패했습니다. (status: ${res.status})`,
+            `발행 자료 목록 조회에 실패했습니다. (status: ${res.status})`,
           );
         }
 
@@ -996,7 +926,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
 
         setMaterials(mapped);
       } catch (err: any) {
-        console.error('발행 자료 목록 조회 실패', err);
+        console.error('발행 자료 목록 조회 실패');
         Swal.fire({
           icon: 'error',
           title: '발행된 자료를 불러오지 못했습니다',
@@ -1089,10 +1019,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         studentsJson.forEach((cls) => {
           const students =
             cls.students?.map((s) => {
-              // ✅ 이 console.log가 실제로 있나요?
-              console.log(
-                `🔍 API 학생 데이터: ${s.studentName} | gender: ${s.gender}`,
-              );
 
               return {
                 id: String(s.studentId),
@@ -1104,14 +1030,12 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
               };
             }) ?? [];
 
-          console.log(`📚 변환된 학생 데이터:`, students);
-
           map[String(cls.classroomId)] = students;
         });
 
         setStudentsByClassroom(map);
       } catch (err: any) {
-        console.error('담당 반/학생 목록 조회 실패', err);
+        console.error('담당 반/학생 목록 조회 실패');
         Swal.fire({
           icon: 'error',
           title: '반/학생 정보를 불러오지 못했습니다',
@@ -1154,12 +1078,12 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       <div class="ae-label-grid" id="labelGrid">
         ${LABEL_OPTIONS.map(
           (label) => `
-          <button 
-            class="ae-label-option ${picked === label.id ? 'active' : ''}" 
+          <button
+            class="ae-label-option ${picked === label.id ? 'active' : ''}"
             data-label="${label.id}"
             style="background-color: ${label.color}; ${
               picked === label.id ? `border: 3px solid ${label.color};` : ''
-            }" 
+            }"
             title="${label.name}"
           >
             <span>${picked === label.id ? '✓' : ''}</span>
@@ -1237,9 +1161,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
         throw new Error(
-          text || `라벨 수정에 실패했습니다. (status: ${res.status})`,
+          `라벨 수정에 실패했습니다. (status: ${res.status})`,
         );
       }
 
@@ -1259,7 +1182,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         showConfirmButton: false,
       });
     } catch (err: any) {
-      console.error('라벨 수정 실패', err);
+      console.error('라벨 수정 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
@@ -1335,9 +1258,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
         throw new Error(
-          text || `자료 공유에 실패했습니다. (status: ${res.status})`,
+          `자료 공유에 실패했습니다. (status: ${res.status})`,
         );
       }
 
@@ -1375,9 +1297,9 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         title: '자료가 공유되었습니다!',
         html: `
           <div style="text-align:left;line-height:1.5">
-            <p style="margin:0 0 8px 0"><strong>"${material.title}"</strong></p>
-            <p style="margin:0 0 6px 0;color:#374151;"><strong>공유한 반</strong> ${classroomNames}</p>
-            <p style="margin:0 0 6px 0;color:#374151;"><strong>공유한 학생</strong> ${names.join(', ')}</p>
+            <p style="margin:0 0 8px 0"><strong>"${htmlText(material.title)}"</strong></p>
+            <p style="margin:0 0 6px 0;color:#374151;"><strong>공유한 반</strong> ${htmlText(classroomNames)}</p>
+            <p style="margin:0 0 6px 0;color:#374151;"><strong>공유한 학생</strong> ${htmlText(names.join(', '))}</p>
             <p style="margin:4px 0 0 0;color:#6b7280;font-size:14px;">${names.length}명에게 공유되었습니다</p>
           </div>
         `,
@@ -1387,7 +1309,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       setShowSendModal(false);
       setSelectedMaterial(null);
     } catch (err: any) {
-      console.error('자료 공유 실패', err);
+      console.error('자료 공유 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
@@ -1434,9 +1356,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
         throw new Error(
-          text || `자료 삭제에 실패했습니다. (status: ${res.status})`,
+          `자료 삭제에 실패했습니다. (status: ${res.status})`,
         );
       }
 
@@ -1458,7 +1379,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         })),
       );
     } catch (err: any) {
-      console.error('자료 삭제 실패', err);
+      console.error('자료 삭제 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
@@ -1509,7 +1430,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       await Swal.close();
       Swal.fire({
         icon: 'error',
-        title: err?.message || '로그아웃 중 오류가 발생했습니다',
+        titleText: err?.message || '로그아웃 중 오류가 발생했습니다',
         confirmButtonColor: '#192b55',
       });
     } finally {

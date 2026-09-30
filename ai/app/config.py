@@ -42,12 +42,8 @@ if len(SECRET_KEY_BYTES) < 32:
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is required")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GMS_KEY = os.getenv("GMS_KEY")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
+# Optional live QA/grading adapters load credentials only after their own gate.
+# File/OCR processing never discovers ambient provider credentials.
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
 RAG_DATABASE_URL = os.getenv("RAG_DATABASE_URL", "sqlite:////app/db_data/rag.db")
 LOCAL_PROVIDER_DATA_DIR = os.getenv("LOCAL_PROVIDER_DATA_DIR", "/app/db_data/local_provider")

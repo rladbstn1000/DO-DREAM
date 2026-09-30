@@ -309,17 +309,24 @@ async def get_student_chat_session_history(
         if error.status_code == 400:
             raise HTTPException(404, "Object not found") from None
         raise
-    messages = rag_db.query(rag_models.ChatMessage).filter(
-        rag_models.ChatMessage.session_id == session.id).order_by(rag_models.ChatMessage.created_at.asc()).all()
+    messages = (rag_db.query(rag_models.ChatMessage, rag_models.ChatMessageSources)
+        .outerjoin(rag_models.ChatMessageSources,
+                   rag_models.ChatMessageSources.message_id == rag_models.ChatMessage.id)
+        .filter(rag_models.ChatMessage.session_id == session.id)
+        .order_by(rag_models.ChatMessage.created_at.asc(), rag_models.ChatMessage.id.asc()).all())
     version=rag_db.get(rag_models.ChatSessionIndex,session.id)
     return ChatSessionDetailDto(session_id=session.id,document_id=session.document_id,
         material_title=material.title,source_revision=version.source_revision if version else None,
         source_hash=version.source_hash if version else None,
-        messages=[message_with_sources(rag_db,message) for message in messages])
+        messages=[message_dto(message, record) for message, record in messages])
 
 
 def message_with_sources(rag_db,message):
     record=rag_db.get(rag_models.ChatMessageSources,message.id)
+    return message_dto(message, record)
+
+
+def message_dto(message, record):
     return ChatMessageDto(id=message.id,role=message.role,content=message.content,created_at=message.created_at,
         sources=[SourceReference.model_validate(value) for value in json.loads(record.sources_json)] if record else [],
         mode=RuntimeMode.model_validate_json(record.mode_json) if record else None)

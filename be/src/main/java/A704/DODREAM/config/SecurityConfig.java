@@ -23,17 +23,16 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+	private final org.springframework.core.env.Environment environment;
 	private final CookieUtil cookies;
 	private final JwtAuthFilter jwtAuthFilter; // 분리한 필터 주입
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowedOrigins(List.of(
-			"https://www.dodream.io.kr",
-			"http://localhost:5173",
-			"http://localhost:8080"
-		));
+        config.setAllowedOrigins(environment.acceptsProfiles(org.springframework.core.env.Profiles.of("local", "test"))
+            ? List.of("http://localhost:5173", "http://localhost:8080")
+            : List.of("https://www.dodream.io.kr"));
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowCredentials(true);
@@ -72,19 +71,19 @@ public class SecurityConfig {
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                            .requestMatchers("/api/actuator/**").permitAll()
-				.requestMatchers("/actuator/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/actuator/health", "/api/actuator/health").permitAll()
+                .requestMatchers("/actuator/**", "/api/actuator/**").denyAll()
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
         .requestMatchers("/api/pdf/**", "/api/files/**", "/api/documents/**").authenticated()
-        .requestMatchers("/document/parse-pdf-from-cloudfront").permitAll()
 
 				.requestMatchers("/error", "/error/**").permitAll()
 				.requestMatchers(
 					"/api/swagger-ui/**", "/api/v3/api-docs/**",
 					"/swagger-ui/**", "/v3/api-docs/**",
 					"/swagger-resources/**"
-				).permitAll()
-				.requestMatchers("/api/auth/**", "/auth/**", "/actuator/**", "/health").permitAll()
+                ).access((authentication, context) -> new org.springframework.security.authorization.AuthorizationDecision(
+                    environment.acceptsProfiles(org.springframework.core.env.Profiles.of("local", "test"))))
+                .requestMatchers("/api/auth/**", "/auth/**", "/health").permitAll()
         .requestMatchers("/api/test/**").denyAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")

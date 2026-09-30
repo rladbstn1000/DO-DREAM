@@ -85,7 +85,7 @@ def command_scope(args):
                 parameter=rest[i+1]
                 if value=='--name': require(bool(re.fullmatch(r'dodream-phase3[ab]-[a-z0-9-]+',parameter)),'One-off name is outside this task')
                 if value=='-e':
-                    if parameter in ('MYSQL_DATABASE=dodream_phase3a_fresh_v2','MYSQL_DATABASE=dodream_phase3b_fresh'):fresh_schema=parameter
+                    if parameter in ('MYSQL_DATABASE=dodream_phase3a_fresh_v2','MYSQL_DATABASE=dodream_phase3b_fresh','MYSQL_DATABASE=dodream_portfolio_hardening_fresh'):fresh_schema=parameter
                     else:require(parameter.split('=',1)[0] in ('JWT_SECRET','JWT_SECRET_BASE64'),'Unreviewed environment override')
                 if value=='--label':require(parameter==RUN_LABEL,'Unknown one-off owner label')
                 i+=2
@@ -100,8 +100,13 @@ def command_scope(args):
     if operation in ('exec','run'): require(len(targets)==1,'Exactly one service required')
     if operation=='run':require('--rm' in rest and '--no-deps' in rest and '--name' in rest and '--label' in rest,'One-off run must be named, labelled and disposable')
     if fresh_schema:
+        fresh_names = {
+            'MYSQL_DATABASE=dodream_phase3a_fresh_v2': 'dodream-phase3a-fresh-schema',
+            'MYSQL_DATABASE=dodream_phase3b_fresh': 'dodream-phase3b-fresh-schema',
+            'MYSQL_DATABASE=dodream_portfolio_hardening_fresh': 'dodream-phase3b-hardening-fresh',
+        }
         require(operation=='run' and targets==['be'] and '--name' in rest
-                and rest[rest.index('--name')+1]==('dodream-phase3b-fresh-schema' if fresh_schema.endswith('phase3b_fresh') else 'dodream-phase3a-fresh-schema'),
+                and rest[rest.index('--name')+1]==fresh_names[fresh_schema],
                 'Fresh schema override is restricted to its dedicated disposable Spring process')
     if not targets:
         targets=list(MAIN)

@@ -60,13 +60,16 @@ public class PdfController {
 	)
 	@PostMapping(value = "/upload-and-parse", consumes = "application/pdf")
 	public ResponseEntity<Map<String, Object>> uploadAndParsePdfBinary(
-		@RequestBody byte[] pdfBytes,
 		@Parameter(description = "PDF 파일명 (예: document.pdf)")
 		@RequestParam(value = "filename", defaultValue = "document.pdf") String filename,
 		@AuthenticationPrincipal UserPrincipal userPrincipal,
 		HttpServletRequest httpServletRequest
-	) {
+	) throws IOException {
 		Long userId = userPrincipal.userId();
+        policy.teacher(userId);
+        A704.DODREAM.file.service.PdfInputPolicy.filename(filename);
+        byte[] pdfBytes = A704.DODREAM.file.service.PdfInputPolicy.read(
+            httpServletRequest.getInputStream(), httpServletRequest.getContentLengthLong());
 		String authorizationHeader = httpServletRequest.getHeader("Authorization");
 		Map<String, Object> result = pdfService.uploadAndParsePdfFromBytes(pdfBytes, filename, userId, authorizationHeader);
 		return ResponseEntity.ok(result);

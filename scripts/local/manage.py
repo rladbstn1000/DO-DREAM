@@ -246,7 +246,7 @@ def main():
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0
     if command == 'help':
-        print('init | check | config | scope | scope-test | build | up | demo-up | demo-prepare | demo-api | student-web | auth-test-up | test | auth | authorization | grading | grading-migrate | indexing | indexing-migrate | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
+        print('init | check | config | scope | scope-test | build | data-up | up | demo-up | demo-prepare | demo-api | student-web | auth-test-up | test | auth | authorization | grading | grading-migrate | indexing | indexing-migrate | startup | smoke | security | persistence | status | stop | restart | isolation | resources-before | resources-after')
         return 0
     settings()
     if command == 'scope-test':return run('scope-unit',[sys.executable,'-m','unittest','discover','-s','scripts/local/tests','-v']).returncode
@@ -261,6 +261,10 @@ def main():
         snapshot(command); return 0
     if command == 'config': return compose('compose-config', 'config', '--quiet').returncode
     if command == 'build': return compose('compose-build', '--profile', 'test', '--progress', 'plain', 'build').returncode
+    if command == 'data-up':
+        # Bootstrap owned data services before additive schema SQL and Spring guards.
+        snapshot('resources-before')
+        return compose('data-up', 'up', '-d', '--wait', '--wait-timeout', '240', 'mysql', 'redis', 'chroma').returncode
     if command == 'up':
         snapshot('resources-before')
         return compose('compose-up', 'up', '-d', '--wait', '--wait-timeout', '240').returncode

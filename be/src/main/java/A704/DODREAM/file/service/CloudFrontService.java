@@ -64,7 +64,7 @@ public class CloudFrontService {
 			return signedUrl;
 
 		} catch (Exception e) {
-			log.error("Failed to generate CloudFront signed URL: {}", e.getMessage(), e);
+			log.error("CloudFront signing failed type={}", e.getClass().getSimpleName());
 			throw new RuntimeException("Failed to generate CloudFront signed URL", e);
 		}
 	}
@@ -84,24 +84,24 @@ public class CloudFrontService {
 			return downloadFileFromUrl(signedUrl);
 
 		} catch (Exception e) {
-			log.error("Failed to download file from CloudFront: {}", e.getMessage(), e);
+			log.error("CloudFront download failed type={}", e.getClass().getSimpleName());
 			throw new RuntimeException("Failed to download file from CloudFront", e);
 		}
 	}
 
 	private byte[] downloadFileFromUrl(String url) {
 		try {
-			log.debug("Downloading file from URL: {}", url);
+			// Signed URLs are bearer capabilities and must never enter logs.
 
 			return webClient.get()
 				.uri(url)
 				.retrieve()
 				.bodyToMono(byte[].class)
-				.timeout(Duration.ofMinutes(5)) // 5 minute timeout for large files
-				.block();
+				.timeout(Duration.ofSeconds(15))
+				.block(Duration.ofSeconds(15));
 
 		} catch (Exception e) {
-			log.error("Failed to download file from URL: {}", url, e);
+			log.error("CloudFront transport failed type={}", e.getClass().getSimpleName());
 			throw new RuntimeException("Failed to download file", e);
 		}
 	}

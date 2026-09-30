@@ -1,6 +1,15 @@
-FROM gradle:8.14.3-jdk17 AS build
+FROM gradle:8.14.3-jdk17 AS lock-resolution
 WORKDIR /workspace
 COPY --chown=gradle:gradle build.gradle settings.gradle ./
+# Explicit maintenance target only; normal builds consume the committed lock.
+RUN gradle --no-daemon resolveAndLockAll --write-locks
+
+FROM scratch AS dependency-lock
+COPY --from=lock-resolution /workspace/gradle.lockfile /gradle.lockfile
+
+FROM gradle:8.14.3-jdk17 AS build
+WORKDIR /workspace
+COPY --chown=gradle:gradle build.gradle settings.gradle gradle.lockfile ./
 COPY --chown=gradle:gradle src ./src
 RUN gradle --no-daemon bootJar testClasses resolveTestRuntime
 

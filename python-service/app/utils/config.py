@@ -1,6 +1,5 @@
 """
-환경 설정 파일
-.env 파일 또는 환경 변수에서 설정값을 로드
+Explicit environment-only configuration for the isolated PDF processor.
 """
 
 from pydantic_settings import BaseSettings
@@ -16,8 +15,8 @@ class Settings(BaseSettings):
 
     # 기본 설정
     APP_NAME: str = "PDF Structure Extraction Service"
-    ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    ENVIRONMENT: str = "production"
+    DEBUG: bool = False
 
     # 서버 설정
     HOST: str = "0.0.0.0"
@@ -37,7 +36,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
 
     # PDF 처리 설정
-    MAX_PDF_SIZE_MB: int = 100
+    MAX_PDF_SIZE_MB: int = 10
+    MAX_PDF_PAGES: int = 100
+    MAX_EXTRACTED_TEXT_CHARS: int = 2_000_000
     PDF_DPI: int = 350  # 이미지 렌더링 DPI (레이아웃 감지용)
     OCR_DPI: int = 300  # OCR용 DPI
 
@@ -54,7 +55,7 @@ class Settings(BaseSettings):
     TEMP_DIR: str = "/tmp/pdf-processing"
 
     class Config:
-        env_file = None if os.getenv("APP_ENV") in {"local", "test"} else ".env"
+        env_file = None
         env_file_encoding = "utf-8"
         case_sensitive = True
 
@@ -65,8 +66,11 @@ if settings.LOCAL_EXTERNAL_STUBS and settings.APP_ENV not in {"local", "test"}:
     raise RuntimeError("LOCAL_EXTERNAL_STUBS is permitted only in local/test")
 if settings.APP_ENV == "local" and not settings.LOCAL_EXTERNAL_STUBS:
     raise RuntimeError("Local runtime requires LOCAL_EXTERNAL_STUBS=true")
-if not settings.LOCAL_EXTERNAL_STUBS and not settings.GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY is required outside local doubles")
+if not settings.LOCAL_EXTERNAL_STUBS:
+    raise RuntimeError("External PDF/OCR operation is disabled; use explicit isolated local/test mode")
+if not (1 <= settings.MAX_PDF_SIZE_MB <= 10 and 1 <= settings.MAX_PDF_PAGES <= 100
+        and 1 <= settings.MAX_EXTRACTED_TEXT_CHARS <= 2_000_000):
+    raise RuntimeError("PDF processing limits exceed the supported local boundary")
 
 # 임시 디렉토리 생성
 os.makedirs(settings.TEMP_DIR, exist_ok=True)

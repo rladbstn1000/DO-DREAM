@@ -2,6 +2,14 @@
 
 저장소 루트에서 실행한다. 이 구성은 공개 배포용이 아니다. 팀의 기존 배포 설정과 비밀 파일을 재사용하지 않는다.
 
+## 현재 작업 기준 (2026-09-30)
+
+기본 검증은 키 없는 `LOCAL_FAKE`와 실제 자체 백엔드/DB를 사용한다. 실제 AI 호출·모델 평가·비용 측정은 현재 완료 조건이 아니며 `REAL_AI_INTEGRATION=NOT_RUN`이다. 공급자 adapter·오프라인 계약·평가셋과 아래 과거 재개 절차는 보존하지만, 이번 작업에서는 키 탐색·읽기·설정·예산 승인·live 활성화를 수행하지 않는다. live 오류를 대역 성공으로 숨기거나 키 존재로 자동 전환하지 않는다.
+
+이번 리뷰 증거는 `DODREAM_RESULTS_DIR=.local/portfolio-hardening/results`로 분리한다. 기존 결과를 덮어쓰지 않고, 시작 전 자원 비교와 기존 데이터 보존 절차를 재사용한다. 종료 시 이번에 시작한 자체 서비스만 시작 당시 상태로 복구한다.
+
+프로젝트 코드의 실제 통합 검증, 다음 작업의 서버 없는 공개 showcase, 전체 백엔드 운영 준비는 별도 판정이다. 공개 showcase는 의도적으로 공개 가능한 샘플과 브라우저 임시 상태를 사용하도록 설계하며 실제 JWT나 인증을 흉내 내지 않는다. 이번에는 전체 showcase 구현·배포를 하지 않는다. 현재 리뷰와 후속 경계는 [18 코드 리뷰](18-portfolio-code-review.md)에 정리한다.
+
 ## 준비와 첫 기동
 
 호스트 필수: Docker Desktop/Compose v2, Python3. Node/Java를 호스트에 추가 설치할 필요는 없다. 이미지 안에서 Java17/Node22/Python3.11을 사용한다. 최초 빌드에는 명세의 공개 의존성/이미지 다운로드가 필요하다. 전역 설치, sudo, 모델 다운로드는 하지 않는다.
@@ -12,11 +20,16 @@ python3 scripts/local/manage.py init
 python3 scripts/local/manage.py check
 python3 scripts/local/manage.py config
 python3 scripts/local/manage.py build
+python3 scripts/local/manage.py data-up
+python3 scripts/local/manage.py grading-migrate
+python3 scripts/local/manage.py indexing-migrate
 python3 scripts/local/manage.py up
 python3 scripts/local/manage.py status
 ```
 
 `init`은 `.local/env`를 없을 때만 새로 만들고 0600 권한을 설정한다. 기존 파일을 덮어쓰지 않는다. `.env.example`은 변수 설명용이고 실제 비밀이 없다. `.local/env`는 Git에서 제외된다. 기존 `.env`, Vault 설정, 사용자 자격증명을 읽어오지 않는다. wrapper는 지정 파일과 전용 프로젝트 이름을 강제하고 같은 이름의 shell/Compose 변수 간섭을 제거한다.
+
+`data-up`은 자체 MySQL·Redis·Chroma만 시작한다. 새 DB에서 V003/V004를 Spring보다 먼저 적용하기 위한 순서다. `grading-migrate`/`indexing-migrate`는 기존 데이터를 삭제하지 않는 전진 SQL이며 재실행 안정성을 검사한다. JPA는 나머지 팀 도메인을 `ddl-auto=update`로 만들고 schema guard가 필수 제약을 확인한다. 이미 적용한 기존 볼륨의 평소 재시작에는 `up`만 사용한다. 빈 환경 검사는 기존 볼륨 검사와 별개이며 [18 리뷰](18-portfolio-code-review.md)의 전용 새 schema 절차를 따른다.
 
 `check`에서 포트 충돌이 나면 `.local/env`의 `*_PORT`를 비어 있는 번호로 변경한 뒤 실행한다. 기존 프로세스를 종료하지 않는다. 표준 frontend는 same-origin이므로 web 포트 변경을 자동으로 따른다. 선택적인 Vite 개발 프록시의 backend 포트를 변경했다면 `vite.config.ts`도 맞춰야 한다.
 
@@ -51,14 +64,14 @@ python3 scripts/local/manage.py persistence
 python3 scripts/local/manage.py isolation
 ```
 
-- `test`: 보존한 Spring `contextLoads`와 경계 테스트에 JWT/쿠키/Redis 회귀를 추가하고, AI 기존7개에 인증17개를 추가했다. PDF 기존6개를 보존했다. Spring 테스트는 실제 MySQL/Redis, Python 단위테스트는 별도 임시 SQLite와 원래 JWT 인증을 사용한다. 실제 공유 MySQL 연결은 smoke/health에서 확인한다. 테스트용 Spring 컨테이너만 일회성으로 생성/종료/제거한다.
+- `test`: 보존한 Spring `contextLoads`와 인증·권한·채점·색인·입력 경계 회귀, AI/PDF 회귀를 실행한다. 단계별로 누적된 검사 수와 이번 실제 결과는 [18 리뷰](18-portfolio-code-review.md)를 따른다. Spring 테스트는 실제 MySQL/Redis, Python 단위테스트는 별도 임시 SQLite와 원래 JWT 인증을 사용한다. 실제 공유 MySQL 연결은 smoke/health에서 확인한다. 테스트용 Spring 컨테이너만 일회성으로 생성/종료/제거한다.
 - `auth`: 실제 Spring/FastAPI JWT 계약, 실제 Redis 회전·12개 독립 HTTP 클라이언트 동시성·logout 경쟁, CSRF/cookie/native 계약. 합성 계정/키만 사용한다. 마지막에는 전용 Redis만 잠시 중지해 503 오류를 검사하고 finally에서 시작한다. 다른 테스트와 동시에 실행하지 않는다.
 - `startup`: 별도 일회성 컨테이너에서 빈/오류/짧은 키의 실제 기동 실패 검사. 원문 로그/키를 저장하지 않는다.
 - `smoke`: 헬스, 합성 로그인, 웹 Origin/CORS, 정상·무토큰·위조토큰, 자료, 실제 Celery queue, 대역 채팅/SQLite, Redis refresh 흐름.
-- `security`: 안전 기대값을 검증한다. 2-A 인증3개와 범위 밖 객체권한6개를 분리한다. 역할별 새 로그인과 양성 대조군을 먼저 확인한다. 남은 객체권한 때문에 **exit1/FAIL이 예상되며 전체 보안 통과가 아니다**. 원래1차FAIL 증거는 그대로 보존한다. 실제 외부 파일/AI에 요청하지 않는다.
+- `security`: 역할별 새 로그인과 양성 대조군 뒤 인증·현재 객체권한의 안전 기대값을 확인한다. 1차와 2-A 당시의 객체권한 FAIL은 과거 기록으로 보존하며, 현재 코드는 2-B에서 수정한 정책을 검사한다. 이 묶음의 PASS가 모든 보안 영역의 완전성을 뜻하지 않는다. 실제 외부 파일/AI에 요청하지 않는다.
 - `persistence`: MySQL 전용 probe table과 Redis probe key를 생성하고 검증한 자체 컨테이너만 stop/start한다. 현재 자료와 활성 원본이 일치하는 새 대화 세션을 실제 API로 만들고, 같은 컨테이너 ID·이미지, marker, SQLite 연결·대화, MySQL 활성 포인터, 실제 Chroma 내용의 재시작 보존을 확인한다. 먼저 smoke와 현재 공유 자료의 색인 완료가 필요하다. 검증 전제가 충족되지 않으면 원인을 기록하고 재시작을 진행하지 않는다.
 
-1차 증거는 `.local/results/`에 보존한다. 현재 명령/종료코드와 민감값을 제거한 출력은 `.local/phase2a/results/`에 저장한다. `DODREAM_RESULTS_DIR`로 이후 검증의 새 증거 폴더를 지정할 수 있다. 새 폴더에서는 시작 전 `resources-before`를 기록해야 isolation 비교가 가능하다. `commands.jsonl`은 기록 기능 도입 이후 실행 이력이고, 이전 시도는 별도 JSON/log와 결과 문서에 보존했다. 테스트 HTTP body·토큰·cookie는 저장하지 않는다. 일반 `docker compose config`는 비밀을 펼치므로 출력하지 말고 wrapper의 `config --quiet`를 쓴다. 원문 컨테이너 로그를 공유하지 않는다.
+1차 증거는 `.local/results/`에 보존한다. 2-A 당시 명령/종료코드와 민감값을 제거한 출력은 `.local/phase2a/results/`에 보존한다. 현재 wrapper 기본값은 `.local/phase5/results/`이며 이번에는 위 override를 사용한다. `DODREAM_RESULTS_DIR`로 이후 검증의 새 증거 폴더를 지정할 수 있다. 새 폴더에서는 시작 전 `resources-before`를 기록해야 isolation 비교가 가능하다. `commands.jsonl`은 기록 기능 도입 이후 실행 이력이고, 이전 시도는 별도 JSON/log와 결과 문서에 보존했다. 테스트 HTTP body·토큰·cookie는 저장하지 않는다. 일반 `docker compose config`는 비밀을 펼치므로 출력하지 말고 wrapper의 `config --quiet`를 쓴다. 원문 컨테이너 로그를 공유하지 않는다.
 
 호스트 웹 검증(선택):
 
@@ -90,10 +103,11 @@ python3 scripts/local/manage.py restart
 | `dodream-phase1_redis-data` | `/data`: AOF, refresh·Celery·probe |
 | `dodream-phase1_ai-data` | `/app/db_data`: `rag.db` SQLite, `local_provider` 대역 인덱스 |
 | `dodream-phase1_be-data` | `/app/local-data`: 로컬 upload/temp 경로 (외부 업로드 비활성) |
+| `dodream-phase1_chroma-data` | `/chroma/chroma`: 검증 후보와 활성 검색 컬렉션 |
 
-스키마는 **새 local DB에서만** 기존 JPA `ddl-auto=update`와 AI SQLite `create_all`로 만든다. seed는 하나의 트랜잭션에서 최초 한 번 생성하며 교사 fixture가 존재하면 수정·비밀번호 재설정 없이 종료한다. 이후 seed 구조를 바꾸는 마이그레이션은 이 단계에 없다. 환경 파일의 비밀번호만 바꾸면 기존 DB 사용자나 합성 계정 비밀번호가 자동 변경되지 않는다. 초기화나 볼륨 삭제로 우회하지 말고 별도 데이터 관리 작업으로 처리한다.
+새 local DB는 위 현행 초기화 절차의 V003/V004를 먼저 적용하고 JPA `ddl-auto=update`로 나머지 팀 도메인을 만든다. AI SQLite는 `create_all`과 명시적 additive 확장을 사용한다. seed는 하나의 트랜잭션에서 최초 한 번 생성하며 교사 fixture가 존재하면 수정·비밀번호 재설정 없이 종료한다. seed가 이미 있다고 새 필드를 자동으로 덮어쓰지 않는다. 이후 추가된 채점·색인 스키마는 버전 관리 SQL을 적용한다. 환경 파일의 비밀번호만 바꾸면 기존 DB 사용자나 합성 계정 비밀번호가 자동 변경되지 않는다. 초기화나 볼륨 삭제로 우회하지 말고 별도 데이터 관리 작업으로 처리한다.
 
-CPU/메모리 상한을 지정했다. 상시 7개 컨테이너 합계 메모리 상한 약 3.25GiB, 테스트 컨테이너는 일시 1.25GiB 추가다. 검증 종료 뒤 전용 컨테이너는 중지하여 다른 작업의 자원을 돌려준다.
+CPU/메모리 상한을 지정했다. 기본 서비스 9개 컨테이너 합계 메모리 상한 4GiB, 테스트 컨테이너는 일시 1.25GiB 추가다. 별도 auth-test 프로필의 2개는 이 합계에 포함하지 않는다. 검증 종료 뒤 전용 컨테이너는 중지하여 다른 작업의 자원을 돌려준다.
 
 ## 외부 경계와 미지원 기능
 
@@ -115,7 +129,7 @@ Compose가 local 전용으로 주입: `SPRING_PROFILES_ACTIVE`, `JWT_SECRET`(공
 
 ## 2-B 이후 실행과 검증
 
-현재 증거 기본 경로는 `.local/phase2b/results/`다. 위 1차/2-A 설명과 원본 결과는 당시 상태이며, 2-B 결과는 [08](08-phase2b-results.md)를 따른다. 새 단계용 폴더에서는 먼저 `resources-before`, `scope`를 실행한다. 최초 snapshot은 덮어쓰지 않는다. `scope-test`는 Docker 없이 합성 명령/metadata를 검사한다. 실제 자원 변경은 고정 Compose/project/directory와 라벨·서비스·볼륨·마운트·이미지·네트워크 검사를 통과해야 한다. 검사 실패 시 우회 실행하지 않는다.
+2-B 당시 증거 기본 경로는 `.local/phase2b/results/`였다. 위 1차/2-A 설명과 원본 결과는 당시 상태이며, 2-B 결과는 [08](08-phase2b-results.md)를 따른다. 새 단계용 폴더에서는 먼저 `resources-before`, `scope`를 실행한다. 최초 snapshot은 덮어쓰지 않는다. `scope-test`는 Docker 없이 합성 명령/metadata를 검사한다. 실제 자원 변경은 고정 Compose/project/directory와 라벨·서비스·볼륨·마운트·이미지·네트워크 검사를 통과해야 한다. 검사 실패 시 우회 실행하지 않는다.
 
 ```bash
 python3 scripts/local/manage.py resources-before
@@ -143,7 +157,7 @@ python3 scripts/local/manage.py authorization
 
 ## 3-A 추가형 채점 스키마와 전용 검사
 
-현재 기본 증거 디렉터리는 `.local/phase3a/results`다. 앞선 1차/2-A/2-B 결과와 snapshot은 덮어쓰지 않는다. 실행 대상은 계속 `dodream-phase1`, 기존 네 볼륨, loopback 포트, 내부 네트워크다. 기존 범위 gate를 모든 변경 명령에 그대로 적용한다.
+3-A 당시 기본 증거 디렉터리는 `.local/phase3a/results`였다. 앞선 1차/2-A/2-B 결과와 snapshot은 덮어쓰지 않는다. 실행 대상은 `dodream-phase1`, 당시 네 볼륨, loopback 포트, 내부 네트워크였다. 3-B 이후 Chroma 볼륨이 추가되어 현재는 다섯 볼륨이다. 기존 범위 gate를 모든 변경 명령에 그대로 적용한다.
 
 보존된 자체 MySQL이 실행 중인 상태에서 새 Spring 이미지의 최초 기동 **전에** 다음 명령으로 버전 관리 SQL을 적용한다. 기존 Spring은 이 작업 동안 중지한다. SQL은 테이블을 삭제하거나 기존 풀이의 정답을 역채움하지 않는다.
 

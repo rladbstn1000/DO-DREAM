@@ -38,7 +38,12 @@ public class S3Service {
 
 	@Transactional
 	public PresignedUrlResponse generatePresignedUrl(PresignedUrlRequest request, Long userId) {
-		// Generate unique S3 key
+		PdfInputPolicy.filename(request.getFileName());
+        if (!"application/pdf".equals(request.getContentType()) || request.getFileSize() == null
+            || request.getFileSize() <= 0 || request.getFileSize() > PdfInputPolicy.MAX_BYTES) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,"INVALID_FILE_SIZE");
+        }
+        // Generate unique S3 key
 		String s3Key = generateS3Key(request.getFileName());
 
 		// Create file record in DB with PENDING status
@@ -47,6 +52,7 @@ public class S3Service {
 			.s3Key(s3Key)
 			.s3Bucket(bucketName)
 			.contentType(request.getContentType())
+            .fileSize(request.getFileSize())
 			.ocrStatus(OcrStatus.PENDING)
 			.uploaderId(userId)
 			.build();
@@ -58,6 +64,7 @@ public class S3Service {
 			.bucket(bucketName)
 			.key(s3Key)
 			.contentType(request.getContentType())
+            .contentLength(request.getFileSize())
 			// contentDisposition은 PUT 요청에 불필요하며, 서명 불일치의 원인이 됨
 			// 다운로드 시 필요하면 GetObjectRequest에서 설정
 			.build();
@@ -69,7 +76,7 @@ public class S3Service {
 
 		PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
 
-		log.info("Generated presigned URL for file: {} with key: {}", request.getFileName(), s3Key);
+		log.info("Generated bounded upload URL fileId={}", savedFile.getId());
 
 		return PresignedUrlResponse.builder()
 			.presignedUrl(presignedRequest.url().toString())

@@ -26,14 +26,23 @@ spring:
       max-request-size: 10MB
 server:
   port: 8080
+  tomcat:
+    connection-timeout: 15s  # Also bounds idle request-body reads (Tomcat disableUploadTimeout=true default).
+    max-http-form-post-size: 10MB
+    max-swallow-size: 10MB
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health
   endpoint:
     health:
-      show-details: always
+      show-details: never
+      show-components: never
 jwt:
   secret: ${JWT_SECRET}
   access-exp-seconds: ${JWT_ACCESS_EXP_SECONDS:900}
@@ -68,8 +77,10 @@ logging:
     org.hibernate.SQL: WARN
 springdoc:
   api-docs:
+    enabled: true
     path: /api/v3/api-docs
   swagger-ui:
+    enabled: true
     path: /api/swagger-ui
     url: /api/v3/api-docs
     config-url: /api/v3/api-docs/swagger-config

@@ -9,6 +9,7 @@ import fitz  # PyMuPDF
 import logging
 from typing import List, Optional, Dict
 from pathlib import Path
+from app.utils.config import settings
 
 from app.models.pdf_models import (
     TextBlock,
@@ -42,11 +43,13 @@ class PDFAnalyzer:
         try:
             self.file_path = pdf_path
             self.doc = fitz.open(pdf_path)
+            if not self.doc.is_pdf or self.doc.needs_pass or not 1 <= self.doc.page_count <= settings.MAX_PDF_PAGES:
+                raise ValueError("Unsupported PDF or page limit exceeded")
             logger.info(f"PDF 파일 열기 성공: {pdf_path} ({self.doc.page_count} 페이지)")
             return True
-        except Exception as e:
-            logger.error(f"PDF 파일 열기 실패: {pdf_path}, 오류: {str(e)}")
-            return False
+        except Exception:
+            self.close()
+            raise ValueError("PDF could not be opened within the processing limits") from None
 
     def close(self):
         """PDF 파일 닫기"""
@@ -78,9 +81,8 @@ class PDFAnalyzer:
             logger.info(f"페이지 {page_num} 텍스트 레이어: {'있음' if has_text else '없음'}")
             return has_text
 
-        except Exception as e:
-            logger.error(f"텍스트 레이어 확인 실패: {str(e)}")
-            return False
+        except Exception:
+            raise ValueError("PDF text layer inspection failed") from None
 
     def extract_text_with_fonts(self, page_num: int) -> List[TextBlock]:
         """
@@ -162,9 +164,8 @@ class PDFAnalyzer:
             logger.info(f"페이지 {page_num}: {len(blocks)}개 텍스트 블록 추출")
             return blocks
 
-        except Exception as e:
-            logger.error(f"텍스트 추출 실패 (페이지 {page_num}): {str(e)}")
-            return []
+        except Exception:
+            raise ValueError("PDF text extraction failed") from None
 
     def analyze_page(self, page_num: int) -> PageAnalysis:
         """
@@ -230,9 +231,13 @@ class PDFAnalyzer:
         )
 
         # 각 페이지 분석
+        text_size = 0
         for page_num in range(total_pages):
             try:
                 page_analysis = self.analyze_page(page_num)
+                text_size += sum(len(block.text) for block in page_analysis.text_blocks)
+                if text_size > settings.MAX_EXTRACTED_TEXT_CHARS:
+                    raise ValueError("Extracted PDF text exceeds the limit")
                 doc_analysis.pages.append(page_analysis)
 
                 # 텍스트 레이어가 하나라도 있으면 True
@@ -245,9 +250,8 @@ class PDFAnalyzer:
                     f"평균 폰트: {page_analysis.avg_font_size:.1f}pt)"
                 )
 
-            except Exception as e:
-                logger.error(f"페이지 {page_num} 분석 실패: {str(e)}")
-                continue
+            except Exception:
+                raise ValueError("PDF page analysis failed; partial output is not accepted") from None
 
         # 전체 문서 평균 폰트 크기 계산
         doc_analysis.calculate_global_avg_font_size()

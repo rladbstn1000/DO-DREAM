@@ -292,7 +292,7 @@ public class MaterialShareService {
 					.build();
 
 			ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
-			String jsonString = new String(response.readAllBytes());
+			String jsonString = A704.DODREAM.file.service.ObjectJsonReader.read(response);
 
 			Map<String, Object> jsonData = A704.DODREAM.authorization.StudentContent.document(objectMapper.readValue(jsonString, Map.class));
 

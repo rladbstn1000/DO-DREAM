@@ -43,6 +43,12 @@ class CommandScopeTests(unittest.TestCase):
         self.assertEqual(command_scope(['run','--rm','--no-deps','--name','dodream-phase3a-fresh-schema','--label',RUN_LABEL,'-e','MYSQL_DATABASE=dodream_phase3a_fresh_v2','be']),('run',['be']))
     def test_fresh_schema_cannot_target_another_database(self):
         with self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','--name','dodream-phase3a-fresh-schema','--label',RUN_LABEL,'-e','MYSQL_DATABASE=foreign','be'])
+    def test_hardening_fresh_schema_requires_its_exact_process(self):
+        args=['run','--rm','--no-deps','--name','dodream-phase3b-hardening-fresh','--label',RUN_LABEL,'-e','MYSQL_DATABASE=dodream_portfolio_hardening_fresh','be']
+        self.assertEqual(command_scope(args),('run',['be']))
+        for index,value in ((4,'dodream-phase3b-fresh-schema'),(9,'ai')):
+            invalid=args.copy();invalid[index]=value
+            with self.assertRaises(ScopeError):command_scope(invalid)
     def test_fresh_schema_cannot_target_another_service_or_name(self):
         for name,service in [('dodream-phase3a-fresh-schema','ai'),('dodream-phase3a-test-123','be')]:
             with self.subTest(name=name,service=service),self.assertRaises(ScopeError):command_scope(['run','--rm','--no-deps','--name',name,'--label',RUN_LABEL,'-e','MYSQL_DATABASE=dodream_phase3a_fresh_v2',service])

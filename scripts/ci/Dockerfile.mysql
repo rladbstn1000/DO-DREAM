@@ -1,0 +1,5 @@
+FROM mysql:8.4
+# The official entrypoint runs these only against this run's empty tmpfs DB.
+# The Spring local profile creates the remaining entity tables afterwards.
+COPY be/src/main/resources/db/migration/V003__grading_attempts.sql /docker-entrypoint-initdb.d/003-grading.sql
+COPY be/src/main/resources/db/migration/V004__indexing_ledger.sql /docker-entrypoint-initdb.d/004-indexing.sql

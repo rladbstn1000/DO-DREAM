@@ -31,4 +31,9 @@ def fresh_prepare():
     (RESULTS/'index-migration-fresh-created.json').write_text(json.dumps({'schema':FRESH,'migration_before_jpa':True,'status':'PASS'})+'\n')
     print('Dedicated fresh schema created; no existing schema replaced')
 
-if __name__=='__main__':{'forward':forward,'fresh-prepare':fresh_prepare}[sys.argv[1]]()
+if __name__=='__main__':
+    if sys.argv[1]=='fresh-prepare-hardening':
+        FRESH='dodream_portfolio_hardening_fresh'
+        fresh_prepare()
+    else:
+        {'forward':forward,'fresh-prepare':fresh_prepare}[sys.argv[1]]()

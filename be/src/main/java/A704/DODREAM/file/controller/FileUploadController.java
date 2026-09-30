@@ -24,8 +24,8 @@ public class FileUploadController {
     public ResponseEntity<PresignedUrlResponse> upload(@AuthenticationPrincipal UserPrincipal actor,
             @RequestBody PresignedUrlRequest request) {
         policy.teacher(actor.userId());
-        if (request.getFileName() == null || request.getFileName().isBlank()
-            || !"application/pdf".equals(request.getContentType())) throw AuthorizationPolicy.invalid();
+        A704.DODREAM.file.service.PdfInputPolicy.filename(request.getFileName());
+        if (!"application/pdf".equals(request.getContentType())) throw AuthorizationPolicy.invalid();
         return ResponseEntity.ok(storage.generatePresignedUrl(request, actor.userId()));
     }
     @GetMapping("/{fileId}/download-url")

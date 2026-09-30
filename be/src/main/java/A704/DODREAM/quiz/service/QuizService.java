@@ -129,8 +129,7 @@ public class QuizService {
 	@Transactional(readOnly = true)
 	public List<StudentMaterialStatsDto> getStudentStatsByMaterialList(Long studentId, Long actorId) {
         policy.historySubject(actorId, studentId);
-		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId).stream()
-            .filter(log -> policy.historyVisible(actorId, studentId, log.getQuiz().getMaterial())).toList();
+        List<StudentQuizLog> logs = visibleHistory(studentId, actorId);
 
 		if (logs.isEmpty()) {
 			return new ArrayList<>();
@@ -187,8 +186,7 @@ public class QuizService {
 	@Transactional(readOnly = true)
 	public StudentOverallStatsDto getStudentOverallStats(Long studentId, Long actorId) {
         policy.historySubject(actorId, studentId);
-		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId).stream()
-            .filter(log -> policy.historyVisible(actorId, studentId, log.getQuiz().getMaterial())).toList();
+        List<StudentQuizLog> logs = visibleHistory(studentId, actorId);
 
 		if (logs.isEmpty()) {
 			return StudentOverallStatsDto.builder()
@@ -235,6 +233,16 @@ public class QuizService {
 			.averageCorrectRate(Math.round(averageRate * 10) / 10.0)
 			.build();
 	}
+    private List<StudentQuizLog> visibleHistory(Long studentId, Long actorId) {
+        // Every row of one material has the same current authorization decision. Resolve it once
+        // within this invocation only; a later request must re-read revoked shares/assignments.
+        Map<Long, Boolean> visible = new java.util.HashMap<>();
+        return studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId).stream()
+            .filter(log -> visible.computeIfAbsent(log.getQuiz().getMaterial().getId(),
+                id -> policy.historyVisible(actorId, studentId, log.getQuiz().getMaterial())))
+            .toList();
+    }
+
     static StudentQuizLog latest(StudentQuizLog a, StudentQuizLog b) {
         java.time.LocalDateTime at = a.getSubmittedAt() == null ? a.getSolvedAt() : a.getSubmittedAt();
         java.time.LocalDateTime bt = b.getSubmittedAt() == null ? b.getSolvedAt() : b.getSubmittedAt();

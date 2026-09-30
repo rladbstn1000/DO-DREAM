@@ -23,7 +23,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -151,27 +150,8 @@ public class PublishService {
         Material material = materialRepository.findByIdAndTeacherIdAndDeletedAtIsNull(materialId, userId)
                         .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN));
 
-        UploadedFile uploadedFile = material.getUploadedFile();
-
-        Stream.of(
-                        uploadedFile.getS3Key(),
-                        uploadedFile.getJsonS3Key(),
-                        uploadedFile.getConceptCheckJsonS3Key()
-                )
-                .filter(Objects::nonNull)
-                .forEach(s3Key -> {
-                    try {
-                        DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
-                                .bucket(bucketName)
-                                .key(s3Key)
-                                .build();
-                        s3Client.deleteObject(deleteRequest);
-                        log.info("S3 파일 삭제 완료: {}", s3Key);
-                    } catch (Exception e) {
-                        log.error("S3 파일 삭제 실패: {}, 에러: {}", s3Key, e.getMessage());
-                    }
-                });
-
+        // Keep immutable source objects and historical references. Remote deletion cannot roll
+        // back with this database transaction; physical retention needs a separately reviewed job.
         material.softDelete();
         materialRepository.save(material);
     }

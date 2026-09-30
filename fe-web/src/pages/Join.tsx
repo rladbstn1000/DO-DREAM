@@ -34,7 +34,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       toast: true,
       position: 'top-end',
       icon: 'error',
-      title: message,
+      titleText: message,
       showConfirmButton: false,
       timer: 2000,
     });
@@ -45,7 +45,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: message,
+      titleText: message,
       showConfirmButton: false,
       timer: 1800,
     });
@@ -137,7 +137,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
 
       setIsVerified(true);
     } catch (err: any) {
-      console.error('[verify:error]', err);
+      console.error('[verify:error]');
 
       const elapsed = Date.now() - started;
       if (elapsed < 700) await new Promise((r) => setTimeout(r, 700 - elapsed));
@@ -147,7 +147,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
         toast: true,
         position: 'top-end',
         icon: 'error',
-        title:
+        titleText:
           err?.name === 'AbortError'
             ? '요청이 지연되었습니다. 다시 시도해 주세요'
             : err?.message || '인증 중 오류가 발생했습니다',

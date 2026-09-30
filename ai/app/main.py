@@ -7,6 +7,7 @@ from app.common.db_session import engine as user_engine
 from fastapi.middleware.cors import CORSMiddleware
 from app.rag import models as rag_models
 from app.rag.database import engine as rag_engine
+from app.input_limits import RequestBodyLimit
 
 rag_models.Base.metadata.create_all(bind=rag_engine)
 
@@ -17,7 +18,11 @@ app = FastAPI(
     description="Spring 서버 JWT와 연동된 FastAPI 서버입니다.",
     version="1.0.0",
     root_path="/ai",  # 예: http://<도메인>/ai/docs 로 접속 시
+    docs_url="/docs" if APP_ENV in {"local", "test"} else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if APP_ENV in {"local", "test"} else None,
 )
+app.add_middleware(RequestBodyLimit, max_bytes=2 * 1024 * 1024, json_max_bytes=2 * 1024 * 1024)
 
 # CORS 설정 추가
 app.add_middleware(

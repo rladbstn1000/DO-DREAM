@@ -178,7 +178,6 @@ export default function StudentRoom() {
 
         if (sharedRes.ok) {
           const raw = await sharedRes.json();
-          console.log('📚 학생별 공유 자료 raw:', raw);
 
           // Swagger 스타일 { success, code, message, data } 래핑 처리
           const payload =
@@ -194,9 +193,7 @@ export default function StudentRoom() {
             shared = payload as StudentSharedMaterialsDto;
           }
         } else {
-          console.warn(
-            `학생별 공유 자료 조회 실패 (status: ${sharedRes.status})`,
-          );
+          console.warn("화면 요청 처리 실패");
         }
 
         // 2) 이 학생의 자료별 진행률 조회
@@ -212,7 +209,6 @@ export default function StudentRoom() {
 
         if (progressRes.ok) {
           const raw = await progressRes.json();
-          console.log('📈 진행률 raw:', raw);
 
           const payload =
             raw && typeof raw === 'object' && 'data' in raw
@@ -230,7 +226,7 @@ export default function StudentRoom() {
             });
           });
         } else {
-          console.warn(`학생 진행률 조회 실패 (status: ${progressRes.status})`);
+          console.warn("화면 요청 처리 실패");
         }
 
         // 3) UI에서 사용할 형태로 변환
@@ -269,7 +265,6 @@ export default function StudentRoom() {
 
         if (statsRes.ok) {
           const raw = await statsRes.json();
-          console.log('📊 학생 통계 raw:', raw);
 
           const payload =
             raw && typeof raw === 'object' && 'data' in raw
@@ -288,7 +283,7 @@ export default function StudentRoom() {
             });
           }
         } else {
-          console.warn(`학생 통계 조회 실패 (status: ${statsRes.status})`);
+          console.warn("화면 요청 처리 실패");
           setStudentStats(null);
         }
 
@@ -300,7 +295,6 @@ export default function StudentRoom() {
 
         if (quizRes.ok) {
           const raw = await quizRes.json();
-          console.log('📝 퀴즈 성적 raw:', raw);
 
           const payload =
             raw && typeof raw === 'object' && 'data' in raw
@@ -325,7 +319,7 @@ export default function StudentRoom() {
 
           setQuizResults(quizResults);
         } else {
-          console.warn(`퀴즈 성적 조회 실패 (status: ${quizRes.status})`);
+          console.warn("화면 요청 처리 실패");
           setQuizResults([]);
         }
 
@@ -336,7 +330,6 @@ export default function StudentRoom() {
 
         if (qaRes.ok) {
           const raw = await qaRes.json();
-          console.log('💬 질문 & 답변 raw:', raw);
 
           const items = Array.isArray(raw) ? raw : [];
 
@@ -358,11 +351,11 @@ export default function StudentRoom() {
 
           setStudentQuestions(questions);
         } else {
-          console.warn(`질문 & 답변 조회 실패 (status: ${qaRes.status})`);
+          console.warn("화면 요청 처리 실패");
           setStudentQuestions([]);
         }
       } catch (err) {
-        console.error('학생 데이터 로딩 실패', err);
+        console.error('학생 데이터 로딩 실패');
         setReceivedMaterials([]);
         setQuizResults([]);
         setStudentQuestions([]);
@@ -448,7 +441,6 @@ export default function StudentRoom() {
       }
 
       const parsedData = await pdfRes.json();
-      console.log('📄 StudentRoom parsedData:', parsedData);
 
       let chapters: any[] = [];
       if (parsedData.chapters && Array.isArray(parsedData.chapters)) {
@@ -511,7 +503,7 @@ export default function StudentRoom() {
         },
       });
     } catch (err: any) {
-      console.error('자료 조회 실패', err);
+      console.error('자료 조회 실패');
       await Swal.close();
       await Swal.fire({
         icon: 'error',
