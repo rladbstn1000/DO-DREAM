@@ -56,6 +56,7 @@ test('emitted chunk and asset filenames cannot escape even a valid output root',
 test('evidence destinations are fixed local choices, never caller-supplied paths', () => {
   assert.equal(evidenceDirectory('original-ui'), path.join(REPO_ROOT, '.local/original-ui/results'));
   assert.equal(evidenceDirectory('original-ui-polish'), path.join(REPO_ROOT, '.local/original-ui-polish/results'));
+  assert.equal(evidenceDirectory('original-ui-release'), path.join(REPO_ROOT, '.local/original-ui-release/results'));
   assert.equal(evidenceDirectory('static-showcase'), path.join(REPO_ROOT, '.local/static-showcase/results'));
   for (const value of ['', '..', '/tmp', '../original-ui', 'publication-pages']) assert.throws(() => evidenceDirectory(value), /Unreviewed/);
 });

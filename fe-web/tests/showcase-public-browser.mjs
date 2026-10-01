@@ -7,10 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { assertNoSymlinkChain, listFiles, REPO_ROOT, SHOWCASE_MIME, isShowcasePublicFile } from '../scripts/showcase-paths.mjs';
 import { assertArtifactManifest } from '../scripts/showcase-audit.mjs';
+import { runPublicUiAcceptance } from './showcase-public-journey.mjs';
 
-const publicationRoot = path.join(REPO_ROOT, '.local/publication-pages');
+const publicationRoot = path.join(REPO_ROOT, '.local/original-ui-release');
 const resultsRoot = path.join(publicationRoot, 'results');
-const stateKeys = ['dodream.showcase.v1.state', 'dodream.showcase.original-ui.v1'];
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const digestOf = files => sha256(files.map(file => `${file.path}\0${file.bytes}\0${file.sha256}\n`).join(''));
 const validFile = isShowcasePublicFile;
@@ -55,7 +55,7 @@ export function validateReleaseManifest(manifest) {
 
 function ownInput(value, kind) {
   const absolute = path.resolve(value);
-  assert.ok(absolute.startsWith(publicationRoot + path.sep), 'Downloaded inputs must be inside .local/publication-pages/');
+  assert.ok(absolute.startsWith(publicationRoot + path.sep), 'Downloaded inputs must be inside .local/original-ui-release/');
   assertNoSymlinkChain(absolute);
   const stat = fs.statSync(absolute);
   assert.ok(kind === 'directory' ? stat.isDirectory() : stat.isFile() && stat.size <= 256 * 1024);
@@ -216,101 +216,7 @@ async function main(argv) {
       });
       return { context, page: await context.newPage() };
     }
-    async function keyboardActivate(page, target) {
-      for (let count = 0; count < 80; count++) {
-        const state = await target.evaluate(element => {
-          const style = getComputedStyle(element);
-          return { focused: document.activeElement === element, visible: style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0 || style.boxShadow !== 'none' };
-        });
-        if (state.focused) { check('keyboard target has visible focus', state.visible, 'PUBLIC_KEYBOARD'); await page.keyboard.press('Enter'); return; }
-        await page.keyboard.press('Tab');
-      }
-      throw new Error('Public keyboard target cannot be reached');
-    }
-    const desktop = await context('desktop'); const page = desktop.page;
-    const response = await page.goto(pageUrl);
-    observedUrl = page.url();
-    await page.getByText('샘플 체험', { exact: true }).waitFor();
-    check('anonymous HTTPS entry has expected URL and HTML', response?.status() === 200 && observedUrl === pageUrl && await page.getByText('샘플 체험', { exact: true }).count() === 1);
-    await keyboardActivate(page, page.getByTestId('start-student'));
-    await keyboardActivate(page, page.getByTestId('material-water-journey'));
-    await page.getByRole('button', { name: '처음부터 듣기 챕터 처음부터', exact: true }).click();
-    await page.getByRole('heading', { name: '1. 얼음과 물', exact: true }).waitFor();
-    await page.getByRole('button', { name: '다음 섹션', exact: true }).click();
-    await page.getByRole('button', { name: '학습 완료', exact: true }).click();
-    await page.getByRole('heading', { name: '2. 하늘로 올라가는 물', exact: true }).waitFor();
-    check('original app library, playback choice and player navigation work', page.url().includes('/app/material/water-journey/player?section=water-2'));
-    await page.reload(); await page.getByRole('heading', { name: '2. 하늘로 올라가는 물', exact: true }).waitFor();
-    check('nested hash player route survives refresh', page.url().includes('section=water-2'));
-    await page.goBack(); await page.getByRole('heading', { name: '1. 얼음과 물', exact: true }).waitFor();
-    check('browser back restores the earlier chapter and paragraph', page.url().includes('section=water-1&paragraph=1'));
-    await page.getByRole('link', { name: '질문하기', exact: true }).click();
-    await page.getByRole('button', { name: '말하기', exact: true }).click();
-    const exampleDialog = page.getByRole('dialog', { name: '예시 질문 선택', exact: true });
-    await exampleDialog.getByRole('button', { name: '물이 충분히 차가워지면 무엇이 되나요?', exact: true }).click();
-    await page.getByRole('button', { name: '확인', exact: true }).click();
-    await page.getByText('준비된 예시 답변', { exact: true }).waitFor();
-    check('question uses explicit example selection with no microphone', (await page.locator('.app-answer-bubble').innerText()).replace(/\s+/g, ' ').includes('물이 충분히 차가워지면 단단한 얼음이 됩니다. 얼음을 따뜻한 곳에 두면 다시 물로 바뀝니다.'));
-    const source = page.getByRole('button', { name: '참고 구간 보기', exact: true });
-    await source.click();
-    const sourceDialog = page.getByRole('dialog', { name: '참고 구간 · 얼음과 물', exact: true });
-    await sourceDialog.waitFor();
-    check('source excerpt matches the same public lesson', await sourceDialog.locator('p').first().innerText() === '물이 충분히 차가워지면 단단한 얼음이 됩니다. 얼음을 따뜻한 곳에 두면 다시 물이 됩니다.');
-    check('source modal stays inside the phone frame', await sourceDialog.evaluate(element => {
-      const modal = element.getBoundingClientRect(), phone = document.querySelector('[data-testid="student-phone"]').getBoundingClientRect();
-      return modal.left >= phone.left && modal.right <= phone.right && modal.top >= phone.top && modal.bottom <= phone.bottom;
-    }), 'PUBLIC_LAYOUT');
-    await page.keyboard.press('Escape'); await sourceDialog.waitFor({ state: 'hidden' });
-    check('source closes by keyboard and returns focus', await source.evaluate(element => element === document.activeElement), 'PUBLIC_KEYBOARD');
-    await page.getByRole('link', { name: '뒤로가기', exact: true }).click();
-    await page.getByRole('link', { name: '뒤로가기', exact: true }).click();
-    await page.getByRole('link', { name: '퀴즈 풀기 학습 내용 확인', exact: true }).click();
-    await page.getByRole('link', { name: '1. 물이 충분히 차가워지면 무엇이 되나요? 단답형', exact: true }).click();
-    await page.getByRole('textbox', { name: '답 입력란', exact: true }).fill('얼음');
-    await page.getByRole('button', { name: '다음 문제', exact: true }).click();
-    await page.getByRole('textbox', { name: '답 입력란', exact: true }).fill('증발');
-    await page.getByRole('button', { name: '채점하기', exact: true }).click();
-    await page.getByRole('heading', { name: '퀴즈 완료!', exact: true }).waitFor();
-    check('original written quiz produces its deterministic example result', page.url().endsWith('/app/material/water-journey/result') && (await page.getByTestId('quiz-score').innerText()).replace(/\s+/g, '') === '2/2');
-    await page.reload(); await page.getByTestId('quiz-score').waitFor();
-    check('result direct URL and refresh preserve same-tab state', await page.getByText('예시 판정 · 1회차', { exact: true }).count() === 1);
-    await screenshot(page, 'public-result');
-    await page.getByRole('link', { name: '교사 웹', exact: true }).click();
-    await page.locator('a[href="#/teacher/classroom/1-1"]').click();
-    await page.locator('a[href="#/teacher/student/demo-student"]').click();
-    const resultCard = page.locator('.sr-quiz-card').filter({ hasText: '물의 여행 · 1회' });
-    await resultCard.waitFor();
-    check('original teacher student screen shows the same-tab written result', (await resultCard.innerText()).includes('2개 정답'));
-    await page.locator('a[href="#/teacher/history/water-journey"]').click();
-    await page.getByText('준비된 샘플 답변', { exact: true }).waitFor();
-    check('teacher conversation screen shows the same-tab question', (await page.locator('.ch-user .ch-bubble').innerText()).includes('물이 충분히 차가워지면 무엇이 되나요?'));
-    const mobile = await context('narrow-independent', { width: 320, height: 780 });
-    await mobile.page.goto(pageUrl + '#/app/material/water-journey/result');
-    await mobile.page.getByRole('heading', { name: '아직 풀이 결과가 없습니다.', exact: true }).waitFor();
-    check('independent anonymous context has no first context result', await mobile.page.getByTestId('quiz-score').count() === 0);
-    await mobile.page.goto(pageUrl + '#/app/material/water-journey/player?section=water-2');
-    await mobile.page.getByRole('heading', { name: '2. 하늘로 올라가는 물', exact: true }).waitFor();
-    await mobile.page.getByRole('link', { name: '질문하기', exact: true }).click();
-    await mobile.page.getByRole('textbox', { name: '질문 입력창', exact: true }).fill('젖은 수건이 마르는 까닭은 무엇인가요?');
-    await mobile.page.getByRole('button', { name: '확인', exact: true }).click();
-    await mobile.page.getByText('준비된 예시 답변', { exact: true }).waitFor();
-    const layout = await mobile.page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth,
-      clipped: [...document.querySelectorAll('.app-screen button, .app-screen input, .app-screen textarea, .app-screen p')].filter(element => {
-        const box = element.getBoundingClientRect(); return box.width > 0 && (box.left < -1 || box.right > innerWidth + 1);
-      }).length }));
-    check('320 CSS px public phone reading and question controls fit', layout.scroll <= layout.width + 1 && layout.clipped === 0, 'PUBLIC_LAYOUT', layout);
-    await screenshot(mobile.page, 'public-narrow');
-    await Promise.all(responseTasks);
-    await mobile.context.close();
-    await page.evaluate(() => sessionStorage.setItem('publication.unrelated', 'keep'));
-    await page.getByTestId('reset-demo').click();
-    await page.getByTestId('start-student').waitFor();
-    check('public reset clears both showcase-owned stores only', await page.evaluate(keys => keys.every(key => sessionStorage.getItem(key) === null) && sessionStorage.getItem('publication.unrelated') === 'keep', stateKeys));
-    await page.goto(pageUrl + '#/app/material/water-journey/result');
-    await page.getByRole('heading', { name: '아직 풀이 결과가 없습니다.', exact: true }).waitFor();
-    check('reset result remains absent after a new document navigation', await page.getByTestId('quiz-score').count() === 0);
-    await Promise.all(responseTasks);
-    await desktop.context.close();
+    observedUrl = await runPublicUiAcceptance({ context, pageUrl, check, screenshot, settleResponses: () => Promise.all(responseTasks) });
     const browserIntegrity = browserFiles.length === staticRequests.length && browserFiles.length > 0;
     if (!browserIntegrity) provenance = 'FAIL';
     check('all browser responses match the approved remote artifact', browserIntegrity, 'ARTIFACT_PROVENANCE');

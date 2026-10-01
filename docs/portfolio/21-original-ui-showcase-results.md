@@ -199,3 +199,19 @@ DODREAM_SHOWCASE_EVIDENCE=original-ui-polish npm --prefix fe-web run preview:sho
 ```
 
 이번 로컬 미리보기는 `http://127.0.0.1:61097/DO-DREAM/#/teacher/classroom/1-1`이다(임시 loopback 서버, 재실행 시 포트 변경 가능). 검토한 파일만 로컬 커밋 대상으로 삼으며 현재 공개 사이트는 변경하지 않는다. **USER_VISUAL_APPROVAL=PENDING**, **UPDATED_PUBLIC_DEPLOYMENT=false**를 유지한다. 이번 시각 검토 의견은 공개 배포 승인이 아니다.
+
+## 원본 UI 공개 반영 승인과 준비
+
+2026-10-01 KST, 사용자가 기존 교사 웹·학생 앱 형태와 표시 보완의 공개 반영을 승인했다. **USER_VISUAL_APPROVAL=APPROVED**의 대상은 `a187bf09b017984feea48153d79e02b81a9e23a5`이며, 앞선 복원 커밋 `1586b7e56b0a9ba99ab14883996c51acc5417ddb`를 포함한다. 위 PENDING·미배포 문단은 당시 기록으로 보존한다. 새 디자인·기능 확장은 승인 범위가 아니다.
+
+작업 시작 HEAD가 승인 후보와 일치했다. main 하나를 prune 없이 fetch한 결과 `f9042b57c326b2aa5aad6f94b7f3345f9c1378c9`이며, main 이후 누적 변경은 위 두 커밋·56경로다. 진행 중 merge/rebase/cherry-pick과 열린 PR은 없었고 기존 미추적 `docs/.DS_Store`를 제외했다. 공개 검토는 마지막 표시 보완만이 아니라 두 커밋의 신규 Git blob·문서·자산 전체를 대상으로 한다.
+
+**SOURCE_DELTA_PUBLICATION_REVIEW=PASS_WITH_DOCUMENTED_LIMITATIONS.** 신규 63blob(42 text/21 binary, 3,787,215 bytes), 중간 버전 7blob까지 확인했다. 후보 6건은 테스트 sentinel 4건·합성 이메일 1건·공식 글꼴 notice 연락처 1건이며 실제 비밀·신규 비공개 자료 발견은 0건이다. 새 PNG 20개를 실제 열어 확인했고 Git blob과 동일하며 text/EXIF metadata가 없다. 새 WOFF/notice는 공식 배포 조건과 일치하고 기존 8개 이미지는 원격·팀 기준과 SHA가 같다. 원래 팀 기여를 보존하고 자산에 새 라이선스를 추정하지 않았다. 검토는 신규 공개 범위의 패턴·문맥·이미지 확인이며 모든 비밀/권리 문제의 부재를 보장하지 않는다. 근거는 `.local/original-ui-release/source-review/`에 보존한다.
+
+후속 준비 변경은 공개 브라우저 검사와 새 증거 경로에 한정한다. 새 교사/학생 경로, 서술형 퀴즈, 같은 탭 기록, 한국어 줄바꿈·내부 스크롤, 입력 안전·옛 해시 경로를 기존 공개 harness에서 검사한다. `original-ui-release` 고정 증거 경로는 이전 검증 기록을 덮어쓰지 않기 위한 구분이다. 앱 UI·인증·권한·채점·색인 구현 및 의존성·workflow는 승인 후보 그대로 유지한다.
+
+준비 소스의 로컬 최종 `verify:showcase`는 2026-10-01 01:17:01–01:17:15 UTC(10:17 KST)에 PASS했다. 상태/빌드 계약 66개·정적 서버 경계 40개·Chrome 인수 184개, 별도 웹 회귀 115개·Pages 계약 8개 PASS이며 금지 요청/API/마이크/CSP 위반은 0건이다. 산출물은 실제 13파일/6,720,716 bytes, manifest digest `df92f54237021357c8faa78e2de42a1544aac9fa450bb216886fe53984b60d42`로 승인된 앱과 같다. 공개 UI 함수의 별도 로컬 리허설 78개도 통과했으나 이를 공개 인수로 세지 않는다. 리허설에서 발견한 검사 selector 및 문제 전환 대기 누락만 바로잡았고, 초기 실패 3회와 최종 성공 기록을 모두 새 폴더에 보존했다. 공개 URL/manifest/자산 해시·네트워크 기대값은 낮추지 않았다.
+
+기존 Pages source=`workflow`, HTTPS/기존 URL, `github-pages`의 정확한 main branch 제한을 확인했다. main 보호와 ruleset은 시작 시 설정되지 않았으며 이를 변경하지 않는다. 그래도 PR과 병합 main 각각의 `web`, `python (ai)`, `python (python-service)`, `backend`, `offline-tools` 다섯 기대 작업의 실제 성공을 확인한 뒤 배포한다. 기존 `showcase-pages.yml`의 `expected_sha`와 생성 manifest를 사용하며, 원격에서 검증한 산출물을 재빌드 없이 업로드·배포한다.
+
+이 준비 커밋 시점의 배포는 **NOT_RUN**, **UPDATED_PUBLIC_DEPLOYMENT=false**다. 원격 PR/CI·배포·실제 공개 bytes/hash와 새 UI 인수 결과는 완료 후 아래 후속 구역에 기록한다. 실제 AI·마이크·백엔드 서비스·Docker·DB는 실행하지 않는다.
