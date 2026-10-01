@@ -1,24 +1,134 @@
-html { color-scheme:light; }
-body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-button,input,textarea { font-family:inherit; }
-.showcase-app .learn-shell { padding-top:1.5rem; }
-.showcase-banner { display:flex; align-items:center; gap:1rem; border-bottom:1px solid #d5dfd0; padding:0 0 1.3rem; margin-bottom:2rem; }
-.showcase-banner .learn-pill { flex-shrink:0; }
-.showcase-banner p { font-size:.85rem; color:#50664e; margin:0; max-width:50rem; }
-.showcase-font-18 { font-size:18px; }.showcase-font-22 { font-size:22px; }.showcase-font-26 { font-size:26px; }
-.showcase-recommendations { display:flex; flex-direction:column; align-items:flex-start; gap:.65rem; }
-.showcase-recommendations button { text-align:left; justify-content:flex-start; }
-.showcase-app .learn-question form button { margin-top:.6rem; }
-.showcase-app .learn-message h3 { margin-top:1rem; }
-.showcase-choices { min-width:0; padding-top:.8rem; }
-.showcase-choices legend { padding:.4rem .5rem; font-weight:750; font-size:1.1rem; max-width:100%; }
-.showcase-choices label { display:flex; align-items:center; gap:.7rem; min-height:48px; font-weight:500; padding:.5rem; border-radius:10px; }
-.showcase-choices label:has(input:checked) { background:#e9f1e3; }
-.showcase-choices input { flex-shrink:0; width:20px; height:20px; accent-color:#2f654e; }
-.showcase-process { padding-left:1.2rem; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.5rem; }
-.showcase-process span,.showcase-list span { display:block; color:#617465; font-size:.9rem; }
-.showcase-list { margin:0; padding:0; list-style:none; }
-.showcase-list li { padding:.85rem 0; border-bottom:1px solid #e3eadd; }.showcase-list li:last-child { border-bottom:0; }
-.showcase-list p { margin-top:.6rem; }
-@media(max-width:700px) { .showcase-banner { display:block; }.showcase-banner p { margin-top:.6rem; }.showcase-process { grid-template-columns:1fr; gap:.8rem; } }
-@media(max-width:400px) { .showcase-app .learn-header { flex-wrap:wrap; }.showcase-app .learn-header nav { justify-content:flex-start; width:100%; }.showcase-app .learn-chapters nav button { width:100%; } }
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+.showcase-host {
+  --showcase-toolbar-height: 40px;
+  min-height: 100dvh;
+  background: #f5f6f8;
+}
+.showcase-host *,
+.showcase-host *::before,
+.showcase-host *::after {
+  box-sizing: border-box;
+}
+.showcase-toolbar {
+  height: 40px;
+  position: sticky;
+  top: 0;
+  z-index: 20000;
+  padding: 0 18px;
+  background: #fff;
+  border-bottom: 1px solid #e0e3e8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font:
+    12px/1.4 -apple-system,
+    BlinkMacSystemFont,
+    'Apple SD Gothic Neo',
+    sans-serif;
+  color: #28334b;
+}
+.showcase-toolbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.showcase-toolbar button,
+.showcase-toolbar summary {
+  font: inherit;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 6px;
+}
+.showcase-toolbar a:focus-visible,
+.showcase-toolbar button:focus-visible,
+.showcase-toolbar summary:focus-visible {
+  outline: 3px solid #d69b04;
+  outline-offset: 2px;
+}
+.showcase-home {
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.showcase-sample {
+  color: #687386;
+}
+.showcase-toolbar nav {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.showcase-guide {
+  position: relative;
+}
+.showcase-guide > div {
+  position: absolute;
+  top: 33px;
+  right: 0;
+  width: min(400px, calc(100vw - 24px));
+  padding: 20px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 8px 30px #192b5520;
+  line-height: 1.8;
+}
+.showcase-guide > div a {
+  text-decoration: underline;
+}
+.showcase-has-notice {
+  --showcase-toolbar-height: 96px;
+}
+.showcase-notice {
+  position: sticky;
+  top: 40px;
+  z-index: 20000;
+  height: 56px;
+  overflow: auto;
+  padding: 8px 18px;
+  background: #fff9e7;
+  font: 13px/1.6 sans-serif;
+}
+.showcase-content {
+  outline: none;
+}
+.showcase-skip {
+  position: fixed;
+  z-index: 30000;
+  left: 8px;
+  top: -80px;
+  padding: 12px;
+  background: white;
+  color: #192b55;
+}
+.showcase-skip:focus {
+  top: 4px;
+}
+.showcase-missing {
+  max-width: 680px;
+  margin: 70px auto;
+  padding: 24px;
+  font: 16px/1.8 sans-serif;
+}
+@media (max-width: 480px) {
+  .showcase-toolbar {
+    padding: 0 8px;
+    gap: 7px;
+    font-size: 11px;
+  }
+  .showcase-toolbar nav {
+    gap: 8px;
+  }
+  .showcase-home {
+    letter-spacing: 0;
+  }
+  .showcase-sample {
+    font-size: 10px;
+  }
+}

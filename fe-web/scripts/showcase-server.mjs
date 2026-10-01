@@ -2,9 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
-import { WEB_ROOT, SHOWCASE_OUT, assertSafeOutput, listFiles } from './showcase-paths.mjs';
-
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp' };
+import { WEB_ROOT, SHOWCASE_OUT, SHOWCASE_MIME, assertSafeOutput, assertReviewedStaticAsset, isShowcasePublicFile, listFiles } from './showcase-paths.mjs';
 
 // A small local preview server, not a production server. There is no route fallback,
 // proxy, arbitrary root option, directory listing or access to source/evidence files.
@@ -13,9 +11,11 @@ export async function startShowcaseServer({ port = 0 } = {}) {
   assertSafeOutput(WEB_ROOT, SHOWCASE_OUT);
   const files = new Map(listFiles(SHOWCASE_OUT).map((filename) => {
     const name = path.relative(SHOWCASE_OUT, filename).replaceAll(path.sep, '/');
-    if (name !== 'index.html' && !/^assets\/[A-Za-z0-9_-]+\.(js|css|svg|png|webp)$/.test(name)) throw new Error('Unexpected public artifact');
+    if (!isShowcasePublicFile(name)) throw new Error('Unexpected public artifact');
     // Serve the accepted regular-file bytes, so later path replacement cannot expose a link target.
-    return [name, { bytes: fs.readFileSync(filename), mime: MIME[path.extname(name)] }];
+    const bytes = fs.readFileSync(filename);
+    assertReviewedStaticAsset(name, bytes);
+    return [name, { bytes, mime: SHOWCASE_MIME[path.extname(name)] }];
   }));
   if (!files.has('index.html')) throw new Error('Build showcase before starting preview');
   const requests = [];

@@ -1,18 +1,19 @@
-/** Public Pages acceptance, separate from the local 92-check suite. No API mocks or user profile. */
+/** Public Pages acceptance, separate from local checks. No API mocks or user profile. */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-import { assertNoSymlinkChain, listFiles, REPO_ROOT } from '../scripts/showcase-paths.mjs';
+import { assertNoSymlinkChain, listFiles, REPO_ROOT, SHOWCASE_MIME, isShowcasePublicFile } from '../scripts/showcase-paths.mjs';
+import { assertArtifactManifest } from '../scripts/showcase-audit.mjs';
+import { runPublicUiAcceptance } from './showcase-public-journey.mjs';
 
-const publicationRoot = path.join(REPO_ROOT, '.local/publication-pages');
+const publicationRoot = path.join(REPO_ROOT, '.local/original-ui-release');
 const resultsRoot = path.join(publicationRoot, 'results');
-const stateKey = 'dodream.showcase.v1.state';
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const digestOf = files => sha256(files.map(file => `${file.path}\0${file.bytes}\0${file.sha256}\n`).join(''));
-const validFile = name => name === 'index.html' || /^assets\/[A-Za-z0-9_-]+\.(js|css|svg|png|webp)$/.test(name);
+const validFile = isShowcasePublicFile;
 
 // This is a destination allowlist, not an assertion that the address is deployed.
 // The caller must supply page_url observed from the successful Pages deployment.
@@ -35,6 +36,7 @@ export function validateReleaseManifest(manifest) {
   assert.equal(manifest.verification.forbiddenRequestAttempts, 0);
   assert.ok(Number.isInteger(manifest.verification.browserChecks) && manifest.verification.browserChecks > 0);
   const artifact = manifest.artifact;
+  assertArtifactManifest(artifact);
   assert.ok(Array.isArray(artifact?.files) && artifact.files.length >= 3 && artifact.files.length <= 100);
   const names = artifact.files.map(file => file.path);
   assert.deepEqual(names, [...new Set(names)].sort(), 'Manifest paths must be unique and sorted');
@@ -53,7 +55,7 @@ export function validateReleaseManifest(manifest) {
 
 function ownInput(value, kind) {
   const absolute = path.resolve(value);
-  assert.ok(absolute.startsWith(publicationRoot + path.sep), 'Downloaded inputs must be inside .local/publication-pages/');
+  assert.ok(absolute.startsWith(publicationRoot + path.sep), 'Downloaded inputs must be inside .local/original-ui-release/');
   assertNoSymlinkChain(absolute);
   const stat = fs.statSync(absolute);
   assert.ok(kind === 'directory' ? stat.isDirectory() : stat.isFile() && stat.size <= 256 * 1024);
@@ -76,15 +78,15 @@ function parseInputs(argv) {
 
 function mimeMatches(name, contentType) {
   const type = (contentType ?? '').split(';')[0].trim().toLowerCase();
-  const allowed = { '.html': ['text/html'], '.js': ['text/javascript', 'application/javascript'], '.css': ['text/css'],
-    '.svg': ['image/svg+xml'], '.png': ['image/png'], '.webp': ['image/webp'] };
-  return allowed[path.extname(name)]?.includes(type) ?? false;
+  const extension = path.extname(name);
+  const expected = SHOWCASE_MIME[extension]?.split(';')[0];
+  return type === expected || (extension === '.js' && type === 'application/javascript');
 }
 
 async function main(argv) {
   const stamp = new Date().toISOString().replaceAll(':', '').replaceAll('.', '');
   const startedAtUtc = new Date().toISOString();
-  const checks = [], httpFiles = [], browserFiles = [], staticRequests = [], forbiddenRequests = [], apiAttempts = [], cspViolations = [], socketAttempts = [];
+  const checks = [], httpFiles = [], browserFiles = [], staticRequests = [], forbiddenRequests = [], apiAttempts = [], cspViolations = [], socketAttempts = [], microphoneAttempts = [];
   const consoleErrors = [], consoleWarnings = [], pageErrors = [], responseTasks = [], screenshots = [];
   const shutdown = new AbortController();
   let input, browser, browserVersion, observedUrl, step = 'input validation', status = 'FAIL', provenance = 'NOT_RUN';
@@ -153,6 +155,7 @@ async function main(argv) {
     async function context(label, viewport = { width: 1280, height: 920 }) {
       const context = await browser.newContext({ serviceWorkers: 'block', viewport, reducedMotion: 'reduce' });
       await context.exposeBinding('__publicAttempt', (_source, event) => apiAttempts.push({ context: label, ...event }));
+      await context.exposeBinding('__publicMicrophone', (_source, event) => microphoneAttempts.push({ context: label, ...event }));
       await context.exposeBinding('__publicCsp', (_source, event) => cspViolations.push({ context: label, ...event }));
       await context.addInitScript(() => {
         const record = (api, url) => void window.__publicAttempt({ api, url: String(url ?? '') });
@@ -169,6 +172,19 @@ async function main(argv) {
         if (navigator.serviceWorker) {
           const register = navigator.serviceWorker.register.bind(navigator.serviceWorker);
           navigator.serviceWorker.register = (url, options) => { record('serviceWorker.register', url); return register(url, options); };
+        }
+        // Any microphone/recognition attempt fails acceptance and is denied
+        // before permission can be requested. No simulated recording is returned.
+        if (navigator.mediaDevices?.getUserMedia) {
+          navigator.mediaDevices.getUserMedia = () => { void window.__publicMicrophone({ api: 'getUserMedia' }); throw new Error('Microphone request forbidden in showcase acceptance'); };
+        }
+        for (const name of ['getUserMedia', 'webkitGetUserMedia', 'mozGetUserMedia']) {
+          const native = navigator[name]?.bind(navigator);
+          if (native) navigator[name] = () => { void window.__publicMicrophone({ api: name }); throw new Error('Microphone request forbidden in showcase acceptance'); };
+        }
+        for (const name of ['SpeechRecognition', 'webkitSpeechRecognition']) {
+          const Native = window[name];
+          if (Native) window[name] = class extends Native { start() { void window.__publicMicrophone({ api: name + '.start' }); throw new Error('Speech recognition forbidden in showcase acceptance'); } };
         }
         document.addEventListener('securitypolicyviolation', event => void window.__publicCsp({ directive: event.violatedDirective, blockedURI: event.blockedURI }));
       });
@@ -200,81 +216,12 @@ async function main(argv) {
       });
       return { context, page: await context.newPage() };
     }
-    async function keyboardActivate(page, target) {
-      for (let count = 0; count < 80; count++) {
-        const state = await target.evaluate(element => {
-          const style = getComputedStyle(element);
-          return { focused: document.activeElement === element, visible: style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0 || style.boxShadow !== 'none' };
-        });
-        if (state.focused) { check('keyboard target has visible focus', state.visible, 'PUBLIC_KEYBOARD'); await page.keyboard.press('Enter'); return; }
-        await page.keyboard.press('Tab');
-      }
-      throw new Error('Public keyboard target cannot be reached');
-    }
-    const desktop = await context('desktop'); const page = desktop.page;
-    const response = await page.goto(pageUrl);
-    observedUrl = page.url();
-    await page.getByText('샘플 체험', { exact: true }).waitFor();
-    check('anonymous HTTPS entry has expected URL and HTML', response?.status() === 200 && observedUrl === pageUrl && await page.getByText('샘플 체험', { exact: true }).count() === 1);
-    await keyboardActivate(page, page.getByRole('link', { name: '학생 체험 시작', exact: true }));
-    await keyboardActivate(page, page.getByTestId('material-water-journey'));
-    await page.getByRole('button', { name: '다음 단원', exact: true }).click();
-    await page.getByRole('heading', { name: '하늘로 올라가는 물', exact: true }).waitFor();
-    check('student entry and section navigation work', page.url().endsWith('section=water-2'));
-    await page.reload(); await page.getByRole('heading', { name: '하늘로 올라가는 물', exact: true }).waitFor();
-    check('nested hash reading route survives refresh', page.url().endsWith('section=water-2'));
-    await page.goBack(); await page.getByRole('heading', { name: '얼음과 물', exact: true }).waitFor();
-    check('browser back restores the earlier section', page.url().endsWith('section=water-1'));
-    await page.getByTestId('recommended-question-water-ice').click();
-    await page.getByTestId('sample-answer').waitFor();
-    check('question shows explicitly prepared answer', (await page.getByTestId('sample-answer').innerText()).includes('준비된 샘플 답변'));
-    const source = page.getByRole('button', { name: '참고 구간 보기', exact: true });
-    await source.click(); await page.locator('dialog[open] blockquote').waitFor();
-    check('source excerpt matches the same public lesson', await page.locator('dialog[open] blockquote').innerText() === '물이 충분히 차가워지면 단단한 얼음이 됩니다. 얼음을 따뜻한 곳에 두면 다시 물이 됩니다.');
-    await page.keyboard.press('Escape'); await page.locator('dialog[open]').waitFor({ state: 'hidden' });
-    check('source closes by keyboard and returns focus', await source.evaluate(element => element === document.activeElement), 'PUBLIC_KEYBOARD');
-    await page.getByRole('link', { name: '퀴즈 풀기', exact: true }).click();
-    await page.locator('input[type=radio][value=ice]').check();
-    await page.locator('input[type=radio][value=evaporate]').check();
-    await page.getByRole('button', { name: '제출하기', exact: true }).click();
-    await page.getByRole('heading', { name: '2문제 중 2문제를 맞혔어요', exact: true }).waitFor();
-    check('sample quiz produces its deterministic result', page.url().endsWith('/results/run-1'));
-    await page.reload(); await page.getByTestId('result-attempt').waitFor();
-    check('result direct URL and refresh preserve same-tab state', await page.getByTestId('result-attempt').innerText() === '1번째 풀이');
-    await screenshot(page, 'public-result');
-    await page.getByRole('link', { name: '교사 화면 보기', exact: true }).click();
-    await page.getByRole('heading', { name: '교사 샘플 화면', exact: true }).waitFor();
-    check('teacher sample shows the same-tab result', (await page.getByTestId('teacher-results').innerText()).includes('물의 여행 · 1번째 풀이'));
-    const mobile = await context('narrow-independent', { width: 320, height: 780 });
-    await mobile.page.goto(pageUrl + '#/learn/water-journey/results/run-1');
-    await mobile.page.getByText('이 탭에 저장된 풀이 결과가 없습니다. 먼저 퀴즈를 풀어주세요.', { exact: true }).waitFor();
-    check('independent anonymous context has no first context result', await mobile.page.getByTestId('result-attempt').count() === 0);
-    await mobile.page.goto(pageUrl + '#/learn/water-journey?section=water-2');
-    await mobile.page.getByRole('heading', { name: '하늘로 올라가는 물', exact: true }).waitFor();
-    await mobile.page.getByTestId('recommended-question-water-evaporation').click();
-    await mobile.page.getByTestId('sample-answer').waitFor();
-    const layout = await mobile.page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth,
-      clipped: [...document.querySelectorAll('main button, main input, main textarea, main p')].filter(element => {
-        const box = element.getBoundingClientRect(); return box.width > 0 && (box.left < -1 || box.right > innerWidth + 1);
-      }).length }));
-    check('320 CSS px public reading and question controls fit', layout.scroll <= layout.width + 1 && layout.clipped === 0, 'PUBLIC_LAYOUT', layout);
-    await screenshot(mobile.page, 'public-narrow');
-    await Promise.all(responseTasks);
-    await mobile.context.close();
-    await page.evaluate(() => sessionStorage.setItem('publication.unrelated', 'keep'));
-    await page.getByRole('button', { name: '데모 초기화', exact: true }).click();
-    await page.getByRole('link', { name: '학생 체험 시작', exact: true }).waitFor();
-    check('public reset clears only the showcase-owned state', await page.evaluate(key => sessionStorage.getItem(key) === null && sessionStorage.getItem('publication.unrelated') === 'keep', stateKey));
-    await page.goto(pageUrl + '#/learn/water-journey/results/run-1');
-    await page.getByText('이 탭에 저장된 풀이 결과가 없습니다. 먼저 퀴즈를 풀어주세요.', { exact: true }).waitFor();
-    check('reset result remains absent after a new document navigation', await page.getByTestId('result-attempt').count() === 0);
-    await Promise.all(responseTasks);
-    await desktop.context.close();
+    observedUrl = await runPublicUiAcceptance({ context, pageUrl, check, screenshot, settleResponses: () => Promise.all(responseTasks) });
     const browserIntegrity = browserFiles.length === staticRequests.length && browserFiles.length > 0;
     if (!browserIntegrity) provenance = 'FAIL';
     check('all browser responses match the approved remote artifact', browserIntegrity, 'ARTIFACT_PROVENANCE');
     check('no public console or application errors', consoleErrors.length === 0 && pageErrors.length === 0, 'PUBLIC_BROWSER', { consoleErrors, pageErrors });
-    check('no backend/external/API/WebSocket/EventSource/beacon attempts or CSP violations', forbiddenRequests.length === 0 && apiAttempts.length === 0 && socketAttempts.length === 0 && cspViolations.length === 0, 'PUBLIC_NETWORK');
+    check('no backend/external/API/microphone/WebSocket/EventSource/beacon attempts or CSP violations', forbiddenRequests.length === 0 && apiAttempts.length === 0 && microphoneAttempts.length === 0 && socketAttempts.length === 0 && cspViolations.length === 0, 'PUBLIC_NETWORK');
     status = 'PASS';
   }
   try {
@@ -295,8 +242,8 @@ async function main(argv) {
       actualPageUrl: input?.pageUrl, observedUrl, sourceSha: input?.manifest.sourceSha, remoteRunId: input?.manifest.runId, remoteRunUrl: input?.manifest.runUrl,
       remoteArtifactDigest: input?.manifest.artifact.manifestDigest, runtime: { node: process.version, platform: process.platform, browserVersion, channel: 'chrome', headless: true },
       counts: { checks: checks.length, provenanceStaticRequests: httpFiles.length, browserStaticRequests: staticRequests.length,
-        forbiddenRequestAttempts: forbiddenRequests.length, apiAttemptsBeforeCsp: apiAttempts.length, webSocketAttempts: socketAttempts.length, cspViolations: cspViolations.length },
-      checks, httpFiles, browserFiles, staticRequests, forbiddenRequests, apiAttempts, socketAttempts, cspViolations, consoleErrors, consoleWarnings, pageErrors, screenshots,
+        forbiddenRequestAttempts: forbiddenRequests.length, apiAttemptsBeforeCsp: apiAttempts.length, webSocketAttempts: socketAttempts.length, cspViolations: cspViolations.length, microphoneAttempts: microphoneAttempts.length },
+      checks, httpFiles, browserFiles, staticRequests, forbiddenRequests, apiAttempts, microphoneAttempts, socketAttempts, cspViolations, consoleErrors, consoleWarnings, pageErrors, screenshots,
       scope: 'Confirmed public HTTPS Pages URL; downloaded remote artifact; anonymous fresh Chrome contexts; no API response mocks; public checks are not added to local checks.',
       actualAudioListening: 'NOT_RUN', voiceOver: 'NOT_RUN', backendData: 'NOT_TOUCHED' };
     const json = JSON.stringify(report, null, 2) + '\n';

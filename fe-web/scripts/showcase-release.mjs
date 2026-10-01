@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { inspectArtifact } from './showcase-audit.mjs';
+import { assertArtifactManifest, inspectArtifact } from './showcase-audit.mjs';
 import { REPO_ROOT, RESULTS_DIR, SHOWCASE_OUT, assertNoSymlinkChain, listFiles } from './showcase-paths.mjs';
 
 export function assertReleaseContext(context) {
@@ -39,12 +39,14 @@ export function makeReleaseManifest({ context, gitSha, tools, verification, brow
   const expectedCommands = ['typecheck', 'showcase-contracts', 'showcase-build-sentinel', 'phase1-build', 'showcase-browser'];
   assert.deepEqual(verification.commands.map((command) => command.label), expectedCommands);
   assert.ok(verification.commands.every((command) => command.exitCode === 0));
+  assertArtifactManifest(currentArtifact);
+  assertArtifactManifest(verification.artifact);
   assert.equal(verification.artifact.manifestDigest, currentArtifact.manifestDigest, 'Verified output changed before release');
   assert.deepEqual(verification.artifact.files.map(({ path, bytes, sha256 }) => ({ path, bytes, sha256 })), currentArtifact.files.map(({ path, bytes, sha256 }) => ({ path, bytes, sha256 })));
   assert.equal(browser.status, 'PASS');
   assert.ok(browser.checks.length > 0 && browser.checks.every((check) => check.status === 'PASS'));
   assert.equal(browser.counts.checks, browser.checks.length);
-  for (const key of ['forbiddenRequestAttempts', 'apiAttemptsBeforeCsp', 'webSocketAttempts', 'cspViolations']) assert.equal(browser.counts[key], 0);
+  for (const key of ['forbiddenRequestAttempts', 'apiAttemptsBeforeCsp', 'webSocketAttempts', 'cspViolations', 'microphoneAttempts']) assert.equal(browser.counts[key], 0);
   assert.ok(browser.counts.staticRequests > 0);
   assert.deepEqual(browser.browserErrors, []);
   assert.equal(browser.runtime.platform, 'linux');

@@ -23,7 +23,7 @@
     "test:hardening": "node --experimental-strip-types --test tests/html-boundaries.test.ts",
     "build:showcase": "node scripts/showcase-build.mjs",
     "preview:showcase": "node scripts/showcase-server.mjs",
-    "test:showcase": "node --experimental-strip-types --test tests/showcase-state.test.ts tests/showcase-build.test.mjs",
+    "test:showcase": "node --experimental-strip-types --test tests/showcase-state.test.ts tests/original-ui-state.test.ts tests/showcase-build.test.mjs",
     "test:showcase-browser": "node tests/showcase-browser.mjs",
     "verify:showcase": "node scripts/showcase-verify.mjs"
   },
