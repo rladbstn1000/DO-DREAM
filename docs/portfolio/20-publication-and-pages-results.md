@@ -147,3 +147,9 @@ node fe-web/tests/showcase-public-browser.mjs --url https://rladbstn1000.github.
 원시 공개 검토/CI 관측/브라우저 로그·다운로드·캐시는 ignored `.local/publication-pages/`, 기존 로컬 인수 원본은 `.local/static-showcase/`에 보존한다. 공개 문서에는 필요한 요약·검토한 캡처·실제 링크만 남긴다. source 저장소에 배포 폴더를 통째 커밋하지 않는다.
 
 `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다. 실제 청취·VoiceOver·WCAG 인증·모바일 실기기는 이번 공개 확인과 구분하며 수행하지 않으면 NOT_RUN이다.
+
+## 최신 원본 UI 공개 반영 (2026-10-01)
+
+사용자가 승인한 `a187bf09b017984feea48153d79e02b81a9e23a5`의 교사 원본 UI·학생 앱 및 줄바꿈 보완을 [PR #4](https://github.com/rladbstn1000/DO-DREAM/pull/4)로 병합했다. 실제 배포 source는 `1aafe5a32a4a66e55629255277355aeb9f06f551`, [Pages 실행 36800980482](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36800980482)는 build/deploy 성공이다. 기존 [공개 URL](https://rladbstn1000.github.io/DO-DREAM/)을 유지한다.
+
+현재 원격 artifact는 13파일/6,720,716 bytes이며 공개 파일 bytes/hash 대조와 새 UI 공개 인수 108개를 통과했다. 위 최초 공개 기록의 3파일·이전 해시·검사 수는 당시 이력으로 보존한다. 승인·누적 공개 검토·PR/main CI·현재 manifest 전체·최종 공개 캡처와 한계는 [21번의 원본 UI 공개 배포와 인수](21-original-ui-showcase-results.md#원본-ui-공개-배포와-인수)에 기록했다. 후속 문서/검사 PR의 main SHA와 실제 앱 배포 SHA는 구분한다. **USER_VISUAL_APPROVAL=APPROVED**, **UPDATED_PUBLIC_DEPLOYMENT=true**이며 실제 AI/백엔드 운영 준비 상태는 변경하지 않았다.

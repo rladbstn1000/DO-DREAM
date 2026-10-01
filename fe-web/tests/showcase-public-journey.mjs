@@ -661,6 +661,32 @@ export async function runPublicUiAcceptance({
   );
   await page.getByTestId('reset-demo').click();
   await page.getByTestId('start-student').filter({ visible: true }).waitFor();
+  // Reset mounts CSS background artwork after the document's original load event.
+  // Wait for these actual static images before leaving the entry route, otherwise
+  // navigation can cancel an in-flight public response before its bytes are read.
+  await page.locator('.original-join .container').evaluate(async (element) => {
+    const backgrounds = [
+      getComputedStyle(element).backgroundImage,
+      getComputedStyle(element, '::after').backgroundImage,
+    ];
+    const urls = [
+      ...new Set(
+        backgrounds.flatMap((background) =>
+          [...background.matchAll(/url\(["']?([^"')]+)["']?\)/g)].map(
+            (match) => match[1],
+          ),
+        ),
+      ),
+    ];
+    await Promise.all(
+      urls.map(async (url) => {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+      }),
+    );
+  });
+  await settleResponses();
   check(
     'public reset clears both showcase-owned stores only',
     await page.evaluate(
