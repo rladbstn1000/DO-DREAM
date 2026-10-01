@@ -215,3 +215,81 @@ DODREAM_SHOWCASE_EVIDENCE=original-ui-polish npm --prefix fe-web run preview:sho
 기존 Pages source=`workflow`, HTTPS/기존 URL, `github-pages`의 정확한 main branch 제한을 확인했다. main 보호와 ruleset은 시작 시 설정되지 않았으며 이를 변경하지 않는다. 그래도 PR과 병합 main 각각의 `web`, `python (ai)`, `python (python-service)`, `backend`, `offline-tools` 다섯 기대 작업의 실제 성공을 확인한 뒤 배포한다. 기존 `showcase-pages.yml`의 `expected_sha`와 생성 manifest를 사용하며, 원격에서 검증한 산출물을 재빌드 없이 업로드·배포한다.
 
 이 준비 커밋 시점의 배포는 **NOT_RUN**, **UPDATED_PUBLIC_DEPLOYMENT=false**다. 원격 PR/CI·배포·실제 공개 bytes/hash와 새 UI 인수 결과는 완료 후 아래 후속 구역에 기록한다. 실제 AI·마이크·백엔드 서비스·Docker·DB는 실행하지 않는다.
+
+## 원본 UI 공개 배포와 인수
+
+2026-10-01 KST, 승인 후보 `a187bf09b017984feea48153d79e02b81a9e23a5`(복원 `1586b7e56b0a9ba99ab14883996c51acc5417ddb` 포함)의 UI를 **[기존 공개 URL](https://rladbstn1000.github.io/DO-DREAM/)**에 반영했다. 승인 후 앱·실제 인증/API·권한·채점·색인·의존성·workflow는 변경하지 않았다. 공개 검사·증거 경로 준비 커밋은 `4754349a9a292fea4c29457be9fcdab91418a8f1`이다.
+
+| 구분 | 실제 SHA / 실행 결과 |
+|---|---|
+| 공개 반영 PR | [#4](https://github.com/rladbstn1000/DO-DREAM/pull/4), head `4754349a9a292fea4c29457be9fcdab91418a8f1` |
+| PR 검사 | [36800510834](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36800510834), 실제 checkout merge SHA `ac0904803876111464ae25478c913018afff93c7` |
+| 일반 merge commit | `1aafe5a32a4a66e55629255277355aeb9f06f551` (01:22:07 UTC) |
+| 병합 main 검사 | [36800763860](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36800763860), checkout/source `1aafe5a32a4a66e55629255277355aeb9f06f551` |
+| 수동 Pages 실행 | [36800980482](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36800980482), build·deploy 모두 SUCCESS |
+| 실제 배포 source | **`1aafe5a32a4a66e55629255277355aeb9f06f551`**, deployment `6773921680`, 공개 URL 출력 01:26:26 UTC |
+
+PR 및 병합 main에서 `web`, `python (ai)`, `python (python-service)`, `backend`, `offline-tools` **다섯 작업과 하위 단계 모두 SUCCESS**였고 skip은 없다. PR head와 PR 검사용 merge SHA를 구분했다. 브랜치 하나만 일반 push하고 일반 merge commit으로 병합했다. main 직접 push·force·이력 재작성·보호 우회는 없었다. `expected_sha`에 위 배포 SHA 전체를 전달했으며, 기존 Pages source·github-pages 환경/main 제한·최소 권한·HTTPS·도메인은 전후 동일하다.
+
+### 원격 artifact와 공개 파일 대응
+
+현재 Pages 실행에서 내려받은 `github-pages` artifact ID **11135800957**(ZIP 5,701,280 bytes, digest `b22053803641654d17ddc7cbd64e048c29dd833a2259b43c339c7a887846fe02`)와 `showcase-provenance` ID **11135561093**(ZIP 1,462 bytes, digest `38b6e56aa81b9a077ead3d88ba1de4037184efe0f435185c0cc4132a47bfeb22`)를 연결했다. 검증된 `artifact.tar` SHA-256은 `56f524294c8292021800bb835306d73901ecd20c7d38bdbb739a5ae333f4549a`다. 보관 기간은 기존대로 각각 1일/7일이며 만료 후에는 아래 파일 해시와 run 기록으로 식별한다.
+
+원격 Node 22.22.0/npm 10.9.4/Chrome 154.0.8037.57/Playwright 1.62.1로 검증한 산출물을 **다시 빌드하지 않고 그대로 업로드·배포**했다. tar 경로·파일 형식·허용 목록을 검사해 안전하게 추출했고 소스·DB·로그·비밀 파일은 없다. 이번 run의 manifest 및 추출 파일과 공개 HTTPS 응답 **13파일 / 6,720,716 bytes**의 크기·SHA-256이 모두 일치했다. manifest digest는 `df92f54237021357c8faa78e2de42a1544aac9fa450bb216886fe53984b60d42`다. 과거 로컬/최초 공개 manifest를 대신 사용하지 않았다.
+
+| 공개 파일 | bytes | SHA-256 |
+|---|---:|---|
+| `assets/background-cFpxG_42.jpg` | 893,557 | `80e3a354750edb7ef8a2ad2f4f8ded72d8e6f15234c370605fbd25616d9ad00a` |
+| `assets/female-DlBoi81V.png` | 274,444 | `9010cc74df152fccb43ce805f01586cd73d3c22a1fff7f90812540788569df49` |
+| `assets/index-DWcuaV5g.js` | 723,524 | `e454ecbe43a8c19852e63c42b5ab9e4687ba3b0b2b4e133a0b20501b5d8b385f` |
+| `assets/index-DxqGNCZv.css` | 102,303 | `851c321991f6f8af278188d645d9004aa4d158ce3e7fc63792b273411954c7d5` |
+| `assets/jalnan-LICENSE-CfcFbgMf.txt` | 2,014 | `a503432ebbb2aef98af241a61ce93f876176aafd5af81cd136ce099745467d1e` |
+| `assets/male-CR3wiWdN.png` | 222,433 | `0fea7ba29352dcb172bb851fc7236a3b3064fd43ebe087912df112b24ecf2f56` |
+| `assets/memo-HUZ20Veg.png` | 417,870 | `f61fd42eb44485b6e043915d0d080194d9575656594006b9040e6733f3ac3d52` |
+| `assets/school-B7FUhzuY.png` | 1,008,593 | `323bc8040f13ffac74a74061cb3617b3a17c1d0389bb770822858a0bdb7920ec` |
+| `assets/signin-BVNG55Xn.png` | 1,248,501 | `2ee696167b7bf4b182bb17d2ea7a3d2106d106ee354eafceeeb56f6ce0481702` |
+| `assets/signup-qOpSqZ9T.png` | 179,709 | `8d2c0e9b6350787d7ef1ede9d04c551e4372fa10b7799a8bef9ccab5798c7156` |
+| `assets/teacher-EkXGA_59.png` | 1,108,881 | `2ffe378092d1ad39a36ae43fe653ac628231f8367e90eb3e2e9b2f1f38d0b850` |
+| `assets/yg-jalnan-2iK9oszh.woff` | 537,996 | `606c8ff7146886d42bacecdf1df92c4088ab18e2b3f4de77764b02e136510140` |
+| `index.html` | 891 | `bc7b9f9c30a27d0d29d62cd8cc410dc54e3fbdc05dee336573c9e2c0ba852961` |
+
+### 공개 인수와 캡처
+
+최종 공개 검사는 **2026-10-01 01:38:33–01:38:39 UTC (10:38 KST)**, Mac Chrome 154.0.8037.59의 새 독립 context 5개에서 **108 PASS**다. 배포 결과 URL과 위 실행의 다운로드 manifest/artifact를 입력으로 사용했다. 모든 파일의 직접 HTTP 대조 **13개**와 브라우저가 실제 요청한 정적 응답 **35개/고유 경로 10개**는 별도 집계다. 로컬 184개를 공개 통과 수에 합산하지 않았다.
+
+- 교사 시작·자료·학급·편집기, 휴대폰 안의 서재·재생 방식·플레이어·준비된 질문/참고 구간·서술형 퀴즈/결과와 같은 탭 교사 기록을 통과했다. 질문 1개와 퀴즈 1회(2문제)를 실제 샘플 UI로 실행했고, 교사에 질문 1개/퀴즈 1회/정답 2개가 표시됐다. 기존 진도 정의는 1/2 자료, **50%**로 유지했다.
+- 교사 1280/1366/1440px에서 제목·인원·정렬 문구와 검색 영역, 학생 내부 392px 및 320px/큰 글자 150%에서 본문·안내·퀴즈 어절과 배지 폭을 확인했다. 짧은 높이 500px를 포함해 내부 스크롤 끝의 저장 목록과 실제 마지막 퀴즈 메뉴에 도달하고 Tab/Enter로 선택했다. 긴 내용의 자연스러운 스크롤과 접근 불가능한 잘림을 구분했다.
+- 직접 해시 경로·새로고침·뒤로 가기·기존 공개 해시의 호환 이동·입력의 안전한 텍스트 표시·저장소 소유 키 2개만 초기화/타 키 보존을 통과했다. 말하기/음성 답하기는 기존 예시 선택으로 연결되며 실제 마이크를 쓰지 않는다.
+- **금지 요청/API/WebSocket/마이크 시도/CSP 위반 모두 0**, console/page/request 오류 0이다. API 응답을 가로채 성공으로 바꾸지 않았다. HTTP 파일 대조는 처음부터 새 파일과 일치해 CDN 지연 재시도는 필요하지 않았다.
+
+초기 공개 실행 `2026-10-01T012855425Z`는 UI 검사와 직접 HTTP 13파일 대조를 통과했으나 reset 후 빠른 화면 이동으로 배경 이미지 응답 하나가 취소되어 전체 **FAIL**이었다. 실패 원본을 보존했다. `showcase-public-journey.mjs`에서 해당 실제 이미지 decode 및 응답 수집 완료를 기다리고, `showcase-public-browser.mjs`에서 request 실패 0 기대값을 추가했다. 뒤이은 96 PASS 캡처에서도 SPA 전환의 `networkidle`만으로 새 이미지 표시 완료를 보장할 수 없음을 실제 캡처로 발견했다. DOM 이미지와 표시되는 교사 CSS 배경의 decode를 확인하는 캡처 검사 12개를 추가한 **최종 108 PASS**를 채택한다. 기대값을 낮추거나 앱 UI·자산을 수정하지 않았고 배포를 다시 하지 않았다. 중간 실행·진단·최종 원본은 모두 보존한다.
+
+아래 8개는 최종 공개 실행의 캡처를 그대로 복사해 직접 열어 확인했다. 교사 아바타/메모 등 실제 자산 표시와 줄바꿈·하단 접근·체험 기록을 포함한다. README 대표 캡처와 시연 안내도 현재 교사 웹/학생 앱 경로를 설명하도록 갱신했으며 팀 원본 캡처와 기여 표시는 보존했다.
+
+| 화면 | 최종 공개 캡처 |
+|---|---|
+| 교사 자료 목록 / 학급 상세 | [자료](assets/original-ui-public/teacher-materials.png) · [학급](assets/original-ui-public/teacher-classroom.png) |
+| 학생 서재 / 퀴즈 목록 | [서재](assets/original-ui-public/student-library.png) · [퀴즈](assets/original-ui-public/student-quizzes.png) |
+| 플레이어 / 준비된 질문·참고 구간 | [본문](assets/original-ui-public/student-player.png) · [질문](assets/original-ui-public/student-question.png) |
+| 재생 방식 마지막 메뉴 / 체험 후 교사 기록 | [최하단](assets/original-ui-public/playback-bottom.png) · [학생 상세](assets/original-ui-public/teacher-student-history.png) |
+
+후속 검사 소스의 최종 로컬 `verify:showcase`도 01:38 UTC에 다시 수행해 **184 PASS / 정적 요청 117 / 금지 요청 0**, 상태·빌드 계약 66개/서버 경계 40개 PASS, 소스·산출물 동일을 확인했다. source digest는 `bb13a2835ce2925c5a3ead7a2a7b189d3470855e0ede31a8af9658260e580b45`다. 별도 기존 웹 회귀 115개 및 Pages 계약 8개 PASS이며 실제 백엔드 서비스를 다시 실행하지 않았다. 기존 chunk 크기 경고와 고정 action 런타임 전환 경고는 삭제하거나 숨기지 않았다.
+
+공개 원본은 `.local/original-ui-release/results/showcase-public-browser-2026-10-01T013833507Z.json`, `public-browser-2026-10-01T013833507Z/`, 다운로드는 `downloads/36800980482/`, 최종 로컬 검증은 `results/verify-showcase-2026-10-01T01-38-48-713Z.json`에 있다. 이전 복원/표시 보완 기록과 캡처 343파일의 SHA-256은 그대로다. 이 후속 기록·README·시연·캡처 및 검사 보완도 PR/필수 CI/일반 merge 절차로 반영한다. **그 후속 main SHA는 앱 배포 source SHA가 아니며 이 문서의 실제 배포 SHA를 대체하지 않는다.** 문서/검사만을 위해 다시 배포하지 않는다.
+
+```sh
+node fe-web/tests/showcase-public-browser.mjs --url https://rladbstn1000.github.io/DO-DREAM/ --manifest .local/original-ui-release/downloads/36800980482/showcase-provenance/release-manifest.json --artifact-dir .local/original-ui-release/downloads/36800980482/verified-pages
+DODREAM_SHOWCASE_EVIDENCE=original-ui-release npm --prefix fe-web run verify:showcase
+```
+
+| 현재 상태 | 판정 |
+|---|---|
+| USER_VISUAL_APPROVAL | APPROVED — a187bf0까지 |
+| SOURCE_DELTA_PUBLICATION_REVIEW | PASS_WITH_DOCUMENTED_LIMITATIONS — 신규 이력·소스·캡처 검토 |
+| REMOTE_REQUIRED_CI | PASS — 공개 반영 PR와 배포 main의 실제 5작업/단계 성공 |
+| PAGES_DEPLOYMENT | PASS — build/deploy 성공, 기존 URL 유지 |
+| PUBLIC_ORIGINAL_UI_ACCEPTANCE | PASS — 최종 공개 108개, 로컬 수와 별도 |
+| RELEASE_ARTIFACT_PROVENANCE | PASS — 현재 원격 artifact/manifest/공개 13파일 일치 |
+| UPDATED_PUBLIC_DEPLOYMENT | true — 실제 새 UI 공개 확인 완료 |
+
+`REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다. 실제 음성 청취·VoiceOver·네이티브 앱/실기기 검증은 **NOT_RUN**이며 자동 브라우저 검사를 그 검증으로 대체하지 않는다. 이번 검증이 연 브라우저·임시 검증 서버는 종료했고 이전 작업의 사용자 미리보기는 건드리지 않았다. 새 기능·추가 디자인 개선은 수행하지 않았다.

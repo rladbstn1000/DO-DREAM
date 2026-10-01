@@ -87,7 +87,7 @@ async function main(argv) {
   const stamp = new Date().toISOString().replaceAll(':', '').replaceAll('.', '');
   const startedAtUtc = new Date().toISOString();
   const checks = [], httpFiles = [], browserFiles = [], staticRequests = [], forbiddenRequests = [], apiAttempts = [], cspViolations = [], socketAttempts = [], microphoneAttempts = [];
-  const consoleErrors = [], consoleWarnings = [], pageErrors = [], responseTasks = [], screenshots = [];
+  const consoleErrors = [], consoleWarnings = [], pageErrors = [], requestFailures = [], responseTasks = [], screenshots = [];
   const shutdown = new AbortController();
   let input, browser, browserVersion, observedUrl, step = 'input validation', status = 'FAIL', provenance = 'NOT_RUN';
   let deadline, terminate, interrupt;
@@ -101,6 +101,27 @@ async function main(argv) {
   const screenshot = async (page, name) => {
     fs.mkdirSync(screenshotDirectory, { recursive: true });
     const destination = path.join(screenshotDirectory, name + '.png');
+    // SPA routes can add artwork after the document's load/networkidle events.
+    // Decode actual displayed assets before capturing, without changing the UI.
+    const artwork = await page.evaluate(async () => {
+      await document.fonts.ready;
+      const images = [...document.images];
+      await Promise.all(images.map(image => image.decode()));
+      const urls = new Set();
+      for (const element of document.querySelectorAll('.original-teacher, .original-teacher *')) {
+        const rect = element.getBoundingClientRect();
+        if (!rect.width || !rect.height) continue;
+        for (const pseudo of [null, '::before', '::after']) {
+          const style = getComputedStyle(element, pseudo);
+          if (style.display === 'none' || style.visibility === 'hidden') continue;
+          for (const match of style.backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g)) urls.add(match[1]);
+        }
+      }
+      await Promise.all([...urls].map(async url => { const image = new Image(); image.src = url; await image.decode(); }));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return { images: images.map(image => ({ complete: image.complete, width: image.naturalWidth })), backgrounds: urls.size };
+    });
+    check(`static artwork decoded before ${name}`, artwork.images.every(image => image.complete && image.width > 0), 'PUBLIC_VISUAL', artwork);
     await page.screenshot({ path: destination, fullPage: true, animations: 'disabled' });
     screenshots.push(path.relative(REPO_ROOT, destination));
   };
@@ -202,6 +223,7 @@ async function main(argv) {
           if (message.type() === 'warning') consoleWarnings.push({ context: label, text: message.text() });
         });
         page.on('pageerror', error => pageErrors.push({ context: label, name: error.name, message: error.message }));
+        page.on('requestfailed', request => requestFailures.push({ context: label, url: request.url(), error: request.failure()?.errorText }));
         page.on('websocket', socket => socketAttempts.push({ context: label, url: socket.url() }));
         page.on('response', response => responseTasks.push((async () => {
           const expected = approvedFile(response.url());
@@ -220,7 +242,7 @@ async function main(argv) {
     const browserIntegrity = browserFiles.length === staticRequests.length && browserFiles.length > 0;
     if (!browserIntegrity) provenance = 'FAIL';
     check('all browser responses match the approved remote artifact', browserIntegrity, 'ARTIFACT_PROVENANCE');
-    check('no public console or application errors', consoleErrors.length === 0 && pageErrors.length === 0, 'PUBLIC_BROWSER', { consoleErrors, pageErrors });
+    check('no public console, application or request errors', consoleErrors.length === 0 && pageErrors.length === 0 && requestFailures.length === 0, 'PUBLIC_BROWSER', { consoleErrors, pageErrors, requestFailures });
     check('no backend/external/API/microphone/WebSocket/EventSource/beacon attempts or CSP violations', forbiddenRequests.length === 0 && apiAttempts.length === 0 && microphoneAttempts.length === 0 && socketAttempts.length === 0 && cspViolations.length === 0, 'PUBLIC_NETWORK');
     status = 'PASS';
   }
@@ -243,7 +265,7 @@ async function main(argv) {
       remoteArtifactDigest: input?.manifest.artifact.manifestDigest, runtime: { node: process.version, platform: process.platform, browserVersion, channel: 'chrome', headless: true },
       counts: { checks: checks.length, provenanceStaticRequests: httpFiles.length, browserStaticRequests: staticRequests.length,
         forbiddenRequestAttempts: forbiddenRequests.length, apiAttemptsBeforeCsp: apiAttempts.length, webSocketAttempts: socketAttempts.length, cspViolations: cspViolations.length, microphoneAttempts: microphoneAttempts.length },
-      checks, httpFiles, browserFiles, staticRequests, forbiddenRequests, apiAttempts, microphoneAttempts, socketAttempts, cspViolations, consoleErrors, consoleWarnings, pageErrors, screenshots,
+      checks, httpFiles, browserFiles, staticRequests, forbiddenRequests, apiAttempts, microphoneAttempts, socketAttempts, cspViolations, consoleErrors, consoleWarnings, pageErrors, requestFailures, screenshots,
       scope: 'Confirmed public HTTPS Pages URL; downloaded remote artifact; anonymous fresh Chrome contexts; no API response mocks; public checks are not added to local checks.',
       actualAudioListening: 'NOT_RUN', voiceOver: 'NOT_RUN', backendData: 'NOT_TOUCHED' };
     const json = JSON.stringify(report, null, 2) + '\n';
