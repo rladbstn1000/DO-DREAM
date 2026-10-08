@@ -1,5 +1,7 @@
 # 18. 포트폴리오 코드 최종 리뷰
 
+> **현재 상태 안내 · 2026-10-08 확인:** 이 문서는 단계별 코드 검토·검증의 누적 기록이다. 현재 [공개 정적 데모](https://rladbstn1000.github.io/DO-DREAM/)는 [제출용 보완 공개 결과](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)의 앱 SHA `888609661595d4cbef89de15097007453c871ca3`로 배포됐다. 이후 소스·문서의 원격 main은 `8767ec82b9818d96ea6b7a28a696475ab2122408`이며 앱 배포 SHA와 다르다. 이번 로컬 보완은 [근거·검사 후속 기록](#evidence-portability-2026-10-08)을 따른다. 아래 과거 미배포·NOT_RUN은 당시 상태를 보존한 것이며, 현재 공개 데모의 배포 완료를 취소하지 않는다.
+
 2026-09-30, 팀 기준 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e` 이후의 개인 개선이다. 시작 브랜치 `codex/dodream-phase5-live-ai`, 시작 HEAD `e6410fda2df84c6e7fd0ab81d46c832e73f87318`를 실제 확인하고 새 `codex/dodream-portfolio-hardening` 브랜치에서 작업했다. 진행 중인 Git 작업은 없었으며, 기존 untracked `docs/.DS_Store`는 읽기·삭제·stage에서 제외했다. GitHub main을 로컬 코드의 대체 근거로 사용하지 않았다.
 
 ## 목표와 판정 경계
@@ -60,12 +62,20 @@ PDF 파일 signature/크기/페이지/텍스트 제한은 native parser 한 페�
 - 일반 PDF/OCR 및 AWS/Firebase 실제 연결, 운영 secret·HTTPS·백업/복구·관측·기기 접근성은 미검증이다. 정적 showcase의 준비와 합산하지 않는다.
 - 브라우저 localStorage/MMKV의 토큰 저장 위험은 잔존한다. 현재 서버 확인·권한 검사와 렌더링 결함 수정을 저장매체의 완전한 보호로 표현하지 않는다.
 
+<a name="query-measurement-baseline"></a>
+
 ## 고정 합성 데이터 성능 검사
 
 | 경로 / 조건 | 변경 전 | 변경 후 | 출력·권한 대조 |
 |---|---:|---:|---|
 | 실제 MySQL 통계, 자료1·문제2·풀이20, 1차 캐시 clear, fixture insert 제외. 자료별/전체 통계를 각각 측정 | 각각85 SELECT/statement | 각각9 | 총문제2·시도20·정답률50%, 현재 공유 회수 뒤 결과 없음. fixture 트랜잭션 rollback |
 | 임시 SQLite 실제 JWT/DB policy 이력20·provenance10·legacy10 | history23 + authority7 SELECT | history3 + authority7 SELECT | 메시지 내용·순서·mode10·빈 sources 및 공유 회수404 대조 |
+
+**비교 기준 보완 (2026-10-08):** 팀 기준 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e`의 이 통계 경로에는 이후 추가한 현재 자료 권한 조회가 없었다. 개인 권한 강화 `eba04683a263b4a0fd327d428c1a4b3d693aee53`에서 풀이 로그마다 같은 자료의 권한을 조회하는 비용이 생겼고, `81ce22fcf60cd9a25513d096b6425216e0f46534`에서 같은 요청 안의 자료별 결과를 재사용하도록 개선했다. 다음 요청은 현재 공유·담당 관계를 다시 확인한다. 권한 강화 과정에서 생긴 반복 조회를 줄인 성과이며, 팀 기준 코드와의85→9 비교가 아니다.
+
+이번에는 재측정하지 않고 당시 원시 로그·실행 metadata를 대조했다. `.local/portfolio-hardening/results/statistics-before-2026-09-30T104952789426+0000.log`는 `materials=85 overall=85`, `be-hardening-tests-2026-09-30T105333544480+0000.log`는 `materials=9 overall=9`이며 모두 자료1·문제2·풀이20이다. 해당 JSON의 실행 HEAD는 둘 다 `e6410fda2df84c6e7fd0ab81d46c832e73f87318`이고, **미커밋 작업 소스 digest**는 각각 `9a1ae0e6d2e5b4bfdf9268480d48aa388529112c3b7c1a8e0912ea72e4a20208` / `310cd30f37e2e7d05bfc5f8ee3f5f9008dc728bd62ad2bb85ba130dbdd4cb532`다. 권한 강화 커밋 자체나 깨끗한e6410fd checkout을 정확한85회 측정 소스로 표시하지 않는다. 당시 명령은 scoped `be-test`의 `gradle --no-daemon --offline test --tests '*StatisticsQueryDatabaseTests' --rerun-tasks --info`(변경 전)와 선택 hardening tests(변경 후), 각각 종료0이었다.
+
+[현재 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/test/java/A704/DODREAM/hardening/StatisticsQueryDatabaseTests.java#L28-L70)의 관측값 출력과 회귀 상한 `≤12`는 별개다. 상한은10~12로 늘어나는 변화까지 잡지 않으며 이번에 수정하지 않는다. AI 이력은 **history23→3, 권한 포함 전체30→10**의 기존 보고 수치로 구분한다. 이번 통계 원시 로그 대조나 브라우저 검사로 AI 수치를 재측정했다고 주장하지 않는다.
 
 통계는 [QuizService.visibleHistory](../../be/src/main/java/A704/DODREAM/quiz/service/QuizService.java)에서 호출 내 material별 권한 결정만 재사용한다. [StatisticsQueryDatabaseTests](../../be/src/test/java/A704/DODREAM/hardening/StatisticsQueryDatabaseTests.java)는 같은 데이터·권한·출력으로 비교한다. AI는 [get_student_chat_session_history](../../ai/app/rag/router.py)의 source LEFT JOIN과 [test_history_queries](../../ai/tests/test_history_queries.py)로 비교한다. 이는 로컬 쿼리 수이며 지연 시간·처리량·실사용자 성능 개선 수치가 아니다.
 
@@ -199,3 +209,47 @@ Java 최초 실행의 sandbox 소켓 차단/누락된 잠금 의존성은 BLOCKE
 ### 제출용 보완 공개 후속 (2026-10-08)
 
 위 로컬 보완 `ac08ba1…`을 사용자가 승인해 [PR #6](https://github.com/rladbstn1000/DO-DREAM/pull/6)과 필수 CI·일반 merge를 거쳐 공개 반영했다. README의 팀 기여·AI 활용 설명과09번 JDBC 사후 근거를 포함한다. 실제 앱 배포 SHA는 `888609661595d4cbef89de15097007453c871ca3`이며, 공개177개와 이번 원격 manifest/공개13파일 대조를 통과했다. 최초 CI 실패·검사 교정·artifact 연결·한계는 [21번 공개 후속](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)에 있다. 위 당시 PENDING·미배포/미실행 기록은 보존하고 후속 문서 SHA를 앱 배포 SHA로 표기하지 않는다.
+
+<a name="evidence-portability-2026-10-08"></a>
+
+## 근거 연결과 브라우저 검사 재현성 보완 (2026-10-08)
+
+시작 checkout `31cb748cf59032c276f3923e34cfa5db1bd0066e`는 fetch한 main `8767ec82b9818d96ea6b7a28a696475ab2122408`의 조상이며 tree가 같았다. 진행 중 merge/rebase는 없었다. 후자의 SHA에서 `codex/dodream-evidence-portability`를 만들었다. 현재 배포 run `37722185194`의 성공과 앱 SHA `888609661595d4cbef89de15097007453c871ca3`를 원격에서 다시 조회했고 배포는 실행하지 않았다.
+
+README의 세 사례는 공개 main 전체 SHA의 코드·검사 줄 범위와 기존 결과 구역을 연결한다. 채점의 [HTTP 경쟁·독립 DB 경쟁·mock 구분](09-grading-reliability-design.md#claim-evidence-grading), 인증의 [Lua 회전·객체 권한 구분](04-auth-security-design.md#claim-evidence-auth), 색인의 [Java 접수·Python 검증/활성 전환 구분](11-indexing-reliability-design.md#claim-evidence-indexing)을 기존 설계 문서에 뒀다. 코드 구간을 직접 읽어 의미와 범위를 대조하고 공개 SHA 내 경로·줄 범위 및 결과 anchor를 별도로 검사했다. 새 anchor는 [GitHub의 명시 anchor 규칙](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#custom-anchors)을 따른다. 과거 채점·색인·Redis 수치는 해당 단계 보고서의 근거이며 이번에 전체 재실행한 결과가 아니다. 통계는 위 [원시 로그 대조](#query-measurement-baseline)와 구분한다.
+
+고정 코드 구간30개와 신규 상대 링크28개의 목적지·범위를 검사했고 별도 의미 검토도 통과했다. README 팀 기록은 본문·순서·제목 문구를 보존한 채 하위 제목 단계만 내렸으므로 기존 anchor는 바뀌지 않았다. 18·20·21의 앞부분에는 기준 날짜와 현재 앱/문서 버전을 구분했다.
+
+7종 `fe-web/tests/browser-{auth,authorization,grading,indexing,student,demo-disabled,hardening}.mjs`의 로컬 수정안은 미선언 `playwright`·개인 캐시 fallback을 없애고 잠긴 `playwright-core`1.62.1을 명시 import한다. 작은 `chrome-launch.mjs`가 명시 Chrome 실행 파일 검증/미지정 installed Chrome channel을 담당하며 shell 실행·자동 다운로드·사용자 프로필 재사용은 없다. 잘못된 명시값은 다른 브라우저로 넘어가지 않는다. 기존 API·대기·쿠키·CSRF·timeout 기대값은 유지했다. `DODREAM_RESULTS_DIR`로 원본 결과와 plan을 새 실행 폴더에 분리하고 작은 정책·재유입 검사를 기존 `test:hardening`에 연결했다. 패키지 버전·lock·CI/workflow는 그대로다. **통합 검증과 데이터 보존이 완료되지 않아 검사 코드의 완료 커밋은 보류한다.**
+
+개인 환경 없는 검증은 `/private/tmp/dodream-evidence-wf9f6_cz/after`의 현재 수정 파일 사본에서 실행했다. `.env`·DB·기존 `.local`은 복사하지 않고 `env -i`로 `PATH`, 임시 `HOME`·`TMPDIR`만 전달했다. `npm ci --ignore-scripts --no-audit --no-fund --cache <전용-임시-cache>` 종료0, `NODE_PATH`·`NODE_OPTIONS`·`DODREAM_PLAYWRIGHT_PATH` 없음, 실제 ESM resolve는 사본 안의 `node_modules/playwright-core/index.mjs`/1.62.1이었다. 상위/전역 모듈과 사용자 캐시를 삭제·이동·차용하지 않았다. Node22.14.0/npm10.9.2, 설치된 Chrome154.0.8037.98을 사용했다.
+
+| 이번 실행 / 조건 | 결과와 경계 |
+|---|---|
+| 실제 Chrome launch smoke | 기본 channel과 명시 실행 파일 각각 새 context에서 자체 loopback 페이지 열기·버튼·닫기 PASS. 빈 값·상대경로·없는 파일·실행 불가 파일은 설정 오류로 거부, 외부 페이지 요청0 |
+| `npm run test:hardening` | 종료0,12 PASS: 기존6 + 통제된 실행 파일 정책·재유입 계약6. Chrome 없는 환경의 오류 분류는 대역 검사이며 실제 Chrome 실행과 별개 |
+| `node --test tests/pages-release.test.mjs` | 종료0,8 PASS. 기존 Pages 계약이며 원격 CI 실행이 아님 |
+| `npm run verify:showcase` | 종료0,타입·계약66·두 빌드·정적 경계·브라우저244 PASS. API·외부 요청·마이크·WebSocket·CSP 위반0, 과거 통과 수와 합산하지 않음 |
+| 같은 환경의 앱 산출물 비교 | 공개 main 사본과 현재 수정 사본의 별도 `build:showcase`:13파일/6,721,625bytes, 모든 상대경로·bytes·SHA-256 동일. 기존 dist의 사용자 복제 파일을 삭제·덮어쓰지 않음 |
+| 실제 `npm --prefix fe-web run test:browser-auth` | 종료0,17 PASS/외부 요청0. 기존 AT2초 서버와 현재 수정 harness,05:04:58–05:06:03 UTC. 실제 API 검사이며 패키지 smoke와 구분 |
+| 나머지 실제 통합 브라우저6종 | 아래 데이터 보존 실패로 중단. authorization·grading·hardening은 NOT_RUN. student는 기존 샘플의 문제/발행 revision 변경, demo-disabled는 현재 활성화된 short 서버 교체, indexing은 기존 launcher의 이미지 재조정이 보존 조건과 충돌해 BLOCKED. 검사 삭제·skip·기대값 완화 없음 |
+
+**데이터 보존 실패와 실행 중단:** 기존 scope 단위 검사101 PASS와 실제 scope gate를 통과하고, 시작 시 자체11개·타 프로젝트67개 컨테이너가 모두 중지임을 확인했다. 원래 데이터는 MySQL40테이블/4,659행·SQLite1,068행·객체640개·Chroma434컬렉션/1,406청크였다. 하지만 검증 준비 중 worker·dispatcher를 기동한 것은 기존 대기 작업을 먼저 차단하지 못한 **이번 실행의 오류**다. 05:04:22 기동 직후 기존 작업30행·자료 상태27행이 바뀌었고, 새 ACTIVE execution27개와 컬렉션27개/청크51개가 생겼다. 기존 자료27개의 활성 포인터가 이번 새 실행을 참조함을 확인했다. 신규 fixture 준비나 발행 API는 실행하지 않았으며 이 변화는 허용된 테스트 방문자 카운터 변화가 아니다.
+
+기존 실행457개의 행 hash, 원본 SQLite·객체·Chroma434컬렉션/1,406청크는 일치했지만 **엄격한 보존49항목 중47 PASS/2 FAIL**(index_jobs30행, index_resources27행)을 그대로 남긴다. 현재 실행484개·컬렉션461개이며 새 결과는 삭제하지 않았다. baseline이 행 hash만 담았으므로 각 행의 이전 상태·이전 활성 포인터 값은 복원해 주장할 수 없다. 변경된 작업의 현재 상태는 SUCCEEDED27/REVOKED3이다. worker·dispatcher를05:06:10–05:06:20에 중지하고 추가 데이터 검사를 중단했다. DB를 추측으로 복구하거나 baseline을 바꿔 PASS로 만들지 않았다. `BACKEND_DATA=CHANGED_BY_VALIDATION`, `DATA_PRESERVATION=FAIL`이다.
+
+브라우저 수정은 패키지·Chrome smoke와 인증 경로까지만 실제 확인했다. 전체 통합 완료가 아니므로 코드10파일(7종 검사·helper·정책 검사·package script)은 미커밋으로 남기며, 독립 검토한 README·기존 문서만 로컬 커밋한다. runbook의 새 실행 정책도 로컬 수정안임을 명시한다. 공개 entry/UI/CSS/샘플/이미지·폰트, 제품 Java/Python·DB 스키마, lock·Pages workflow의 Git diff는 없다. 이는 **제품 소스 불변** 판정이며 위 런타임 데이터 보존 FAIL과 구분한다.
+
+05:12:03 UTC 종료 대조에서는 컨테이너78개의 ID·이름·상태·라벨·이미지 태그가 최초와 같았다. 자체11개 모두 중지, 타 프로젝트67개 불변, 볼륨61개·네트워크23개도 일치했다. 기존 컨테이너를 교체하지 않았으며 브라우저·임시 HTTP 서버는 각 실행의 finally에서 닫았다. 인증은 기존 컨테이너 이미지와 현재 수정 harness의 실행으로, 백엔드 이미지를 이번 소스에서 새로 빌드했다고 주장하지 않는다. 이 자원 복구 PASS는 DB 변경을 되돌렸다는 뜻이 아니다. 상세 대조는 `integration/results/integration-outcome.json`, `data-preservation.json`, `background-impact-summary.json`, `resources-restored-exact.json`에 있다. scope 단위 검사의 최초 sandbox loopback 차단과 읽기 전용 진단 실패도 원본에 보존했다.
+
+| 상태 | 판정 |
+|---|---|
+| CLAIM_EVIDENCE_MAPPING | PASS — 코드 의미와 경로·줄/anchor 별도 대조 |
+| BROWSER_DEPENDENCY_PORTABILITY / BROWSER_LAUNCH_SMOKE | PASS_ISOLATED / PASS — 로컬 수정안, 통합 완료 커밋 보류 |
+| AFFECTED_INTEGRATION_CHECKS | PARTIAL_BLOCKED — 인증17 PASS, 나머지6종 미완료; 데이터 보존 FAIL |
+| CURRENT_STATUS_CLARITY / METRIC_BASELINE_CLARITY | PASS / PASS — 과거 수치·원시 대조·현재 참조 버전 구분 |
+| PRODUCT_AND_SHOWCASE_UNCHANGED | PASS — 제품 소스·동일 환경 앱13파일 불변, 런타임 데이터와 별도 |
+| REMOTE_CI_EXECUTION_THIS_CHANGE / push·PR·merge | NOT_RUN / NOT_RUN |
+| PAGES_REDEPLOYMENT | NOT_REQUIRED_UNCHANGED_APP |
+
+상세 증거는 ignored `.local/evidence-portability/`와 그 `integration/results/`에 분리한다. 요약은 원시 실행 증거를 대신하는 새 독립 검사로 취급하지 않는다. 원격 CI 실행·push·PR·merge는 NOT_RUN, `PAGES_REDEPLOYMENT=NOT_REQUIRED_UNCHANGED_APP`이다. 기존 공개 데모 승인·배포 완료는 유지한다. 실제 AI·음성 청취·VoiceOver·네이티브 앱은 이번에도 NOT_RUN이다.

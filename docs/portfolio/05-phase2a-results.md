@@ -55,6 +55,8 @@
 
 Spring53은 기존 context1+경계4, JWT35, cookie/Redis error2, encoded routing8, 실제 Redis integration3이다. AI24는 기존7+인증17, PDF6은 기존 테스트다. Web/native는 synthetic transport 단위 테스트이며 아래 Chrome의 실제 서버 흐름과 구분한다. 대형 JS chunk 경고는 기존 경고로 남는다.
 
+<a name="auth-runtime-results"></a>
+
 ## 인증 실제 검증과 발견한 문제
 
 - 양 서버 정상 AT200/RT401, AT로refresh401, 잘못된 종류·서명·alg·iss/aud·기간·필수 claim 누락/형식 거부. 기존 형식은 거부한다. 실제 발급 AT900초/RT1209600초, 같은초의 연속RT 고유성, Redis TTL과 RT exp 정합성을 확인했다.

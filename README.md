@@ -21,21 +21,21 @@
 
 **문제:** 재전송·동시 제출이 결과를 중복 반영하고, 교사 편집이 과거 풀이의 의미를 바꿀 수 있었습니다. **결정:** 학생과 제출 키의 DB UNIQUE 제약, 문제·정답·답안 snapshot, 짧은 접수·확정 트랜잭션을 사용했습니다. **결과:** 같은 제출의 결과·로그 중복 반영을 막고 최초 기준으로 결과를 재조회하도록 했으며, 실제 DB의 경쟁·복구 회귀로 확인했습니다. 외부 호출 이후 결과가 불명확하면 `UNKNOWN`으로 남깁니다. 외부 AI의 exactly-once 실행이나 과금 중복 방지는 보장하지 않습니다.
 
-[채점 설계·JDBC 선택](docs/portfolio/09-grading-reliability-design.md) · [동시 제출·복구 검증](docs/portfolio/10-phase3a-results.md) · [저장 코드](be/src/main/java/A704/DODREAM/quiz/grading/GradingStore.java)
+[접수·replay 코드](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/quiz/grading/GradingStore.java#L83-L146) · [HTTP 경쟁·DB 제약 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/scripts/local/verify_grading.py#L257-L312) · [동시성·복구 결과](docs/portfolio/10-phase3a-results.md#grading-concurrency-results) · [설계·검사 구분](docs/portfolio/09-grading-reliability-design.md#claim-evidence-grading)
 
 ### 2. 토큰 종류 검증·회전과 현재 자료 접근권한
 
 **문제:** 서명이 유효한 토큰만으로 토큰의 용도나 현재 자료 접근권한까지 보장할 수 없었습니다. **결정:** Access/Refresh 종류를 구분하고 Redis에서 Refresh Token을 원자적으로 회전하며, Spring과 FastAPI에서 현재 소유·담당·공유 관계를 조회하도록 했습니다. **결과:** 잘못된 토큰 종류·재사용과 권한 회수 후 접근을 거부하는 경로를 검증했습니다. 권한을 오래 캐시하는 방식보다 조회가 늘지만 현재 권한을 반영합니다.
 
-[인증 설계](docs/portfolio/04-auth-security-design.md) · [권한 정책](docs/portfolio/07-authorization-policy.md) · [인증](docs/portfolio/05-phase2a-results.md)/[권한 검증](docs/portfolio/08-phase2b-results.md) · [권한 코드](be/src/main/java/A704/DODREAM/authorization/AuthorizationPolicy.java)
+[Lua 회전 코드](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/auth/service/RefreshTokenService.java#L26-L49) · [실제 회전·재사용 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/scripts/local/verify_auth.py#L154-L189) · [인증 결과](docs/portfolio/05-phase2a-results.md#auth-runtime-results) · [현재 권한의 코드·검사·결과](docs/portfolio/04-auth-security-design.md#claim-evidence-auth)
 
 ### 3. 후보 인덱스 검증과 활성 버전 전환
 
 **문제:** 새 임베딩 실패가 기존 정상 검색을 훼손하거나, 늦게 끝난 작업이 최신 원본을 덮을 수 있었습니다. **결정:** 원본 revision·실행 generation별 후보 인덱스를 따로 만들고 개수·차원·내용 검증 후 현재 원본 조건에 맞을 때만 활성 포인터를 바꿨습니다. **결과:** 실패한 후보와 기존 활성본을 분리하고 오래된 실행의 전환을 차단하는 장애·복구 경로를 검증했습니다. 후보 저장공간과 상태 관리 부담은 늘어납니다.
 
-[색인 설계](docs/portfolio/11-indexing-reliability-design.md) · [장애·복구 검증](docs/portfolio/12-phase3b-results.md) · [전환 코드](be/src/main/java/A704/DODREAM/indexing/IndexingStore.java)
+[실제 활성 전환 코드](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/ai/app/indexing/store.py#L331-L347) · [후보 실패·보존 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/scripts/local/verify_indexing.py#L168-L191) · [전환·역순·복구 결과](docs/portfolio/12-phase3b-results.md#indexing-transition-results) · [발행·검증·전환의 역할 구분](docs/portfolio/11-indexing-reliability-design.md#claim-evidence-indexing)
 
-세 사례의 대안·트레이드오프·코드/테스트 연결은 기존 [18번 코드 리뷰](docs/portfolio/18-portfolio-code-review.md)에 정리했습니다. 위 검증은 실제 백엔드와 격리된 로컬 자원을 사용한 별도 경로이며, 공개 정적 데모가 인증·채점·색인을 실행한다는 뜻이 아닙니다.
+위 코드·검사 줄 링크는 공개 소스 `8767ec82b9818d96ea6b7a28a696475ab2122408`을 가리킵니다. 결과 링크는 각 단계 당시의 실행 기록이며, 그 전체 SHA로 이번에 다시 실행했다는 뜻은 아닙니다. 세 사례의 대안·트레이드오프는 [18번 코드 리뷰](docs/portfolio/18-portfolio-code-review.md)에 정리했습니다. 위 검증은 실제 백엔드와 격리된 로컬 자원을 사용한 별도 경로이며, 공개 정적 데모가 인증·채점·색인을 실행한다는 뜻이 아닙니다.
 
 ## 대표 화면과 아키텍처
 
@@ -79,10 +79,11 @@ npm run preview:showcase
 ## 검증 범위와 한계
 
 - **백엔드:** 인증·현재 권한·채점 경쟁/복구·색인 전환은 각 결과 문서의 로컬 실행 범위에서 검증했습니다. 과거 실행을 이번 수정의 재실행 결과로 합산하지 않습니다. 원격 CI·공개 인수는 [20번 배포 기록](docs/portfolio/20-publication-and-pages-results.md)과 [21번 원본 UI 결과](docs/portfolio/21-original-ui-showcase-results.md)에 따로 기록합니다.
-- **조회 수:** 동일 합성 조건에서 통계 쿼리 **85→9**, AI 이력의 history 부분 **23→3**(권한 포함 전체 **30→10**)을 측정했습니다. 응답속도·처리량 개선율이 아닙니다. [측정 근거](docs/portfolio/18-portfolio-code-review.md)
+- **통계 조회 수:** 팀 기준 통계 경로에 없던 현재 자료 권한 검사를 개인 개선에서 추가하면서, 같은 자료의 권한을 풀이 로그마다 반복 조회하는 비용이 생겼습니다. 이후 같은 요청 안에서 자료별 권한 결과를 재사용했고 다음 요청에서는 현재 공유·담당 관계를 다시 확인합니다. 기존 측정의 동일 합성 조건(자료 1·문제 2·풀이 로그 20)에서 자료별 통계와 전체 통계를 **각각 85→9회**로 줄였습니다.
+- **측정 범위:** AI 이력은 history 부분 **23→3회**, 권한 포함 전체 **30→10회**입니다. 모두 기존 쿼리 수 측정이며 이번 재측정이나 응답시간·처리량 개선율이 아닙니다. 현재 통계 검사의 회귀 상한 **≤12**는 당시 관측값 9와 구분합니다. [변경 전후 소스·조건·원본 대조](docs/portfolio/18-portfolio-code-review.md#query-measurement-baseline)
 - **미검증:** 실제 AI 정확도·비용, 실제 음성 청취·모바일 실기기·VoiceOver/WCAG 인증, 전체 백엔드 운영 준비는 검증하지 않았습니다. 브라우저 키보드·접근성 트리 검사를 실제 스크린리더 검증으로 대신하지 않습니다.
 - **남은 경계:** localStorage/MMKV의 매체 위험과 운영 HTTPS·기기 보안, 색인의 HA·디스크 손실 복구는 별개입니다. 기존 인덱스의 물리 보존이 현재 열람 허용을 뜻하지 않습니다. 진도는 저장된 학습 위치, 정답률은 채점 결과의 집계이며 실제 이해도 측정값이 아닙니다.
-- **공급자와 데이터:** 실제 AI adapter·오프라인 계약·평가셋은 비활성 상태로 보존합니다. 키 존재만으로 실제 공급자를 호출하지 않으며 `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`를 유지합니다. 원시 DB·로그·사용자 이력을 공개 샘플로 내보내지 않습니다.
+- **공급자와 데이터:** 실제 AI adapter·오프라인 계약·평가셋은 비활성 상태로 보존합니다. 키 존재만으로 실제 공급자를 호출하지 않습니다. 실제 AI 연결은 실행하지 않았으며 백엔드의 운영 준비 완료를 주장하지 않습니다. 원시 DB·로그·사용자 이력을 공개 샘플로 내보내지 않습니다.
 
 ## AI 활용
 
@@ -100,14 +101,14 @@ npm run preview:showcase
 
 아래 소개·팀원·담당 역할·일정과 협업 기록은 팀 당시 기여를 보존한 것입니다. 이후 개인 개선을 다른 팀원의 원본 구현이나 팀 당시 성과로 소급하지 않습니다.
 
-## 프로젝트 소개
+### 프로젝트 소개
 
 - 시각장애 학생의 학습을 돕기 위해 교사의 자료 편집·공유와 학생의 음성 학습·질문·퀴즈 풀이를 연결한 팀 프로젝트입니다.
 - 팀 구현에는 PDF/OCR 처리, LangChain·ChromaDB 기반 자료 검색과 질의응답, LLM 퀴즈 생성·채점, TTS·Firebase 알림, JWT 인증, AWS 파일 저장소가 포함되었습니다. 기능 구현과 효과 검증은 구분합니다. 검색 출처가 있다는 사실만으로 답변의 정확성이 보장되지는 않습니다.
 - 교사는 공유 자료·진도·풀이 기록을 조회할 수 있습니다. 진도는 저장된 학습 위치, 정답률은 채점 결과의 집계이며 실제 이해도 측정값이 아닙니다.
 - 개인 개선에서는 인증·현재 객체 권한·제출 중복 방지·당시 기준 보존·후보 색인 검증을 강화하고, 기존 웹에 학생 체험 화면을 추가했습니다. 실제 외부 API 품질·비용·운영 배포 검증은 현재 범위에서 제외합니다.
 
-## `DO:DREAM` 팀원 구성
+### `DO:DREAM` 팀원 구성
 
 <div align="center">
 
@@ -121,7 +122,7 @@ npm run preview:showcase
 
 </div>
 
-## 팀 개발 환경과 현재 검증 스택
+### 팀 개발 환경과 현재 검증 스택
 
 - Frontend
    - Web: React, Vite, TypeScript
@@ -134,11 +135,11 @@ npm run preview:showcase
 - 팀 당시 배포 구성(이번 운영 재검증 제외): AWS EC2, Docker, Nginx, HashiCorp Vault, AWS S3, CloudFront, Jenkins
 - 외부 API: Naver Clova OCR, Firebase Cloud Messaging, OpenAI API
 
-## 팀 당시 역할 분담
+### 팀 당시 역할 분담
 
-### 🐯 양진서
+#### 🐯 양진서
 
-#### 담당 역할 : 팀장, 프론트엔드 개발(시각장애 학생용 모바일 앱)
+##### 담당 역할 : 팀장, 프론트엔드 개발(시각장애 학생용 모바일 앱)
 
 - 학습 자료 관리 시스템
     - 학습 자료 목록 조회 및 상세 정보 표시
@@ -165,9 +166,9 @@ npm run preview:showcase
     - 음성 중심 UI/UX 설계
     - 오프라인 학습 지원 (MMKV 로컬 스토리지)
 
-### 👻 김승호
+#### 👻 김승호
 
-#### 담당 역할 : 백엔드 개발
+##### 담당 역할 : 백엔드 개발
 
 - PDF 처리 및 OCR 시스템 : PDF 업로드 및 AI 파싱 API  
     - PDF JSON을 TXT로 추출 및 다운로드
@@ -195,9 +196,9 @@ npm run preview:showcase
     - JWT 인증 필터 설정
     - Vault 서버 설정
 
-### 😎 김윤수
+#### 😎 김윤수
 
-#### 담당 역할 : 백엔드 개발
+##### 담당 역할 : 백엔드 개발
 
 아래는 팀 당시 담당 범위입니다. 뒤의 개인 보안·신뢰성 개선을 팀 당시 성과로 소급하지 않습니다.
 
@@ -206,17 +207,17 @@ npm run preview:showcase
 - 자료 기반 퀴즈 생성과 LLM 서술형 채점 흐름 구현 (의미 유사도 점수 알고리즘 또는 검증된 정밀 채점으로 표현하지 않음)
 - 문제별 최신 풀이를 선택하는 학습 통계와 오답 조회 구현 (재풀이 자체를 차단하는 기능과 구분)
 
-### 🐬 양세희
+#### 🐬 양세희
 
-#### 담당 역할 : 프론트엔드 개발 (교사용 웹 개발)
+##### 담당 역할 : 프론트엔드 개발 (교사용 웹 개발)
 
 - 학습 자료 관리: 학습 자료 편집 에디터, 자료 발행 및 전송, 워드로 다운로드
 - 학생 학습현황 리포트: 학습 진도율, 퀴즈 성적, 질의응답 정보 기록
 - 기타 서비스: 자료 컬러 라벨 필터링, 메모장
 
-### 😀 장규민
+#### 😀 장규민
 
-#### 담당 역할 : 백엔드 & 인프라 개발
+##### 담당 역할 : 백엔드 & 인프라 개발
 
 - HTTPS 통신 구축 : Nginx를 활용해 SSL 기반 HTTPS 환경 구성
 - 블루-그린 배포 : 서비스 무중단 배포 환경 설계 및 운영
@@ -225,9 +226,9 @@ npm run preview:showcase
 - 학생 상세 정보 조회 : 사용자별 학습 정보 및 프로필 조회 API 개발
 - 학습 진행률 관리 : 학습 진도 저장, 조회, 계산 로직 구현 및 데이터 구조 설계
 
-### 😃 이은
+#### 😃 이은
 
-#### 담당 역할 : 백엔드 개발
+##### 담당 역할 : 백엔드 개발
 
 - 자료 발행 시스템
     - 변환 완료된 학습 자료 발행 처리 API 개발
@@ -241,21 +242,21 @@ npm run preview:showcase
 - 푸시 알림 시스템
     - FCM 연동을 통한 자료 공유 시 학생 실시간 알림 기능 구현
 
-## 팀 개발 기간 및 작업 관리
+### 팀 개발 기간 및 작업 관리
 
-### 개발 기간
+#### 개발 기간
 
 - 전체 개발 기간 : 2025-10-02 ~ 2025-11-23
 - 기획 및 설계 : 2025-10-02 ~ 2025-10-12
 - UI 구현 : 2025-10-12 ~ 2025-10-20
 - 기능 구현 : 2025-10-20 ~ 2025-11-20
 
-### 작업 관리
+#### 작업 관리
 
 - Jira 이슈 관리 및 대시보드를 활용하여 팀 전체의 작업 진행 상황을 공유했습니다.
 - 매일 아침 9시 10분 데일리 스크럼을 진행하여 문제 상황, 진행도, 오늘 할 일 등을 공유하고, Notion 페이지에 스크럼 회의 내용을 기록했습니다.
 
-## 팀 구현의 기술 설명과 현재 차이
+### 팀 구현의 기술 설명과 현재 차이
 
 - PDF 바이너리는 `application/pdf`로 받습니다. Multipart 제한이 원시 본문까지 제한하지 않는 문제는 개인 리뷰에서 별도 bounded read와 파일 검증으로 수정했습니다.
 - CloudFront PEM 처리의 Base64 디코딩은 **암호 해독이 아닌 인코딩 해제**이며, DER 바이트로 RSA PrivateKey를 구성하는 과정입니다. URL 서명은 별도 동작입니다. 실제 AWS 연결은 이번에 실행하지 않았습니다.

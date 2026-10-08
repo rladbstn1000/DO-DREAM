@@ -30,6 +30,25 @@ npm run verify:showcase
 
 ## 실제 백엔드 로컬 통합 실행 (phase1)
 
+### 호스트 브라우저 검사 준비와 실행 파일 선택
+
+> 아래는 이번 **로컬 검사 수정안**의 준비 정책이다. [통합 검증·데이터 보존 차단](18-portfolio-code-review.md#evidence-portability-2026-10-08)으로 검사 코드의 완료 커밋은 보류했다. 기존 공개 main의7종 검사에는 아직 개인 모듈 fallback이 남아 있으므로, 문서 변경만으로 그 checkout의 이식성까지 해결됐다고 해석하지 않는다.
+
+기존 auth·authorization·grading·indexing·student·demo-disabled·hardening 검사는 웹 lock의 `playwright-core`만 사용한다. 저장소 루트에서 아래처럼 준비한다. 개인 모듈 경로·전역 `playwright`는 필요하지 않다.
+
+```bash
+npm --prefix fe-web ci --ignore-scripts --no-audit --no-fund
+npm --prefix fe-web run test:hardening
+# 기존 Chrome이 기본 설치 위치에 없을 때만 실제 실행 파일의 절대경로를 지정
+# export DODREAM_CHROME_EXECUTABLE='/absolute/path/to/chrome'
+```
+
+예시 경로를 그대로 실행하지 않는다. 명시값이 없으면 설치된 Chrome `channel: 'chrome'`을 사용한다. 명시값이 있으면 해당 파일만 실행하며 빈 값·상대경로·없는 파일·실행 권한 오류는 `ChromeExecutableConfigurationError`로 실패한다. 설치된 Chrome이 없으면 `ChromeUnavailableError`, 다른 시작 실패는 `ChromeLaunchError`다. 패키지 로딩 오류(`ERR_MODULE_NOT_FOUND`)와 서버 준비·인증 실패도 별개이며 자동 설치·대체 브라우저·사용자 프로필 재사용은 없다. 이미 분리된 showcase 검사는 기존 Chrome channel 정책을 유지한다.
+
+`test:hardening`의 실행 파일 정책 검사는 통제된 launch 대역의 단위 검사이며 실제 Chrome·인증 성공을 뜻하지 않는다. 실제 7종 검사는 아래 단계별 준비를 따른다. auth는 `auth-test-up`의 짧은 토큰 서버, authorization/grading은 준비된 합성 사례, indexing은 `manage.py indexing browser`, student는 `demo-prepare` 후 `manage.py student-web`의 plan을 사용한다. 준비되지 않은 plan을 임의 생성하거나401/403/500을 대기 성공으로 바꾸지 않는다. `browser-demo-disabled.mjs`는15174의 데모 비활성 서버가 전제이며 활성 서버에서 대신 실행하지 않는다. `browser-hardening.mjs`는 일반15173의 준비된 데모에서 새 합성 학생으로 실행한다.
+
+새 실행 증거는 저장소 루트에서 `export DODREAM_RESULTS_DIR=.local/<이번-실행>/results`로 분리한다. 기존 Python 실행기와7종 브라우저가 같은 경로를 사용하고, indexing/student의 plan·handshake는 그 형제 `browser-ui/`에 둔다. 기본값은 과거 `.local/phase5/results`지만 원본 결과를 보존하려면 새 경로를 먼저 선택한다. 시작 상태·hash 보존 기준선을 확보하고 필요한 scope gate를 통과한 뒤에만 자체 서비스를 시작한다. 기존 샘플 revision이나 컨테이너 설정을 바꿔야 해서 보존 조건을 만족하지 못하면 해당 통합 검사를 BLOCKED로 기록한다. 이번 결과는 [18번 후속 기록](18-portfolio-code-review.md#evidence-portability-2026-10-08)에 구분한다.
+
 아래 4~5단계의 미배포·미실행 판정은 당시 실행 기록이며, 현재 공개된 정적 showcase의 배포 결과와 구분한다.
 
 이하 절차는 키 없는 `LOCAL_FAKE`와 실제 자체 백엔드/DB를 사용한다. 실제 AI 호출·모델 평가·비용 측정은 현재 완료 조건이 아니며 `REAL_AI_INTEGRATION=NOT_RUN`이다. 공급자 adapter·오프라인 계약·평가셋과 과거 재개 절차를 보존한다. 키 탐색·읽기·설정·live 활성화는 이번 showcase 작업에서 수행하지 않았다. live 오류를 대역 성공으로 숨기거나 키 존재로 자동 전환하지 않는다.
@@ -41,7 +60,7 @@ npm run verify:showcase
 호스트 필수: Docker Desktop/Compose v2, Python3. Node/Java를 호스트에 추가 설치할 필요는 없다. 이미지 안에서 Java17/Node22/Python3.11을 사용한다. 최초 빌드에는 명세의 공개 의존성/이미지 다운로드가 필요하다. 전역 설치, sudo, 모델 다운로드는 하지 않는다.
 
 ```bash
-cd /Users/yoonsu/Desktop/projects/DO-DREAM
+# 저장소 루트에서 실행
 python3 scripts/local/manage.py init
 python3 scripts/local/manage.py check
 python3 scripts/local/manage.py config
@@ -108,7 +127,7 @@ npm run typecheck
 npm run build -- --mode phase1
 ```
 
-실제 Chrome 인증 검증은 `python3 scripts/local/manage.py auth-test-up` 후 `cd fe-web && npm run test:browser-auth`를 실행한다. 기존 Chrome과 Playwright가 필요하며 harness 상단의 경로/환경변수 설정을 확인한다. 별도 테스트 서버만 AT2초이며 일반 서버는900초다. 15174 포트를 다른 프로세스가 쓰면 종료하지 말고 테스트 profile 포트를 바꾼다. 이 테스트는 인증 흐름이며 전체 학습 E2E가 아니다. 장애 주입 항목은 실제 happy path와 결과에서 구분한다.
+실제 Chrome 인증 검증은 `python3 scripts/local/manage.py auth-test-up` 후 `npm --prefix fe-web run test:browser-auth`를 실행한다. 위 호스트 브라우저 준비·실행 파일 정책을 따른다. 별도 테스트 서버만 AT2초이며 일반 서버는900초다. 15174 포트를 다른 프로세스가 쓰면 종료하지 말고 포트 충돌을 기록한다. 이 테스트는 인증 흐름이며 전체 학습 E2E가 아니다. 장애 주입 항목은 실제 happy path와 결과에서 구분한다.
 
 `phase1`은 `local-env`만 읽고 API base를 same-origin으로 고정한다. 빌드 mode를 생략한 기존 배포 명령과 구분한다. 로컬 CSP는 원격 폰트/이미지/API를 차단한다.
 
@@ -278,7 +297,7 @@ python3 scripts/local/manage.py isolation
 보존된 로컬 환경에서 아래 명령을 저장소 루트에서 실행한다. 처음 환경을 만드는 경우 앞 절의 생성·추가형 migration 절차를 먼저 따른다. 소스를 변경했다면 시작 전에 `build`로 해당 이미지를 갱신한다.
 
 ```bash
-cd /Users/yoonsu/Desktop/projects/DO-DREAM
+# 저장소 루트에서 실행
 python3 scripts/local/manage.py check
 python3 scripts/local/manage.py config
 python3 scripts/local/manage.py build

@@ -142,6 +142,8 @@ Chroma base는 BuildKit이 실제로 해석한 `chromadb/chroma:0.6.3@sha256:e0e
 
 색인 coverage는 원본 실패를 덮는 합산 통계가 아니다. 첫 실행은 15개 시나리오를 완료한 뒤 Redis 장애 이후 로그인 준비에서 실패했고, 후속 실행은 실제 합성 로그인 준비를 확인한 다음 제한 복구·브라우저를 다시 수행했다. coverage 파일은 `bounded_recovery`를 후속 실행에 연결하고 나머지 시나리오도 명시적으로 한 원본에 연결한다. **472와 78을 더한 PASS 총계를 만들지 않으며**, Chrome 색인 UI14와 채점의 공급자 대기6도 상위 실행에 중복 가산하지 않는다. 원본 실행의 FAIL은 유지하며 영속성 최종 재검증은 별도19 PASS다.
 
+<a name="indexing-transition-results"></a>
+
 ## 6. 작업·호출·활성 전환과 실제 중단
 
 원본: `indexing-checks-20260930T054512-27c118d3.json`
