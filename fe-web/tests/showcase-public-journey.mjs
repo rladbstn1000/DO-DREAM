@@ -319,6 +319,9 @@ export async function runPublicUiAcceptance({
     page,
     page.getByTestId('start-student').filter({ visible: true }),
   );
+  // /app mounts its phone before the index route redirects to /app/library.
+  // Wait for the destination card before checking the unchanged layout/count.
+  await page.getByTestId('material-water-journey').waitFor();
   check(
     'student library is inside the original 392px phone',
     (await page

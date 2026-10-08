@@ -93,16 +93,58 @@ export async function checkPortfolioPolish({
         const appearance = await active.evaluate((form) => {
           const title = form.querySelector('h1'),
             style = getComputedStyle(title);
+          const mobile = innerWidth === 375;
+          const shape = (element) => {
+            const css = getComputedStyle(element),
+              rect = element.getBoundingClientRect();
+            return {
+              width: rect.width,
+              height: rect.height,
+              font: css.fontSize,
+              family: css.fontFamily,
+              weight: css.fontWeight,
+              lineHeight: css.lineHeight,
+              padding: css.padding,
+              margin: css.margin,
+              borderWidths: [
+                css.borderTopWidth,
+                css.borderRightWidth,
+                css.borderBottomWidth,
+                css.borderLeftWidth,
+              ],
+              borderStyles: [
+                css.borderTopStyle,
+                css.borderRightStyle,
+                css.borderBottomStyle,
+                css.borderLeftStyle,
+              ],
+              radius: css.borderRadius,
+              boxSizing: css.boxSizing,
+              display: css.display,
+            };
+          };
           return {
             titleFont: style.fontSize,
             titleWeight: style.fontWeight,
             titleColor: style.color,
             buttons: [...form.querySelectorAll('.join-demo-button')].map(
-              (button) => ({
-                width: button.getBoundingClientRect().width,
-                height: button.getBoundingClientRect().height,
-                font: getComputedStyle(button).fontSize,
-              }),
+              (button) => {
+                // Original CSS is identical in bce567b and approved ac08ba1.
+                // `normal` line height varies with the OS system font. Compare
+                // against these reviewed constants in the same browser instead
+                // of imposing the macOS sample's 50px absolute minimum.
+                const reference = document.createElement('a');
+                reference.setAttribute('aria-hidden', 'true');
+                reference.inert = true;
+                reference.textContent = button.textContent;
+                reference.style.cssText = `all: initial; position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; display: block; box-sizing: border-box; width: ${mobile ? 319 : 416}px; margin: ${mobile ? 10 : 16}px 0; padding: 0.8rem 1rem; border: 2px solid transparent; border-radius: 0.5rem; font: 600 ${mobile ? '17px' : '1.2rem'}/normal -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;`;
+                document.body.append(reference);
+                try {
+                  return { actual: shape(button), original: shape(reference) };
+                } finally {
+                  reference.remove();
+                }
+              },
             ),
             overflow: document.documentElement.scrollWidth > innerWidth + 1,
           };
@@ -116,9 +158,9 @@ export async function checkPortfolioPolish({
             appearance.buttons.length === 2 &&
             appearance.buttons.every(
               (button) =>
-                button.font === (width === 375 ? '17px' : '19.2px') &&
-                button.height >= 50 &&
-                (width !== 1280 || Math.abs(button.width - 416) < 1),
+                button.actual.font === (width === 375 ? '17px' : '19.2px') &&
+                JSON.stringify(button.actual) ===
+                  JSON.stringify(button.original),
             ),
           'PORTFOLIO_LAYOUT',
           appearance,
