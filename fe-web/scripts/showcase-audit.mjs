@@ -75,6 +75,8 @@ const REFERENCE_URLS = [
   /^https:\/\/react\.dev\/errors\/\d*$/,
   /^https:\/\/reactrouter\.com\/en\/main\/routers\/picking-a-router\.$/,
   /^https:\/\/github\.com\/ungap\/url-search-params\.$/,
+  // Explicit user-activated source link only; this does not allow network/API requests.
+  /^https:\/\/github\.com\/rladbstn1000\/DO-DREAM$/,
   // ProseMirror schema validation error text; this string does not load a URL.
   /^https:\/\/prosemirror\.net\/docs\/guide\/#generatable$/,
   // React Router's createBrowserURL fallback base; the active HashRouter passes

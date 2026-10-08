@@ -173,8 +173,8 @@ async function main(argv) {
     step = 'anonymous public Chrome journey';
     browser = await chromium.launch({ channel: 'chrome', headless: true });
     browserVersion = browser.version();
-    async function context(label, viewport = { width: 1280, height: 920 }) {
-      const context = await browser.newContext({ serviceWorkers: 'block', viewport, reducedMotion: 'reduce' });
+    async function context(label, viewport = { width: 1280, height: 920 }, options = {}) {
+      const context = await browser.newContext({ serviceWorkers: 'block', viewport, reducedMotion: options.reducedMotion ?? 'reduce' });
       await context.exposeBinding('__publicAttempt', (_source, event) => apiAttempts.push({ context: label, ...event }));
       await context.exposeBinding('__publicMicrophone', (_source, event) => microphoneAttempts.push({ context: label, ...event }));
       await context.exposeBinding('__publicCsp', (_source, event) => cspViolations.push({ context: label, ...event }));

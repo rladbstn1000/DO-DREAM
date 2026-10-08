@@ -1,4 +1,6 @@
 /** UI-only journey shared by local rehearsal and real public acceptance. No response mocks. */
+import { checkPortfolioPolish } from './showcase-portfolio-polish.mjs';
+
 const stateKeys = [
   'dodream.showcase.v1.state',
   'dodream.showcase.original-ui.v1',
@@ -317,6 +319,9 @@ export async function runPublicUiAcceptance({
     page,
     page.getByTestId('start-student').filter({ visible: true }),
   );
+  // /app mounts its phone before the index route redirects to /app/library.
+  // Wait for the destination card before checking the unchanged layout/count.
+  await page.getByTestId('material-water-journey').waitFor();
   check(
     'student library is inside the original 392px phone',
     (await page
@@ -706,5 +711,32 @@ export async function runPublicUiAcceptance({
   );
   await settleResponses();
   await desktop.context.close();
+  await checkPortfolioPolish({
+    newContext: async (label, options = {}) => {
+      const guarded = await context(label, options.viewport, options);
+      return {
+        page: guarded.page,
+        context: {
+          newCDPSession: (page) => guarded.context.newCDPSession(page),
+          close: async () => {
+            // Finish real response integrity checks before closing this context.
+            // The shared helper owns its contexts and also closes them on failure.
+            try {
+              await guarded.page.waitForLoadState('networkidle');
+              await settleResponses();
+            } finally {
+              await guarded.context.close();
+            }
+          },
+        },
+      };
+    },
+    // The shared helper's base is only a local-build path. All navigation here
+    // uses the confirmed Pages URL (or the explicit local rehearsal URL).
+    navigate: (page, _base, route) => navigate(page, route),
+    check: (name, condition, category, details) =>
+      check(name, condition, category.replace('PORTFOLIO_', 'PUBLIC_POLISH_'), details),
+    capture: (page, name) => screenshot(page, 'public-' + name),
+  });
   return observedUrl;
 }

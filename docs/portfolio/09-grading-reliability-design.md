@@ -65,3 +65,14 @@ BE 응답 수신과 파싱은 최대 2MiB로 제한한다. 문자 수 제한과 
 보장하는 것은 동일 논리 제출의 결과·로그 중복 반영 방지와 정상 조건의 추가 채점 호출 방지다. 장애 복구로 외부 실행이 중복될 수 있다. 실제 공급자의 exactly-once, 요금 중복 방지, AI 품질은 보장하거나 검증했다고 주장하지 않는다. **REAL_AI_INTEGRATION=NOT_RUN**, **PUBLIC_DEPLOYMENT_READY=false**다.
 
 로컬 오류 주입은 `[GRADING LOCAL]` 전용 자료 및 파일 기반 제어에서만 허용한다. 공개 오류 주입 API는 없다. 호출 경계 카운터와 DB 확정 수를 별도로 기록하며 원문·답안·토큰을 실행 증거에 출력하지 않는다. 실제 Spring 종료·재기동 사례와 오류 주입은 결과 문서에서 구분한다.
+
+## JDBC 선택 근거 — 제출용 사후 검토 (2026-10-08)
+
+이 구역은 현재 [GradingStore](../../be/src/main/java/A704/DODREAM/quiz/grading/GradingStore.java)와 검사를 바탕으로 정리한 사후 설계 설명이다. 당시 JPA 대안을 구현해 비교 실험했다는 기록은 아니다. 채점 저장 경로의 명시적 SQL은 **키 확보 → 문제 잠금·버전 확인 → snapshot 저장**이라는 실행 순서와 짧은 트랜잭션 경계를 코드에서 직접 추적할 수 있게 한다. 기존 팀 도메인의 JPA는 유지한다.
+
+- 접수는 `grading_attempts`의 UNIQUE INSERT를 먼저 실행한다. 충돌 예외는 최초 트랜잭션 바깥에서 받고, 별도 트랜잭션으로 기존 제출을 조회해 fingerprint를 대조한다. 문제는 제출 계약이 정렬한 순서대로 `FOR UPDATE`로 잠그고 버전을 확인한다. [접수 경쟁 단위 검사](../../be/src/test/java/A704/DODREAM/quiz/grading/GradingAcceptanceRaceTests.java)는 중복 INSERT의 rollback 후 재조회 순서와 현재 문제 재조회가 생략되는 경로를 확인한다.
+- 실행권·확정은 잠근 attempt의 상태·실행 세대를 검사하고, 만료 처리는 SQL의 기한·상태 조건과 갱신 행 수로 판정한다. 성공 시 결과·풀이 로그·성공 상태를 같은 트랜잭션에서 쓴다. [기존 DB 회귀](../../be/src/test/java/A704/DODREAM/quiz/grading/GradingDatabaseTests.java)는 unique replay, 부분 확정 rollback, 세대·기한 복구 등을 다룬다. 이 링크는 과거 DB 검증 근거이며, 이번 포맷 작업에서 DB 회귀를 다시 실행했다는 뜻은 아니다.
+
+JPA 엔티티와 명시적 flush·잠금 조회로 같은 계약을 구현하는 대안도 가능하다. 엔티티 매핑과 관계 처리를 재사용할 수 있지만, UNIQUE 충돌을 어느 시점에 발생시키고 실패한 트랜잭션을 어디서 끝낼지, 잠금·flush 순서와 영속성 컨텍스트의 상태를 어떻게 관리할지 별도로 설계해야 한다. 현재 JDBC 경로는 SQL 순서가 눈에 보이는 대신 수동 SQL·행 매핑·파라미터 순서와 [V003 스키마](../../be/src/main/resources/db/migration/V003__grading_attempts.sql)를 함께 관리해야 한다. JPA와 JDBC를 함께 쓰는 유지보수 부담도 남는다. 이 선택의 성능 우위는 측정하지 않았다.
+
+**JDBC 선택과 OSIV 처리는 별개다.** `transaction()`은 비활성 요청 OSIV holder를 잠시 분리하고 자체 트랜잭션이 끝나면 복원하며, `currentPermission()`은 보관된 엔티티를 clear한 뒤 현재 권한을 다시 조회한다. 이 처리를 JDBC 사용 자체의 효과로 설명하지 않는다. 외부 공급자 호출은 [GradingAttemptService](../../be/src/main/java/A704/DODREAM/quiz/grading/GradingAttemptService.java)의 저장 트랜잭션 밖에서 수행하며, 결과·로그 중복 반영 방지가 외부 AI 호출의 exactly-once를 보장하지는 않는다.

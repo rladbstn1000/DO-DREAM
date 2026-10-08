@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 import { RESULTS_DIR } from '../scripts/showcase-paths.mjs';
 import { checkShowcaseLayout } from './showcase-layout.mjs';
+import { checkPortfolioPolish } from './showcase-portfolio-polish.mjs';
 import { startShowcaseServer } from '../scripts/showcase-server.mjs';
 
 const repository = path.resolve(
@@ -109,7 +110,7 @@ async function newContext(label, options = {}) {
   const context = await browser.newContext({
     serviceWorkers: 'block',
     viewport: options.viewport ?? { width: 1280, height: 920 },
-    reducedMotion: 'reduce',
+    reducedMotion: options.reducedMotion ?? 'reduce',
   });
   await context.exposeBinding('__recordShowcaseAttempt', (_source, attempt) =>
     network.apiAttempts.push({ context: label, ...attempt }),
@@ -912,6 +913,8 @@ async function runAcceptance() {
   await speechBoundary();
   step = 'visual review layout and demonstrated sample history';
   await checkShowcaseLayout({ newContext, navigate, check, capture, heading, textShown, askExample, answerQuiz });
+  step = 'submission polish: native accessibility tree, keyboard and memo';
+  await checkPortfolioPolish({ newContext, navigate, check, capture });
   check(
     'artifact unchanged during single acceptance',
     artifactDigestBefore === (await digestFiles(artifact)),

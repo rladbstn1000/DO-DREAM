@@ -82,11 +82,24 @@ const students = [
 
 export function TeacherJoin() {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const join = useRef<HTMLDivElement>(null);
+  const focusAfterSwitch = useRef(false);
+  useEffect(() => {
+    if (!focusAfterSwitch.current) return;
+    join.current?.querySelector<HTMLElement>('.form:not([inert]) h1')?.focus();
+    focusAfterSwitch.current = false;
+  }, [mode]);
   const entries = (
     <>
       <div className="input-group">
-        <p className="join-demo-title">DO:DREAM 체험 시작</p>
+        <h1 className="join-demo-title" tabIndex={-1}>
+          DO:DREAM 체험 시작
+        </h1>
       </div>
+      <p className="join-demo-intro">
+        시각장애 학생이 교재를 읽고 질문하며 퀴즈로 복습할 수 있도록 돕는
+        학습 서비스입니다.
+      </p>
       <Link
         className="join-demo-button"
         data-testid="start-teacher"
@@ -101,35 +114,56 @@ export function TeacherJoin() {
       >
         학생 앱 체험
       </Link>
-      <p>가입 없이 공개 샘플로 둘러보세요.</p>
+      <p>
+        가입 없이 공개 샘플로 둘러보세요.{' '}
+        <a
+          className="join-source"
+          href="https://github.com/rladbstn1000/DO-DREAM"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub 소스
+        </a>
+      </p>
       <button
         className="join-toggle"
-        onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
+        onClick={() => {
+          focusAfterSwitch.current = true;
+          setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
+        }}
       >
         다른 시작 배경 보기
       </button>
     </>
   );
   return (
-    <div className="original-teacher original-join">
+    <div className="original-teacher original-join" ref={join}>
       <div className={`container ${mode}`}>
         <div className="row">
           <div className="col align-items-center flex-col sign-up">
             <div className="form-wrapper align-items-center">
-              <div className="form sign-up" inert={mode !== 'sign-up'}>
+              <div
+                className="form sign-up"
+                inert={mode !== 'sign-up'}
+                aria-hidden={mode !== 'sign-up'}
+              >
                 {entries}
               </div>
             </div>
           </div>
           <div className="col align-items-center flex-col sign-in">
             <div className="form-wrapper align-items-center">
-              <div className="form sign-in" inert={mode !== 'sign-in'}>
+              <div
+                className="form sign-in"
+                inert={mode !== 'sign-in'}
+                aria-hidden={mode !== 'sign-in'}
+              >
                 {entries}
               </div>
             </div>
           </div>
         </div>
-        <div className="row content-row">
+        <div className="row content-row" aria-hidden="true">
           <div className="col align-items-center flex-col">
             <div className="text sign-in">
               <h2>DO:DREAM</h2>
@@ -220,12 +254,15 @@ function TeacherSidebar({
             <div className="cl-memo-zoom">
               <div className="cl-memo-header">
                 <div className="cl-memo-latest">
-                  <span>현재 탭의 메모</span>
+                  <label id="teacher-memo-label" htmlFor="teacher-memo">
+                    현재 탭의 메모
+                  </label>
                 </div>
               </div>
               <textarea
                 className="cl-memo-input"
-                aria-label="수업 준비/할 일 메모"
+                id="teacher-memo"
+                aria-labelledby="teacher-memo-label"
                 placeholder="수업 준비/할 일 메모"
                 maxLength={1000}
                 value={uiState.memo}
