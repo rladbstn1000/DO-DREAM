@@ -317,3 +317,41 @@ DODREAM_SHOWCASE_EVIDENCE=original-ui-release npm --prefix fe-web run verify:sho
 최종 산출물은 **13파일/6,721,625 bytes**, manifest digest `88f6e64ad7a662233c24b5596623479458d6796a1c0dbd08202807025fd44fad`, 소스 digest `15d7deb504f6e9fdc227d3fe2f0a030d82f95d9c6e519e47144d0e11302e90d4`다. 근거는 새 ignored `.local/portfolio-polish/`의 `before/report.json`, `results/verify-showcase-2026-10-08T01-51-40-656Z.json`, `results/showcase-browser-2026-10-08T015122056Z.json`, `selected-captures.json`과 실행별 로그에 보존했다. 수정 전 캡처 selector 중복 실패, 새 GitHub URL 미분류 실패, 실제 포커스 테두리 실패를 보존했으며, 수정 후 최종 전체 실행을 새로 수행했다. 테스트 삭제·skip·안전 기대값 약화는 없다.
 
 이번 결과는 **LOCAL_POLISH_VERIFICATION=PASS**, **USER_VISUAL_APPROVAL=PENDING(이번 보완 화면)**, **UPDATED_PUBLIC_DEPLOYMENT=false(이번 작업)**다. push·PR·merge·Pages 실행은 NOT_RUN이며, 공개 사이트는 앞서 승인·배포한 `1aafe5a32a4a66e55629255277355aeb9f06f551`을 유지한다. README·AI 활용·JDBC 근거·대표 코드 포맷은 [18번 후속 요약](18-portfolio-code-review.md#채용-제출용-보완-2026-10-08)에 연결한다. 이번에 시작한 임시 검증 서버와 독립 브라우저는 종료했다. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다.
+
+
+## 제출용 보완 공개 반영 (2026-10-08)
+
+사용자가 `ac08ba1b5dba4a7669e3da8de81b511654504cd2`까지 화면을 확인하고 코드·문서의 GitHub 반영과 재배포를 승인했다. 위 PENDING·로컬 미배포 기록은 당시 상태로 보존한다. 원격 main은 전달값 `bce567b5afd8fdef45958dbb2edd16f90cc5b973`과 같았고, 최초 checkout `37e7fed…`는 그 조상이며 두 tree가 같았다. 신규 공개 이력은 승인된 `c09862a`·`6babaf8`·`ac08ba1`과 검사만 보완한 `a9e49b9`·`a20a61b`다. 승인 이후 앱·CSS·백엔드 동작·lock·workflow는 변경하지 않았다.
+
+공개 검토는 승인 3커밋의 중간 버전 포함 22경로(텍스트14/PNG8), 후속 검사 diff에 한정했다. 실제 비밀값·비공개 자료·원문 인증 로그 후보를 발견하지 않았고 `.env`·DB·`.local`·미추적 파일은 보내지 않았다. PNG8은 공개 샘플만 포함하며 text/EXIF metadata가 없었다. 팀원6명 역할·원본 이미지·UI 출처·AI 활용 설명과 과거09/18/21 내용은 보존했다. 상대 경로·앵커도 확인했다. 이 판정은 전체 과거 감사나 모든 권리·취약점의 부재 보증이 아니며 기존 의존성·chunk/action 경고를 유지한다.
+
+승인 Git 소스 digest는 기존 최종 검증과 일치했다. 현재 로컬 `dist-showcase`에 추가 복제11파일이 있어 폴더 감사는 **FAIL**로 기록하고 원본을 삭제·덮어쓰지 않았다. 기존 manifest13파일은 각각 bytes/hash가 일치해 별도 ignored 사본에서 공개 흐름을 리허설했다. 최초 PR CI [37720953144](https://github.com/rladbstn1000/DO-DREAM/actions/runs/37720953144)의 web은 Linux 원본 버튼49.59375px를 macOS 기준50px 하한으로 검사해 **FAIL**했다. 원본 CSS는 동일했고, 같은 브라우저에서 원본 CSS 상수와 실제 크기·글꼴·패딩·테두리를 엄격 비교하도록 검사만 교정했다. 패딩 축소 반례도 거부했다. 로컬 공개 리허설의 `/app`→서재 중간 프레임 실패는 정확한 교재 카드가 보인 뒤 기존392px/카드2 조건을 검사하도록 보완했다. 최종 로컬 리허설138 PASS·별도 helper60 PASS·Pages 계약8 PASS이며 기존 로컬244/웹115/Java16과 합산하지 않는다. 실패 원본과 복제 파일은 보존했다.
+
+| 원격 반영 | 실제 SHA·실행 |
+|---|---|
+| [PR #6](https://github.com/rladbstn1000/DO-DREAM/pull/6) HEAD | `a20a61b257a3bbeb55e0763c79d3148911d1a416` |
+| PR 검사 merge SHA / [CI 37721750942](https://github.com/rladbstn1000/DO-DREAM/actions/runs/37721750942) | `0938610cdb2ec821241fe0c455e7ecb9e0d9b8f5` |
+| 실제 일반 merge / [main CI 37721997478](https://github.com/rladbstn1000/DO-DREAM/actions/runs/37721997478) | `888609661595d4cbef89de15097007453c871ca3` |
+| [Pages 37722185194](https://github.com/rladbstn1000/DO-DREAM/actions/runs/37722185194), attempt1 | 위 main 전체 SHA를 `expected_sha`로 전달; build/deploy 각각 success |
+
+PR·branch·실제 main에서 `backend`, `web`, `python (ai)`, `python (python-service)`, `offline-tools` 다섯 job과 실제 검사 step이 모두 success였다. 각 PR/main job 로그의 checkout SHA도 위 값과 대조했다. 원격 웹115·Pages8·showcase 계약66·브라우저244, Python ai183/python-service24 및 도구6/26/101 검사가 실행됐다. backend는 기존 workflow의 전체 지정 계약과 컴파일·패키징이 성공했으며 로컬 Java16개와 별도다. 병합은 `--merge --match-head-commit`으로 수행했고 main 직접 push·force·보호 우회·브랜치 삭제는 없었다. README·AI 활용·JDBC 사후 근거·포맷 변경도 이 main에 포함된다.
+
+이번 Pages 실행의 [github-pages artifact 11525583561](https://github.com/rladbstn1000/DO-DREAM/actions/runs/37722185194/artifacts/11525583561)와 [provenance 11525563678](https://github.com/rladbstn1000/DO-DREAM/actions/runs/37722185194/artifacts/11525563678)를 내려받았다. source/run/배포6926400687이 연결되며, 검증 후 재빌드 없이 업로드한 **13파일/6,721,625 bytes**, manifest digest **`88f6e64ad7a662233c24b5596623479458d6796a1c0dbd08202807025fd44fad`**다. 원격 Ubuntu/Node22.22.0·npm10.9.4·Chrome154.0.8037.97·Playwright1.62.1에서 검증했다. 내려받은 tar의 경로·파일 종류·크기·해시를 검사했고 파일별 전체 대응은 해당 manifest와 아래 공개 증거에 보존한다. 과거 로컬 manifest를 원격 근거로 대신하지 않았다. artifact 보관은 기존1일/7일이며 공개 파일은 별도다.
+
+실제 배포 출력 [공개 URL](https://rladbstn1000.github.io/DO-DREAM/)을 독립 Chrome154.0.8037.98 context로 열어 **03:22:40–03:22:56 UTC**, 공개 검사 **177 PASS**를 확인했다. 이번 원격 manifest와 공개 HTTP **13파일 전부 bytes/hash 일치**, 브라우저 정적 응답 **71건/고유11파일**도 각각 일치했다. CDN 재확인은 필요 없었다. API·외부 모델·마이크·WebSocket·CSP 위반·브라우저/응답 오류는 각각0이다. 공개177과 원격/로컬244는 다른 실행이며 합산하지 않는다.
+
+- 실제 접근성 트리의 활성 h1 하나·장식 제목 비노출, 두 배경·일반/reduced motion의 키보드/초점, 소개·GitHub href/rel/탭 접근을 통과했다. 외부 링크를 자동 호출하거나 CSP를 넓히지 않았으며 GitHub 링크의 외부 이동은 실행하지 않았다.
+- 메모1023/1024/1025/1280px의 클립·라벨·입력 간격, 실제 label 연결·키보드, 입력·같은 탭 보존·초기화를 확인했다. 375px은 기존 메모 숨김 정책과 숨겨진 초점 대상/넘침 부재를 확인했다.
+- 원본 교사 자료·학급·편집기, 휴대폰 안 서재·재생 방식 최하단·플레이어·질문/참고 구간·서술형 퀴즈·결과·같은 탭 교사 기록, 좁은 화면·직접 경로·새로고침·뒤로가기·소유 키만 초기화도 통과했다. 사용자 입력의 안전한 표시와 기존 진도 정의를 유지했다.
+
+실제 공개 캡처를 그대로 복사해 직접 확인했다: [시작](assets/submission-polish-public/start.png) · [교사1024px](assets/submission-polish-public/teacher-1024.png) · [학생 퀴즈](assets/submission-polish-public/student-quizzes.png) · [질문·풀이 후 교사 기록](assets/submission-polish-public/teacher-history.png). 샘플 밖 개인정보나 새 생성 이미지는 없다.
+
+| 상태 | 이번 결과 |
+|---|---|
+| USER_VISUAL_APPROVAL | APPROVED — `ac08ba1b5dba4a7669e3da8de81b511654504cd2` |
+| SOURCE_DELTA_PUBLICATION_REVIEW | PASS_WITH_DOCUMENTED_LIMITATIONS |
+| REMOTE_SOURCE_SYNC / REMOTE_REQUIRED_CI | PASS — PR #6와 실제 main의 다섯 필수 job/step 성공 |
+| PAGES_DEPLOYMENT / PUBLIC_POLISH_ACCEPTANCE | PASS — build/deploy 성공 및 실제 공개177개 |
+| RELEASE_ARTIFACT_PROVENANCE / UPDATED_PUBLIC_DEPLOYMENT | PASS / true — 현재 원격 manifest와 공개13파일 일치 |
+
+원본 증거는 `.local/portfolio-polish-release/`, 이번 다운로드는 `.local/original-ui-release/downloads/37722185194/`, 공개 결과는 `results/showcase-public-browser-2026-10-08T032240115Z.json`과 같은 시각 캡처에 있다. 이 후속 문서·캡처도 작은 PR/필수 CI/일반 merge로 반영하며 **그 최종 main SHA는 실제 앱 배포 SHA `8886096…`를 대체하지 않는다.** 문서 때문에 다시 배포하지 않는다. 기존 Pages source·환경 main 제한·권한·HTTPS·도메인은 유지했다. 미추적 `.DS_Store` 세 경로와 사용자 파일은 보존했고, 이번 자체 검증 서버·브라우저는 종료했다. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`이며 실제 음성 청취·VoiceOver·네이티브 앱은 NOT_RUN이다.

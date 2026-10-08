@@ -194,3 +194,8 @@ hash 검사는 기존 데이터를 훼손하지 않았는지 대조하는 절차
 Java 최초 실행의 sandbox 소켓 차단/누락된 잠금 의존성은 BLOCKED, 기존 `*Tests 2.class` 중복 산출물의 로딩 실패와 임시 init-script 상대 경로 오류는 FAIL로 남겼다. 기존 산출물을 삭제하지 않고 필요한 잠금 버전 의존성만 받아, 새 ignored buildDirectory에서 같은 검사·기대값으로 최종 성공했다. 구조/의존성 lock/빌드 설정은 바꾸지 않았다. 실제 최종 전체 명령과 단계별 종료 코드·검사 XML은 `.local/portfolio-polish/java/verification.json`, `java/isolated-grading-checks-final.log`, `java/isolated-build/test-results/test/`에 있다. 그 밖의 명령은 `web-regressions.json`, `Student-format/commands.json`, `Student-format/equivalence.json`에 기록했다.
 
 과거 문서/캡처는 보존하고 09·18·21에는 후속 구역만 추가했다. 검토한 경로만 UI·문서·포맷의 로컬 커밋으로 구분한다. push/PR/merge/재배포는 NOT_RUN이다. 미추적 `.DS_Store` 파일은 읽기·삭제·stage에서 제외했다. 이번 검증 서버·브라우저는 종료했으며 데이터·외부 자원은 건드리지 않았다. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다.
+
+
+### 제출용 보완 공개 후속 (2026-10-08)
+
+위 로컬 보완 `ac08ba1…`을 사용자가 승인해 [PR #6](https://github.com/rladbstn1000/DO-DREAM/pull/6)과 필수 CI·일반 merge를 거쳐 공개 반영했다. README의 팀 기여·AI 활용 설명과09번 JDBC 사후 근거를 포함한다. 실제 앱 배포 SHA는 `888609661595d4cbef89de15097007453c871ca3`이며, 공개177개와 이번 원격 manifest/공개13파일 대조를 통과했다. 최초 CI 실패·검사 교정·artifact 연결·한계는 [21번 공개 후속](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)에 있다. 위 당시 PENDING·미배포/미실행 기록은 보존하고 후속 문서 SHA를 앱 배포 SHA로 표기하지 않는다.

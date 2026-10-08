@@ -153,3 +153,8 @@ node fe-web/tests/showcase-public-browser.mjs --url https://rladbstn1000.github.
 사용자가 승인한 `a187bf09b017984feea48153d79e02b81a9e23a5`의 교사 원본 UI·학생 앱 및 줄바꿈 보완을 [PR #4](https://github.com/rladbstn1000/DO-DREAM/pull/4)로 병합했다. 실제 배포 source는 `1aafe5a32a4a66e55629255277355aeb9f06f551`, [Pages 실행 36800980482](https://github.com/rladbstn1000/DO-DREAM/actions/runs/36800980482)는 build/deploy 성공이다. 기존 [공개 URL](https://rladbstn1000.github.io/DO-DREAM/)을 유지한다.
 
 현재 원격 artifact는 13파일/6,720,716 bytes이며 공개 파일 bytes/hash 대조와 새 UI 공개 인수 108개를 통과했다. 위 최초 공개 기록의 3파일·이전 해시·검사 수는 당시 이력으로 보존한다. 승인·누적 공개 검토·PR/main CI·현재 manifest 전체·최종 공개 캡처와 한계는 [21번의 원본 UI 공개 배포와 인수](21-original-ui-showcase-results.md#원본-ui-공개-배포와-인수)에 기록했다. 후속 문서/검사 PR의 main SHA와 실제 앱 배포 SHA는 구분한다. **USER_VISUAL_APPROVAL=APPROVED**, **UPDATED_PUBLIC_DEPLOYMENT=true**이며 실제 AI/백엔드 운영 준비 상태는 변경하지 않았다.
+
+
+## 최신 제출용 보완 공개 반영 (2026-10-08)
+
+사용자가 승인한 `ac08ba1b5dba4a7669e3da8de81b511654504cd2`의 제목·메모·README·AI 활용·JDBC 근거·포맷 보완을 [PR #6](https://github.com/rladbstn1000/DO-DREAM/pull/6)으로 일반 병합했다. 실제 앱 배포 SHA는 `888609661595d4cbef89de15097007453c871ca3`, [Pages 37722185194](https://github.com/rladbstn1000/DO-DREAM/actions/runs/37722185194)는 build/deploy success다. 기존 [공개 URL](https://rladbstn1000.github.io/DO-DREAM/)에서 공개177개·원격 manifest 대비13파일/6,721,625bytes 일치를 확인했다. 승인·초기 CI 실패와 검사 교정·PR/main 필수 CI·artifact·공개 캡처는 [21번 후속 결과](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)에 있다. 과거 결과는 보존하며 이 후속 문서 PR의 최종 main과 실제 앱 배포 SHA를 구분한다. `USER_VISUAL_APPROVAL=APPROVED`, `UPDATED_PUBLIC_DEPLOYMENT=true`; 실제 AI·운영 준비·데이터 상태는 변경하지 않았다.
