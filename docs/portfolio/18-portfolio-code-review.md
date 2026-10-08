@@ -173,3 +173,24 @@ hash 검사는 기존 데이터를 훼손하지 않았는지 대조하는 절차
 이번에 시작한 자체 서비스7개만 검증한 ID로 중지해 자체11개 모두 최초 `exited` 상태로 복구했다(exit0). `manage.py isolation`도 exit0으로 외부66개 컨테이너의 ID·이름·상태, 기존 볼륨/네트워크, 자체5개 영속 볼륨, loopback 게시 포트·내부망·로그 민감값 검사와 실행 범위를 통과했다. `CURRENT_MUTATION_SCOPE=PASS`, `CURRENT_EXTERNAL_ID_STABILITY=PASS`, `EXTERNAL_CHANGE_ATTRIBUTION=NOT_APPLICABLE`이다. 이 helper의 `OWN_DATA_PRESERVATION=NOT_RUN`은 재시작 persistence 영수증이 없기 때문이며 위 별도 hash/카운터 대조 결과로 덮어쓰지 않는다. 과거 외부 FAIL/UNVERIFIED는 그대로 보존했다.
 
 검토한 소스·설정·테스트·문서84개 파일만 명시 경로로 stage해 이 보고서와 함께 로컬 커밋한다. 비밀 설정·DB·raw 로그는 ignored 영역에 유지하고 `docs/.DS_Store`는 읽기·삭제·stage에서 제외한다. 실제 AI/OCR/AWS/Firebase 기능 호출0, API 키 탐색·읽기·설정0, push·PR·merge·공개 배포·터널·클라우드 생성0이다. `REAL_AI_INTEGRATION=NOT_RUN`, `REMOTE_CI_EXECUTION=NOT_RUN`이며 다음 showcase 구현에 자동 착수하지 않는다.
+
+## 채용 제출용 보완 (2026-10-08)
+
+`codex/dodream-portfolio-polish`에서 기존 main `bce567b5afd8fdef45958dbb2edd16f90cc5b973`을 기준으로 로컬 보완했다. README는 서비스/샘플 → 팀 당시 역할과 개인 개선 → 채점·인증·색인 문제/결정/결과 → 화면·팀 당시 아키텍처 → 실행 → 검증 한계 → AI 활용/상세 근거 → 기존 팀 기록 순으로 재배치했다. 위 세 사례와 기존 측정값을 재사용했고 팀원 표·6명 역할·원본 이미지를 보존했다. ChatGPT의 문제/대안/계획 검토, Codex의 구현/테스트 실행/문서 초안, 사용자의 범위·원본 UI 방향 결정과 변경/보고/화면 검토를 구분했다. AGENTS는 유지보수 안내로 갱신하되 데이터·비밀·외부 호출·별도 원격 승인 규칙을 유지했다. 새 사례 문서·대규모 파일 이동·새 기능은 없다.
+
+시작 화면 h1/비활성 복제 접근성, 작은 소개·GitHub 링크, 1024px 메모 라벨과 키보드 초점을 보완했다. 실제 원인·두 배경/경계 폭 검사·전후 캡처·과거 실패 보존은 [21번 후속 기록](21-original-ui-showcase-results.md#채용-제출용-제목메모-보완--로컬-검증-2026-10-08)에 있다. 이 수정은 과거 공개 검사 범위를 소급 변경하지 않으며 현재 공개 사이트에 배포하지 않았다.
+
+**대표 코드 포맷은 별도 변경이다.** `GradingStore.java`는 들여쓰기·줄바꿈만 정리해 javac17 lexer의 2,577개 토큰(SQL·문자열 원문과 순서 포함), 전후 `javap -c -p` 명령 출력이 동일했다. 줄번호 debug metadata는 바뀌므로 class 파일 자체가 동일하다고 주장하지 않는다. `StudentExperience.tsx`는 기존 Prettier3.6.2 설정을 사용했고, JSX 끝 공백 3곳을 같은 문자열 표현식으로 보존했다. TypeScript5.9.3 transpile 결과의 중첩 AST6,883노드·문자열714개가 전후 동일했다. 메서드 추출·SQL text block/상수화·JPA 전환·상태/트랜잭션 순서 변경은 없다. [09번 JDBC 근거](09-grading-reliability-design.md#jdbc-선택-근거--제출용-사후-검토-2026-10-08)는 현재 SQL의 실행 순서·조건부 갱신, JPA 대안과 수동 매핑 부담을 사후 검토로 설명한다. OSIV 분리/복원은 JDBC 선택과 별개이며 성능 비교 실험을 주장하지 않는다.
+
+| 이번 실행 명령·검사 | 종료 코드·결과 |
+|---|---|
+| `DODREAM_SHOWCASE_EVIDENCE=portfolio-polish npm --prefix fe-web run verify:showcase` | 0/PASS — 타입·두 모드 빌드, 계약66/서버40, 독립 Chrome244, 정적 요청153/금지 요청0 |
+| `npm --prefix fe-web run test:auth`, `test:authorization`, `test:grading`, `test:indexing`, `test:student`, `test:hardening` | 각각0/PASS, 합계115; 실패·skip0 |
+| `node --test fe-web/tests/pages-release.test.mjs` | 0/PASS, 기존 Pages 계약8 |
+| 기존 Prettier의 StudentExperience 단일 파일 `--check`, TS 의미 AST/문자열 비교 | 각각0/PASS; 별도 학생/원본 상태49도 PASS(위 수에 합산하지 않음) |
+| Java17·기존 Gradle8.14.3 `bootJar testClasses test` — `GradingContractTests`, `GradingAcceptanceRaceTests`, `GradingWiringTests` 선택 | 0/PASS, 컴파일·관련 단위/계약16, 실패·skip0 |
+| 실제 DB 채점 장애/복구 회귀·Docker·실제 AI·음성 청취·VoiceOver·네이티브 앱 | NOT_RUN — 포맷만 변경해 DB/서비스 실행 불필요, 과거 PASS로 대체하지 않음 |
+
+Java 최초 실행의 sandbox 소켓 차단/누락된 잠금 의존성은 BLOCKED, 기존 `*Tests 2.class` 중복 산출물의 로딩 실패와 임시 init-script 상대 경로 오류는 FAIL로 남겼다. 기존 산출물을 삭제하지 않고 필요한 잠금 버전 의존성만 받아, 새 ignored buildDirectory에서 같은 검사·기대값으로 최종 성공했다. 구조/의존성 lock/빌드 설정은 바꾸지 않았다. 실제 최종 전체 명령과 단계별 종료 코드·검사 XML은 `.local/portfolio-polish/java/verification.json`, `java/isolated-grading-checks-final.log`, `java/isolated-build/test-results/test/`에 있다. 그 밖의 명령은 `web-regressions.json`, `Student-format/commands.json`, `Student-format/equivalence.json`에 기록했다.
+
+과거 문서/캡처는 보존하고 09·18·21에는 후속 구역만 추가했다. 검토한 경로만 UI·문서·포맷의 로컬 커밋으로 구분한다. push/PR/merge/재배포는 NOT_RUN이다. 미추적 `.DS_Store` 파일은 읽기·삭제·stage에서 제외했다. 이번 검증 서버·브라우저는 종료했으며 데이터·외부 자원은 건드리지 않았다. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다.
