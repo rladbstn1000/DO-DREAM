@@ -253,3 +253,34 @@ README의 세 사례는 공개 main 전체 SHA의 코드·검사 줄 범위와 �
 | PAGES_REDEPLOYMENT | NOT_REQUIRED_UNCHANGED_APP |
 
 상세 증거는 ignored `.local/evidence-portability/`와 그 `integration/results/`에 분리한다. 요약은 원시 실행 증거를 대신하는 새 독립 검사로 취급하지 않는다. 원격 CI 실행·push·PR·merge는 NOT_RUN, `PAGES_REDEPLOYMENT=NOT_REQUIRED_UNCHANGED_APP`이다. 기존 공개 데모 승인·배포 완료는 유지한다. 실제 AI·음성 청취·VoiceOver·네이티브 앱은 이번에도 NOT_RUN이다.
+
+<a name="evidence-portability-safe-resume"></a>
+
+### 안전 정리와 통합 재개 조건 (2026-10-08)
+
+문서 커밋 `dde553e2d15f678bae1986dc94914e955a3fc8ee`와 미커밋 검사10파일을 확인했다. 이번 정리는 저장된 파일·소스와 필요한 Docker 상태 메타데이터만 읽었다. 기존 서비스 start/up/restart, worker·dispatcher, DB·Redis·Chroma 접속, 통합 검사·복구·삭제·큐 정리·dump·볼륨 복제는 실행하지 않았다. 현재 판정은 **BACKEND_DATA=CHANGED_UNEXPECTEDLY, DATA_PRESERVATION=FAIL, RECOVERY_EXECUTED=false**다. 위 당시 `CHANGED_BY_VALIDATION` 표기와 실패 원본은 보존하며, 원인 미확인 외부 변화로 재분류하지 않는다.
+
+**실제 실행 경로:** `integration/results/commands.jsonl`의5행은05:04:22.185390–05:04:22.533453 UTC에 기존 web·web-auth-test·index-dispatcher·worker의 **4개 ID를 직접 지정한 `docker start`**다. 접두부는 순서대로 `2ee13f903f6d`, `747f49a71245`, `b5dc18999787`, `fe52c08ab649`이며 전체64자리 argv는 해당 행과 `integration-browser-services-start.json`에 있다. 데이터3서비스 → AI → before hash → BE/PDF/short-BE → 이 직접 start → auth 순서였다. `manage.py`의 `run→record` 형식으로 실제 argv·종료값이 저장됐지만 최상위 일회성 호출 스크립트 원문은 이 증거 목록에 없어 추정하지 않는다. **이번 사건에 전체 Compose up이나 의존성 자동 기동을 사용했다는 기록은 없다.** 별도로 공개 기준 `manage.py:268–275`의 `up/demo-up`은 서비스 목록 없는 Compose up이며 worker·dispatcher가 기본 목록에 있다는 정적 위험은 남는다.
+
+직전 `mutation-scope.jsonl:89`는05:04:21.824674 UTC의 **operation=config PASS**이고 해당 직접 시작을 operation=start로 검증한 기록은 없다. [scope gate](../../scripts/local/scope_guard.py)의 `_gate()`는 대상 소유권·구성·마운트·네트워크를 확인하고 결과에도 metadata-only 한계를 명시한다. 기존 작업 처리·데이터 변경 허가를 검사하지 않는다. 이를 데이터 보존 승인으로 취급한 실행 판단 오류였다. [dispatcher](../../ai/app/indexing/dispatcher.py)가 호출하는 `store.claim_deliveries()` → `indexing-v3` 전송 → worker의 후보 생성·검증 → `activate()`가 현재 코드 경로다. DB 전체의 QUEUED/PROCESSING 후보를 읽으므로 사후 Redis 큐 길이0은 DB outbox가 비었다는 증거가 아니다.
+
+**저장된 영향 대조:** jobs545→545·resources400→400이지만 원래 행 hash가 각각30개·27개 불일치한다. 현재 필드 진단에는 SUCCEEDED27/REVOKED3과05:04:23.625389–05:04:27.395818 갱신 시각이 있다. 실행457→484 중 새 ACTIVE27개를 기존 자료27개가 참조하고, 컬렉션434→461·새 청크51개다. 원래 실행457행·SQLite1,068행·객체640개와 기존434컬렉션/1,406청크의 내용 보존은 **활성 포인터 보존과 다르다**. `data-preservation.json`, `index-preservation-diagnosis.json`, `background-impact-summary.json`, `physical-additions-summary.json`, `chroma-preservation.json`을 대조했으며47 PASS/2 FAIL 판정을 유지한다. 개별 작업의 상세 이벤트 로그와 변경 전 필드값은 확보되지 않아 작업별 전이 과정을 추가로 만들어 쓰지 않는다.
+
+**복구 원값: 현재 확보하지 못함.** 위 증거 목록의 `data-before.json`은 컬럼 이름과 SHA256별 개수, `chroma-before.json`은 이름·UUID·청크 수·hash를 담지만 자료→이전 active_execution_id 대응이 없다. 진단파일은 변경 후 값이다. 해시·현재값·generation-1·가까운 옛 컬렉션으로 이전 값을 역산하지 않는다. 이후 복구 검토에는 영향 job30/resource27의 정확한 이전 상태·포인터·카운터/lease/시각과 원래 execution/collection 대응, 소비자 정지·재처리 방지 조건이 먼저 필요하다. 근거 확보와 실제 복구는 별도이며 이번에는 복구하지 않았다.
+
+| 문서/코드 정합성 | 이번 확인·보완 |
+|---|---|
+| A: 커밋 코드만으로 유효 | README의 근거·통계·제목,04/09/11의 의미 대응,05/08/10/12의 결과 anchor,18의 역사적 측정,20/21의 앱/문서 버전 구분은 유효 |
+| B: 미커밋 코드가 필요한 안내 | 02의 import/helper·오류 분류·결과 경로·추가 정책 검사는 **10파일 반영·통합 검증 대기**로 명시. `dde553e`의 `test:hardening`은 HTML 경계6개뿐이다. README와02의 기존 서비스 기동 안내에 현재 통합 중단을 표시 |
+| C: 사건·미완료 | 독립 의존성/Chrome 확인과 실제 auth17 PASS를 구분. authorization·grading·hardening NOT_RUN, indexing·student·disabled BLOCKED를 그대로 유지. 검사 코드10파일은 이전 검증 hash와 같고 이번 문서 커밋에 포함하지 않음 |
+
+**최소 재개안은 현재 실행 불가(BLOCKED)이며 이번에는 기동하지 않는다.** 기존 `.local/env`·자격증명·DB·Redis·Chroma·객체 경로·볼륨을 전혀 재사용하지 않는 새 합성 시험 범위를 먼저 검토해야 한다. 새 자원명·마운트/endpoint·loopback 포트·내부망·의존 서비스의 완전한 목록을 한정된 명세로 검증하며, 프로젝트명 변경이나 결과 폴더 변경만으로 격리를 판정하지 않는다. 기존 데이터를 복제하지 않고 추적된 합성 seed로 빈 시험 저장소를 준비한다. auth·disabled 및 새 fixture의 grading 등 배경 처리가 불필요한 단계는 worker·dispatcher를 제외한다. 게시·색인·학생 검사는 새 DB와 새 Redis에 시험 작업만 존재하고 새 Chroma·객체 저장 경로임을 확인한 후에만 두 서비스를 명시 허용해야 한다. auth-short의2초와 일반900초, 데모 비활성/활성 서버도 새 시험 범위에서 구분한다.
+
+| 현재 재개 차단 파일·조건 | 필요한 최소 보완·예방 가드 제안(미구현) |
+|---|---|
+| `scripts/local/manage.py:22–23,53–55`; `scope_guard.py:10–16,218–237`의 기존 project/env/볼륨 강제 | 기존 gate를 우회·무제한 확장하지 않고 **하나의 한정된 새 시험 범위**를 별도로 검토. 소유권 PASS와 데이터 변경 허용을 분리하고 직접 Docker 실행도 실제 서비스 계획 검증을 거치게 함 |
+| `manage.py:268–275`, `scope_guard.py:111–114`의 서비스 생략; `verify_indexing.py:68–73`의 의존 기동 | 보존 작업에서 서비스 없는 up/start/restart와 배경 소비자 포함 계획을 거부. `validate_plan()`이 의존 서비스까지 계산하고 기존 저장소와 새 저장소의 혼합을 차단 |
+| `compose.local.yml:100,119`, `ai/app/celery_config.py:7–8`, `dispatcher.py:15–16`의 큐 고정; `store.py:222–245`의 DB 전체 outbox | 큐명만 바꿔 격리됐다고 가정하지 않음. 새 DB·Redis·Chroma·객체 저장소 조합과 새 시험 작업 소유를 검사하고 기존 endpoint·마운트를 거부 |
+| 7종 browser harness의 기존 origin/`.local/env`; `indexing_fixtures.py:10–16`; `verify_student_web.py:28–31,65–97` | 새 시험 endpoint·자격증명 경로와 합성 seed 순서를 명시하고 기존 fixture/plan을 복사하지 않음. authorization의 게시·재게시, student의 revision/공유 변경, indexing의 finally 기동까지 새 시험 자원만 대상으로 검증 |
+
+이 제안은 새 플랫폼이나 Compose 전체 개편의 구현 완료가 아니다. 향후 순수 명령 계획·합성 metadata 검사로 기존 저장소 혼입, 암묵적 소비자 기동, 잘못된 plan을 먼저 거부해야 한다. 이번에는 저장 파일 대조와 통제된 브라우저 정책6개만 실행해 PASS였으며 실제 Chrome·통합 재실행으로 세지 않는다. Docker context/inspect의 제한된 ID·상태·소유 라벨 조회에서 자체11개가 여전히 exited임을 확인했다. 최초 sandbox 메타데이터 조회 차단과 후속 읽기 성공은 새 ignored `.local/evidence-portability-safety-review/20261008T052844Z/`에 분리했다. 기존 기준선·증거94파일·미커밋10파일은 변경하지 않으며 데이터 보존 FAIL을 새 PASS로 대체하지 않는다. 이번 문서 보완만 별도 로컬 커밋하고 push·PR·merge·Pages 재배포는 하지 않는다.

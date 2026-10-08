@@ -30,11 +30,13 @@ npm run verify:showcase
 
 ## 실제 백엔드 로컬 통합 실행 (phase1)
 
-### 호스트 브라우저 검사 준비와 실행 파일 선택
+> **현재 통합 재개 중단:** evidence-portability 검증 준비에서 기존 대기 작업이 처리돼 데이터 보존이 실패했다. 아래의 기존 기동·준비·통합 검사 명령은 과거 절차와 전제를 보존한 참조이며 현재 실행 허가가 아니다. 기존 서비스의 start/up/restart, worker·dispatcher 실행, DB·큐·포인터 복구는 하지 않는다. 재개에는 [기존 저장소와 분리한 새 시험 범위의 검토](18-portfolio-code-review.md#evidence-portability-safe-resume)가 먼저 필요하다. 공개 정적 showcase 절차와 구분한다.
 
-> 아래는 이번 **로컬 검사 수정안**의 준비 정책이다. [통합 검증·데이터 보존 차단](18-portfolio-code-review.md#evidence-portability-2026-10-08)으로 검사 코드의 완료 커밋은 보류했다. 기존 공개 main의7종 검사에는 아직 개인 모듈 fallback이 남아 있으므로, 문서 변경만으로 그 checkout의 이식성까지 해결됐다고 해석하지 않는다.
+### 호스트 브라우저 검사 보완안 — 코드 반영·통합 검증 대기
 
-기존 auth·authorization·grading·indexing·student·demo-disabled·hardening 검사는 웹 lock의 `playwright-core`만 사용한다. 저장소 루트에서 아래처럼 준비한다. 개인 모듈 경로·전역 `playwright`는 필요하지 않다.
+> 아래 정책은 보존 중인 **미커밋 검사10파일**에 의존한다. 문서 커밋 `dde553e2d15f678bae1986dc94914e955a3fc8ee`만 checkout하면 적용되지 않는다. 코드 반영과 새 격리 환경의 통합 검증 전에는 확정 실행 절차로 사용하지 않는다. [통합 미완료·보존 실패](18-portfolio-code-review.md#evidence-portability-2026-10-08)는 계속 유효하다.
+
+보완안은 auth·authorization·grading·indexing·student·demo-disabled·hardening을 웹 lock의 `playwright-core`만 사용하도록 변경한다. 현재 커밋의7종 검사에는 개인 모듈 fallback이 남아 있다. 아래는 패키지 준비·순수 검사의 명령 참조이며, 현재 커밋의 `test:hardening`에는 기존 HTML 경계6개만 있다. 미커밋 코드의 추가 정책 검사6개를 현재 커밋의 검사로 계산하지 않는다.
 
 ```bash
 npm --prefix fe-web ci --ignore-scripts --no-audit --no-fund
@@ -43,11 +45,11 @@ npm --prefix fe-web run test:hardening
 # export DODREAM_CHROME_EXECUTABLE='/absolute/path/to/chrome'
 ```
 
-예시 경로를 그대로 실행하지 않는다. 명시값이 없으면 설치된 Chrome `channel: 'chrome'`을 사용한다. 명시값이 있으면 해당 파일만 실행하며 빈 값·상대경로·없는 파일·실행 권한 오류는 `ChromeExecutableConfigurationError`로 실패한다. 설치된 Chrome이 없으면 `ChromeUnavailableError`, 다른 시작 실패는 `ChromeLaunchError`다. 패키지 로딩 오류(`ERR_MODULE_NOT_FOUND`)와 서버 준비·인증 실패도 별개이며 자동 설치·대체 브라우저·사용자 프로필 재사용은 없다. 이미 분리된 showcase 검사는 기존 Chrome channel 정책을 유지한다.
+보완안의 실행 파일 정책은 다음과 같다. 예시 경로를 그대로 실행하지 않는다. 명시값이 없으면 설치된 Chrome `channel: 'chrome'`, 명시값이 있으면 해당 파일만 선택한다. 빈 값·상대경로·없는 파일·실행 권한 오류는 `ChromeExecutableConfigurationError`, 설치된 Chrome 없음은 `ChromeUnavailableError`, 다른 시작 실패는 `ChromeLaunchError`로 구분한다. 이 helper와 오류 분류는 아직 미커밋이다. 패키지 로딩 오류(`ERR_MODULE_NOT_FOUND`)·서버 실패와 구분하고 자동 설치·대체 브라우저·사용자 프로필 재사용을 하지 않는 것이 보완안의 계약이다. 이미 커밋된 showcase 검사의 Chrome channel 정책은 그대로다.
 
-`test:hardening`의 실행 파일 정책 검사는 통제된 launch 대역의 단위 검사이며 실제 Chrome·인증 성공을 뜻하지 않는다. 실제 7종 검사는 아래 단계별 준비를 따른다. auth는 `auth-test-up`의 짧은 토큰 서버, authorization/grading은 준비된 합성 사례, indexing은 `manage.py indexing browser`, student는 `demo-prepare` 후 `manage.py student-web`의 plan을 사용한다. 준비되지 않은 plan을 임의 생성하거나401/403/500을 대기 성공으로 바꾸지 않는다. `browser-demo-disabled.mjs`는15174의 데모 비활성 서버가 전제이며 활성 서버에서 대신 실행하지 않는다. `browser-hardening.mjs`는 일반15173의 준비된 데모에서 새 합성 학생으로 실행한다.
+보완안의 정책 검사는 통제된 launch 대역의 단위 검사이며 실제 Chrome·인증 성공을 뜻하지 않는다. 기존 통합 전제는 auth의 짧은 토큰 서버, authorization/grading의 합성 사례, indexing·student 실행기가 준비한 plan, disabled의15174 데모 비활성 서버, hardening의15173 데모 활성 서버다. 이 전제가 현재 안전하게 재현됐다는 뜻은 아니다. 기존 `auth-test-up`, `indexing browser`, `demo-prepare`, `student-web`을 재개 목적으로 실행하지 않는다. 새 격리 환경의 plan을 별도로 준비해야 하며401/403/500을 준비 지연으로 숨기지 않는다.
 
-새 실행 증거는 저장소 루트에서 `export DODREAM_RESULTS_DIR=.local/<이번-실행>/results`로 분리한다. 기존 Python 실행기와7종 브라우저가 같은 경로를 사용하고, indexing/student의 plan·handshake는 그 형제 `browser-ui/`에 둔다. 기본값은 과거 `.local/phase5/results`지만 원본 결과를 보존하려면 새 경로를 먼저 선택한다. 시작 상태·hash 보존 기준선을 확보하고 필요한 scope gate를 통과한 뒤에만 자체 서비스를 시작한다. 기존 샘플 revision이나 컨테이너 설정을 바꿔야 해서 보존 조건을 만족하지 못하면 해당 통합 검사를 BLOCKED로 기록한다. 이번 결과는 [18번 후속 기록](18-portfolio-code-review.md#evidence-portability-2026-10-08)에 구분한다.
+보완안은 `DODREAM_RESULTS_DIR`로 Python 실행기와7종 브라우저의 결과 경로를 맞추고, indexing/student의 plan·handshake를 그 형제 `browser-ui/`에 둔다. 기본값은6종의 `.local/phase5/results`와 hardening의 `.local/portfolio-hardening/results`로 구분한다. **결과 폴더 변경은 DB·큐·자격증명·볼륨 격리가 아니다.** 소유권 scope PASS나 hash 기준선 확보도 기존 데이터 변경 허가가 아니다. 현재 통합 재개는 BLOCKED이며 [18번 안전한 재개 조건](18-portfolio-code-review.md#evidence-portability-safe-resume)을 따른다.
 
 아래 4~5단계의 미배포·미실행 판정은 당시 실행 기록이며, 현재 공개된 정적 showcase의 배포 결과와 구분한다.
 
@@ -127,7 +129,7 @@ npm run typecheck
 npm run build -- --mode phase1
 ```
 
-실제 Chrome 인증 검증은 `python3 scripts/local/manage.py auth-test-up` 후 `npm --prefix fe-web run test:browser-auth`를 실행한다. 위 호스트 브라우저 준비·실행 파일 정책을 따른다. 별도 테스트 서버만 AT2초이며 일반 서버는900초다. 15174 포트를 다른 프로세스가 쓰면 종료하지 말고 포트 충돌을 기록한다. 이 테스트는 인증 흐름이며 전체 학습 E2E가 아니다. 장애 주입 항목은 실제 happy path와 결과에서 구분한다.
+과거 Chrome 인증 검증은 `auth-test-up` 후 `test:browser-auth`로 실행했다. 현재는 통합 재개 중단이며 위 미커밋 helper 정책을 현재 커밋의 동작으로 보지 않는다. 별도 테스트 서버만 AT2초이며 일반 서버는900초다. 새 격리 환경에서도 이 구분과 포트 충돌 거부가 필요하다. 이 테스트는 인증 흐름이며 전체 학습 E2E가 아니다. 장애 주입 항목은 실제 happy path와 결과에서 구분한다.
 
 `phase1`은 `local-env`만 읽고 API base를 same-origin으로 고정한다. 빌드 mode를 생략한 기존 배포 명령과 구분한다. 로컬 CSP는 원격 폰트/이미지/API를 차단한다.
 

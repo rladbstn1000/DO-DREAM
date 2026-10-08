@@ -74,7 +74,7 @@ npm run preview:showcase
 
 출력된 `http://127.0.0.1:<포트>/DO-DREAM/`를 열고, 종료할 때 해당 터미널에서 Ctrl+C를 누릅니다. 저장소 루트의 별도 터미널에서 `npm --prefix fe-web run verify:showcase`로 타입·빌드 경계·브라우저 인수를 실행할 수 있습니다.
 
-**실제 백엔드 로컬 통합:** [실행 절차](docs/portfolio/02-local-runbook.md)의 격리 환경·추가형 마이그레이션을 먼저 준비한 뒤 `python3 scripts/local/manage.py demo-up`과 `python3 scripts/local/manage.py demo-prepare`를 순서대로 실행합니다. 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적 외부 공급자 대역을 사용합니다. 공개 샘플과 별개이며 실제 API 실패를 데모 성공으로 바꾸지 않습니다.
+**실제 백엔드 로컬 통합:** 기존 데이터를 사용하는 통합 검증은 현재 중단한 상태입니다. [사건 확인과 안전한 재개 조건](docs/portfolio/18-portfolio-code-review.md#evidence-portability-safe-resume)을 먼저 확인하세요. [실행 절차](docs/portfolio/02-local-runbook.md)의 기존 서비스 기동·준비 명령은 현재 재실행 안내가 아닙니다. 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적 외부 공급자 대역을 사용하는 검증은 공개 정적 샘플과 별개입니다. 위 서버 없는 showcase 체험에는 영향이 없습니다.
 
 ## 검증 범위와 한계
 
