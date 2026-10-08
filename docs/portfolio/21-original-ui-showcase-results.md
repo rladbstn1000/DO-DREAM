@@ -293,3 +293,27 @@ DODREAM_SHOWCASE_EVIDENCE=original-ui-release npm --prefix fe-web run verify:sho
 | UPDATED_PUBLIC_DEPLOYMENT | true — 실제 새 UI 공개 확인 완료 |
 
 `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다. 실제 음성 청취·VoiceOver·네이티브 앱/실기기 검증은 **NOT_RUN**이며 자동 브라우저 검사를 그 검증으로 대체하지 않는다. 이번 검증이 연 브라우저·임시 검증 서버는 종료했고 이전 작업의 사용자 미리보기는 건드리지 않았다. 새 기능·추가 디자인 개선은 수행하지 않았다.
+
+## 채용 제출용 제목·메모 보완 — 로컬 검증 (2026-10-08)
+
+공개 평가에서 드러난 시작 화면의 제목 구조와 1024px 메모 겹침을 이번 로컬 빌드에서 재현하고 수정했다. 작업 시작 checkout은 `37e7fed820627529c8531e4d63f5a4b32d1c735c`였고, prune 없이 조회한 main `bce567b5afd8fdef45958dbb2edd16f90cc5b973`과 파일 내용이 같았다. 동명 브랜치가 없음을 확인해 main에서 `codex/dodream-portfolio-polish`를 만들었다. 기존 `.DS_Store` 두 파일은 제외했다. 아래 검증은 이번 실행이며, 앞선 공개 인수의 범위를 소급해 확대하지 않는다.
+
+- **시작 화면:** `TeacherJoin`의 화면 제목이 문단이고 두 장식 로고 h2는 CSS 이동만으로 숨겨져, Chrome 실제 접근성 트리에 두 제목이 노출됐다. 대표 제목을 h1으로 바꾸고 장식 로고 영역만 `aria-hidden` 처리했다. 비활성 form의 기존 `inert`와 명시적 `aria-hidden`을 함께 유지하며, 배경 전환 후 활성 제목으로 초점을 옮긴다. 소개·샘플 안내는 보조기술에서도 읽을 수 있다. 제목의 실제 기존 스타일(데스크톱16px/375px13px, 회색·800 굵기), 원본 이미지·로고·버튼 크기와 두 배경 배치를 유지했다. 제목 태그 변경으로 기존 문단 CSS가 빠지는 차이를 명시적으로 보정했다.
+- **작은 소개와 소스 링크:** 기존 폼에 서비스 소개 한 문장과 `GitHub 소스` 링크를 추가했다. 정확한 저장소 href, `_blank`/`noopener noreferrer`를 확인했다. 정적 참조 URL 목록에 그 주소 하나만 분류했으며 다른 저장소·추가 경로·쿼리는 계속 거부한다. 자동 preload/fetch를 추가하지 않았고 CSP `connect-src 'none'`과 모든 네트워크 차단 기대값은 그대로다. 링크 속성·키보드 접근을 검사했으며 외부 GitHub 페이지 이동은 이 로컬 인수에서 실행하지 않았다.
+- **메모:** `max-width:1024px`에서 작은 원본 그림 위의 라벨 `top:15px`가 클립과 겹쳤다. 해당 분기에서 라벨40px/입력64px로 내려 클립·라벨·입력을 분리했다. 그림·사이드바·라벨은 유지하고 실제 label과 textarea를 연결했다. 1023/1024/1025/1280px의 배치, label 클릭 및 Tab/Shift+Tab 초점, 메모 입력·같은 탭 이동/새로고침 보존·초기화를 통과했다. 375px에서는 기존 메모 숨김 정책을 그대로 유지하고 숨겨진 초점 대상·가로 넘침이 없음을 검사했다.
+- **접근성과 회귀:** `showcase-portfolio-polish.mjs`를 기존 정적 빌드 harness에 연결했다. Chrome CDP의 실제 접근성 트리에서 두 배경 각각 활성 h1 하나·소개·컨트롤 하나씩 노출됨을 확인하고 실제 Tab/Enter로 이동했다. 기존 원본 폼 버튼의 `outline:none`이 배경 전환 버튼의 초점 표시를 가리던 문제도 이 검사에서 발견해 폼의 `:focus-visible` 우선순위를 좁게 보완했다. reduced motion과 일반 애니메이션 모두 배경 전환 후 활성 제목 초점을 확인했다. 실제 VoiceOver·음성 청취·네이티브 앱 검증은 NOT_RUN이다.
+
+전후 캡처는 독립 Chrome에서 **빌드된 정적 산출물**을 열어 저장했다. 시작 데스크톱1280×920, 모바일375×812, 교사1024×920 viewport를 전후 동일하게 사용했다(교사 캡처는 전체 페이지). 아래 8장을 직접 열어 확인했다. 새 그림을 생성하거나 원본 기록을 덮어쓰지 않았다.
+
+| 화면 | 수정 전 | 최종 빌드 |
+|---|---|---|
+| 기본 시작 배경 | [이전](assets/submission-polish/start-before.png) | [h1·소개·소스 링크](assets/submission-polish/start-after.png) |
+| 다른 시작 배경 | [이전](assets/submission-polish/start-alternate-before.png) | [같은 제목/초점 정책](assets/submission-polish/start-alternate-after.png) |
+| 교사1024px | [클립 겹침](assets/submission-polish/teacher-1024-before.png) | [라벨·입력·키보드 초점](assets/submission-polish/teacher-1024-after.png) |
+| 시작375px | [이전](assets/submission-polish/start-375-before.png) | [원본 모바일 배치 유지](assets/submission-polish/start-375-after.png) |
+
+최종 `DODREAM_SHOWCASE_EVIDENCE=portfolio-polish npm --prefix fe-web run verify:showcase`는 **2026-10-08 01:51:16–01:51:40 UTC (10:51 KST)**에 종료0/PASS했다. 타입 검사, showcase sentinel 빌드와 실제 phase1 모드 빌드, 상태·빌드 계약66개, 정적 서버 경계40개, 기존 학생/교사 흐름과 추가 검사를 포함한 Chrome **244 PASS**, 정적 요청153건이다. 금지 요청/API/WebSocket/마이크/CSP 위반은 각각0, 브라우저 오류0이며 검증 전후 소스·산출물이 동일했다. 별도 웹 회귀115개와 Pages 계약8개도 종료0/PASS다. 기존 chunk 경고는 유지했다.
+
+최종 산출물은 **13파일/6,721,625 bytes**, manifest digest `88f6e64ad7a662233c24b5596623479458d6796a1c0dbd08202807025fd44fad`, 소스 digest `15d7deb504f6e9fdc227d3fe2f0a030d82f95d9c6e519e47144d0e11302e90d4`다. 근거는 새 ignored `.local/portfolio-polish/`의 `before/report.json`, `results/verify-showcase-2026-10-08T01-51-40-656Z.json`, `results/showcase-browser-2026-10-08T015122056Z.json`, `selected-captures.json`과 실행별 로그에 보존했다. 수정 전 캡처 selector 중복 실패, 새 GitHub URL 미분류 실패, 실제 포커스 테두리 실패를 보존했으며, 수정 후 최종 전체 실행을 새로 수행했다. 테스트 삭제·skip·안전 기대값 약화는 없다.
+
+이번 결과는 **LOCAL_POLISH_VERIFICATION=PASS**, **USER_VISUAL_APPROVAL=PENDING(이번 보완 화면)**, **UPDATED_PUBLIC_DEPLOYMENT=false(이번 작업)**다. push·PR·merge·Pages 실행은 NOT_RUN이며, 공개 사이트는 앞서 승인·배포한 `1aafe5a32a4a66e55629255277355aeb9f06f551`을 유지한다. README·AI 활용·JDBC 근거·대표 코드 포맷은 [18번 후속 요약](18-portfolio-code-review.md#채용-제출용-보완-2026-10-08)에 연결한다. 이번에 시작한 임시 검증 서버와 독립 브라우저는 종료했다. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`, `BACKEND_DATA=NOT_TOUCHED`를 유지한다.

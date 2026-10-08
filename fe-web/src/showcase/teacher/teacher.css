@@ -20,7 +20,8 @@
 .original-teacher button {
   cursor: pointer;
 }
-.original-teacher :focus-visible {
+.original-teacher :focus-visible,
+.original-teacher .form :focus-visible {
   outline: 3px solid #d69b04;
   outline-offset: 3px;
 }
@@ -36,10 +37,23 @@
   min-height: calc(100dvh - var(--showcase-toolbar-height));
   height: calc(100dvh - var(--showcase-toolbar-height));
 }
-.original-teacher .join-demo-title {
-  color: #192b55;
-  font-size: 24px;
+.original-teacher .form .join-demo-title {
+  /* Preserve the previous paragraph's computed appearance when becoming h1. */
+  margin: 1rem 0;
+  color: var(--gray-2);
+  font-size: 1rem;
   font-weight: 800;
+}
+.original-teacher .form .join-demo-intro {
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.original-teacher .join-source {
+  color: #192b55;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .original-teacher .join-demo-button {
   display: block;
@@ -314,11 +328,11 @@
     max-width: 160px;
   }
   .original-teacher .cl-memo-header {
-    top: 15px;
+    top: 40px;
     right: 20px;
   }
   .original-teacher .cl-memo-input {
-    top: 40px;
+    top: 64px;
   }
 }
 @media (max-width: 720px) {
@@ -403,9 +417,9 @@
     color: white;
     font-size: 32px;
   }
-  .original-teacher .join-demo-title {
-    font-size: 20px;
-    margin: 0;
+  .original-teacher .form .join-demo-title {
+    font-size: 13px;
+    margin: 10px 0;
   }
   .original-teacher .form p {
     font-size: 13px;

@@ -57,6 +57,7 @@ test('evidence destinations are fixed local choices, never caller-supplied paths
   assert.equal(evidenceDirectory('original-ui'), path.join(REPO_ROOT, '.local/original-ui/results'));
   assert.equal(evidenceDirectory('original-ui-polish'), path.join(REPO_ROOT, '.local/original-ui-polish/results'));
   assert.equal(evidenceDirectory('original-ui-release'), path.join(REPO_ROOT, '.local/original-ui-release/results'));
+  assert.equal(evidenceDirectory('portfolio-polish'), path.join(REPO_ROOT, '.local/portfolio-polish/results'));
   assert.equal(evidenceDirectory('static-showcase'), path.join(REPO_ROOT, '.local/static-showcase/results'));
   for (const value of ['', '..', '/tmp', '../original-ui', 'publication-pages']) assert.throws(() => evidenceDirectory(value), /Unreviewed/);
 });
@@ -161,7 +162,9 @@ test('artifact audit rejects private files and development/source-map contents',
   fs.writeFileSync(path.join(artifact, '.env'), 'SYNTHETIC_ONLY=yes');
   assert.throws(() => inspectArtifact(artifact), /Unexpected public file/);
   fs.unlinkSync(path.join(artifact, '.env'));
-  for (const value of ['//# sourceMappingURL=main.js.map', 'http://127.0.0.1:18082/api/auth', SYNTHETIC_SENTINELS.VITE_API_BASE, 'https://unreviewed.invalid/resource']) {
+  fs.writeFileSync(path.join(artifact, 'assets/main.js'), 'const sourceHref = "https://github.com/rladbstn1000/DO-DREAM";');
+  assert.doesNotThrow(() => inspectArtifact(artifact));
+  for (const value of ['//# sourceMappingURL=main.js.map', 'http://127.0.0.1:18082/api/auth', SYNTHETIC_SENTINELS.VITE_API_BASE, 'https://unreviewed.invalid/resource', 'https://github.com/rladbstn1000/DO-DREAM/api', 'https://github.com/rladbstn1000/DO-DREAM?token=synthetic', 'https://github.com/other/repository']) {
     fs.writeFileSync(path.join(artifact, 'assets/main.js'), value);
     assert.throws(() => inspectArtifact(artifact));
   }
