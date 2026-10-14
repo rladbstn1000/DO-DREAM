@@ -36,6 +36,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "PDF API", description = "PDF 파싱 및 분석 API")
 public class PdfController {
     @Autowired private A704.DODREAM.authorization.AuthorizationPolicy policy;
+    @Autowired private A704.DODREAM.indexing.IndexingLocalHooks indexingHooks;
+    @Autowired private A704.DODREAM.indexing.IndexingStore indexingStore;
 
 	@Autowired
 	private PdfService pdfService;
@@ -65,14 +67,20 @@ public class PdfController {
 		@AuthenticationPrincipal UserPrincipal userPrincipal,
 		HttpServletRequest httpServletRequest
 	) throws IOException {
+		try (var observation=indexingHooks.observation()) {
 		Long userId = userPrincipal.userId();
-        policy.teacher(userId);
+        indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.CONTROLLER_PERMISSION_BEFORE);
+        indexingStore.teacher(userId);
+        indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.CONTROLLER_PERMISSION_AFTER);
+        indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.INPUT_BEFORE);
         A704.DODREAM.file.service.PdfInputPolicy.filename(filename);
         byte[] pdfBytes = A704.DODREAM.file.service.PdfInputPolicy.read(
             httpServletRequest.getInputStream(), httpServletRequest.getContentLengthLong());
+        indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.INPUT_AFTER);
 		String authorizationHeader = httpServletRequest.getHeader("Authorization");
 		Map<String, Object> result = pdfService.uploadAndParsePdfFromBytes(pdfBytes, filename, userId, authorizationHeader);
 		return ResponseEntity.ok(result);
+		}
 	}
 
 	/**
