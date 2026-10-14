@@ -1,5 +1,11 @@
 # 18. 포트폴리오 코드 최종 리뷰
 
+> **현재 상태 안내 · 2026-10-14:** 최신 로컬 완료 기준은 `f11ad8987c23dba808255c1df1c0826af5fb68c0`이다. **PDF 연결 경계 수정과 관련 독립 통합 검증을 완료**했으며 [최신 완료 결과](#indexing-boundary-followup-2026-10-14)와 [실행 기록](02-local-runbook.md#indexing-boundary-runbook-2026-10-14)에서 범위를 바로 확인할 수 있다. 이번 누적 코드의 원격 반영은 아직 진행 전이며, 확인한 원격 main은 `8767ec82b9818d96ea6b7a28a696475ab2122408`이다.
+>
+> 공개 정적 앱은 배포 SHA `888609661595d4cbef89de15097007453c871ca3`를 그대로 사용한다. 코드·문서의 최신 SHA와 앱 배포 SHA는 다르며 이번 작업에는 Pages 재배포가 없다. **기존 환경은 동결**, 과거 `DATA_PRESERVATION=FAIL`·`RECOVERY_EXECUTED=false`는 유지한다. [사건과 안전한 재개 조건](#evidence-portability-safe-resume)은 새 합성 시험의 성공과 구분한다. 아래 과거 미커밋·미기동·실패·미배포 기록은 당시 상태다.
+
+> **이전 상태 안내 · 2026-10-08 당시 확인:** 이 문서는 단계별 코드 검토·검증의 누적 기록이다. 현재 [공개 정적 데모](https://rladbstn1000.github.io/DO-DREAM/)는 [제출용 보완 공개 결과](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)의 앱 SHA `888609661595d4cbef89de15097007453c871ca3`로 배포됐다. 이후 소스·문서의 원격 main은 `8767ec82b9818d96ea6b7a28a696475ab2122408`이며 앱 배포 SHA와 다르다. 이번 로컬 보완은 [근거·검사 후속 기록](#evidence-portability-2026-10-08)을 따른다. 아래 과거 미배포·NOT_RUN은 당시 상태를 보존한 것이며, 현재 공개 데모의 배포 완료를 취소하지 않는다.
+
 2026-09-30, 팀 기준 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e` 이후의 개인 개선이다. 시작 브랜치 `codex/dodream-phase5-live-ai`, 시작 HEAD `e6410fda2df84c6e7fd0ab81d46c832e73f87318`를 실제 확인하고 새 `codex/dodream-portfolio-hardening` 브랜치에서 작업했다. 진행 중인 Git 작업은 없었으며, 기존 untracked `docs/.DS_Store`는 읽기·삭제·stage에서 제외했다. GitHub main을 로컬 코드의 대체 근거로 사용하지 않았다.
 
 ## 목표와 판정 경계
@@ -60,12 +66,20 @@ PDF 파일 signature/크기/페이지/텍스트 제한은 native parser 한 페�
 - 일반 PDF/OCR 및 AWS/Firebase 실제 연결, 운영 secret·HTTPS·백업/복구·관측·기기 접근성은 미검증이다. 정적 showcase의 준비와 합산하지 않는다.
 - 브라우저 localStorage/MMKV의 토큰 저장 위험은 잔존한다. 현재 서버 확인·권한 검사와 렌더링 결함 수정을 저장매체의 완전한 보호로 표현하지 않는다.
 
+<a name="query-measurement-baseline"></a>
+
 ## 고정 합성 데이터 성능 검사
 
 | 경로 / 조건 | 변경 전 | 변경 후 | 출력·권한 대조 |
 |---|---:|---:|---|
 | 실제 MySQL 통계, 자료1·문제2·풀이20, 1차 캐시 clear, fixture insert 제외. 자료별/전체 통계를 각각 측정 | 각각85 SELECT/statement | 각각9 | 총문제2·시도20·정답률50%, 현재 공유 회수 뒤 결과 없음. fixture 트랜잭션 rollback |
 | 임시 SQLite 실제 JWT/DB policy 이력20·provenance10·legacy10 | history23 + authority7 SELECT | history3 + authority7 SELECT | 메시지 내용·순서·mode10·빈 sources 및 공유 회수404 대조 |
+
+**비교 기준 보완 (2026-10-08):** 팀 기준 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e`의 이 통계 경로에는 이후 추가한 현재 자료 권한 조회가 없었다. 개인 권한 강화 `eba04683a263b4a0fd327d428c1a4b3d693aee53`에서 풀이 로그마다 같은 자료의 권한을 조회하는 비용이 생겼고, `81ce22fcf60cd9a25513d096b6425216e0f46534`에서 같은 요청 안의 자료별 결과를 재사용하도록 개선했다. 다음 요청은 현재 공유·담당 관계를 다시 확인한다. 권한 강화 과정에서 생긴 반복 조회를 줄인 성과이며, 팀 기준 코드와의85→9 비교가 아니다.
+
+이번에는 재측정하지 않고 당시 원시 로그·실행 metadata를 대조했다. `.local/portfolio-hardening/results/statistics-before-2026-09-30T104952789426+0000.log`는 `materials=85 overall=85`, `be-hardening-tests-2026-09-30T105333544480+0000.log`는 `materials=9 overall=9`이며 모두 자료1·문제2·풀이20이다. 해당 JSON의 실행 HEAD는 둘 다 `e6410fda2df84c6e7fd0ab81d46c832e73f87318`이고, **미커밋 작업 소스 digest**는 각각 `9a1ae0e6d2e5b4bfdf9268480d48aa388529112c3b7c1a8e0912ea72e4a20208` / `310cd30f37e2e7d05bfc5f8ee3f5f9008dc728bd62ad2bb85ba130dbdd4cb532`다. 권한 강화 커밋 자체나 깨끗한e6410fd checkout을 정확한85회 측정 소스로 표시하지 않는다. 당시 명령은 scoped `be-test`의 `gradle --no-daemon --offline test --tests '*StatisticsQueryDatabaseTests' --rerun-tasks --info`(변경 전)와 선택 hardening tests(변경 후), 각각 종료0이었다.
+
+[현재 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/test/java/A704/DODREAM/hardening/StatisticsQueryDatabaseTests.java#L28-L70)의 관측값 출력과 회귀 상한 `≤12`는 별개다. 상한은10~12로 늘어나는 변화까지 잡지 않으며 이번에 수정하지 않는다. AI 이력은 **history23→3, 권한 포함 전체30→10**의 기존 보고 수치로 구분한다. 이번 통계 원시 로그 대조나 브라우저 검사로 AI 수치를 재측정했다고 주장하지 않는다.
 
 통계는 [QuizService.visibleHistory](../../be/src/main/java/A704/DODREAM/quiz/service/QuizService.java)에서 호출 내 material별 권한 결정만 재사용한다. [StatisticsQueryDatabaseTests](../../be/src/test/java/A704/DODREAM/hardening/StatisticsQueryDatabaseTests.java)는 같은 데이터·권한·출력으로 비교한다. AI는 [get_student_chat_session_history](../../ai/app/rag/router.py)의 source LEFT JOIN과 [test_history_queries](../../ai/tests/test_history_queries.py)로 비교한다. 이는 로컬 쿼리 수이며 지연 시간·처리량·실사용자 성능 개선 수치가 아니다.
 
@@ -199,3 +213,237 @@ Java 최초 실행의 sandbox 소켓 차단/누락된 잠금 의존성은 BLOCKE
 ### 제출용 보완 공개 후속 (2026-10-08)
 
 위 로컬 보완 `ac08ba1…`을 사용자가 승인해 [PR #6](https://github.com/rladbstn1000/DO-DREAM/pull/6)과 필수 CI·일반 merge를 거쳐 공개 반영했다. README의 팀 기여·AI 활용 설명과09번 JDBC 사후 근거를 포함한다. 실제 앱 배포 SHA는 `888609661595d4cbef89de15097007453c871ca3`이며, 공개177개와 이번 원격 manifest/공개13파일 대조를 통과했다. 최초 CI 실패·검사 교정·artifact 연결·한계는 [21번 공개 후속](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)에 있다. 위 당시 PENDING·미배포/미실행 기록은 보존하고 후속 문서 SHA를 앱 배포 SHA로 표기하지 않는다.
+
+<a name="evidence-portability-2026-10-08"></a>
+
+## 근거 연결과 브라우저 검사 재현성 보완 (2026-10-08)
+
+시작 checkout `31cb748cf59032c276f3923e34cfa5db1bd0066e`는 fetch한 main `8767ec82b9818d96ea6b7a28a696475ab2122408`의 조상이며 tree가 같았다. 진행 중 merge/rebase는 없었다. 후자의 SHA에서 `codex/dodream-evidence-portability`를 만들었다. 현재 배포 run `37722185194`의 성공과 앱 SHA `888609661595d4cbef89de15097007453c871ca3`를 원격에서 다시 조회했고 배포는 실행하지 않았다.
+
+README의 세 사례는 공개 main 전체 SHA의 코드·검사 줄 범위와 기존 결과 구역을 연결한다. 채점의 [HTTP 경쟁·독립 DB 경쟁·mock 구분](09-grading-reliability-design.md#claim-evidence-grading), 인증의 [Lua 회전·객체 권한 구분](04-auth-security-design.md#claim-evidence-auth), 색인의 [Java 접수·Python 검증/활성 전환 구분](11-indexing-reliability-design.md#claim-evidence-indexing)을 기존 설계 문서에 뒀다. 코드 구간을 직접 읽어 의미와 범위를 대조하고 공개 SHA 내 경로·줄 범위 및 결과 anchor를 별도로 검사했다. 새 anchor는 [GitHub의 명시 anchor 규칙](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#custom-anchors)을 따른다. 과거 채점·색인·Redis 수치는 해당 단계 보고서의 근거이며 이번에 전체 재실행한 결과가 아니다. 통계는 위 [원시 로그 대조](#query-measurement-baseline)와 구분한다.
+
+고정 코드 구간30개와 신규 상대 링크28개의 목적지·범위를 검사했고 별도 의미 검토도 통과했다. README 팀 기록은 본문·순서·제목 문구를 보존한 채 하위 제목 단계만 내렸으므로 기존 anchor는 바뀌지 않았다. 18·20·21의 앞부분에는 기준 날짜와 현재 앱/문서 버전을 구분했다.
+
+7종 `fe-web/tests/browser-{auth,authorization,grading,indexing,student,demo-disabled,hardening}.mjs`의 로컬 수정안은 미선언 `playwright`·개인 캐시 fallback을 없애고 잠긴 `playwright-core`1.62.1을 명시 import한다. 작은 `chrome-launch.mjs`가 명시 Chrome 실행 파일 검증/미지정 installed Chrome channel을 담당하며 shell 실행·자동 다운로드·사용자 프로필 재사용은 없다. 잘못된 명시값은 다른 브라우저로 넘어가지 않는다. 기존 API·대기·쿠키·CSRF·timeout 기대값은 유지했다. `DODREAM_RESULTS_DIR`로 원본 결과와 plan을 새 실행 폴더에 분리하고 작은 정책·재유입 검사를 기존 `test:hardening`에 연결했다. 패키지 버전·lock·CI/workflow는 그대로다. **통합 검증과 데이터 보존이 완료되지 않아 검사 코드의 완료 커밋은 보류한다.**
+
+개인 환경 없는 검증은 `/private/tmp/dodream-evidence-wf9f6_cz/after`의 현재 수정 파일 사본에서 실행했다. `.env`·DB·기존 `.local`은 복사하지 않고 `env -i`로 `PATH`, 임시 `HOME`·`TMPDIR`만 전달했다. `npm ci --ignore-scripts --no-audit --no-fund --cache <전용-임시-cache>` 종료0, `NODE_PATH`·`NODE_OPTIONS`·`DODREAM_PLAYWRIGHT_PATH` 없음, 실제 ESM resolve는 사본 안의 `node_modules/playwright-core/index.mjs`/1.62.1이었다. 상위/전역 모듈과 사용자 캐시를 삭제·이동·차용하지 않았다. Node22.14.0/npm10.9.2, 설치된 Chrome154.0.8037.98을 사용했다.
+
+| 이번 실행 / 조건 | 결과와 경계 |
+|---|---|
+| 실제 Chrome launch smoke | 기본 channel과 명시 실행 파일 각각 새 context에서 자체 loopback 페이지 열기·버튼·닫기 PASS. 빈 값·상대경로·없는 파일·실행 불가 파일은 설정 오류로 거부, 외부 페이지 요청0 |
+| `npm run test:hardening` | 종료0,12 PASS: 기존6 + 통제된 실행 파일 정책·재유입 계약6. Chrome 없는 환경의 오류 분류는 대역 검사이며 실제 Chrome 실행과 별개 |
+| `node --test tests/pages-release.test.mjs` | 종료0,8 PASS. 기존 Pages 계약이며 원격 CI 실행이 아님 |
+| `npm run verify:showcase` | 종료0,타입·계약66·두 빌드·정적 경계·브라우저244 PASS. API·외부 요청·마이크·WebSocket·CSP 위반0, 과거 통과 수와 합산하지 않음 |
+| 같은 환경의 앱 산출물 비교 | 공개 main 사본과 현재 수정 사본의 별도 `build:showcase`:13파일/6,721,625bytes, 모든 상대경로·bytes·SHA-256 동일. 기존 dist의 사용자 복제 파일을 삭제·덮어쓰지 않음 |
+| 실제 `npm --prefix fe-web run test:browser-auth` | 종료0,17 PASS/외부 요청0. 기존 AT2초 서버와 현재 수정 harness,05:04:58–05:06:03 UTC. 실제 API 검사이며 패키지 smoke와 구분 |
+| 나머지 실제 통합 브라우저6종 | 아래 데이터 보존 실패로 중단. authorization·grading·hardening은 NOT_RUN. student는 기존 샘플의 문제/발행 revision 변경, demo-disabled는 현재 활성화된 short 서버 교체, indexing은 기존 launcher의 이미지 재조정이 보존 조건과 충돌해 BLOCKED. 검사 삭제·skip·기대값 완화 없음 |
+
+**데이터 보존 실패와 실행 중단:** 기존 scope 단위 검사101 PASS와 실제 scope gate를 통과하고, 시작 시 자체11개·타 프로젝트67개 컨테이너가 모두 중지임을 확인했다. 원래 데이터는 MySQL40테이블/4,659행·SQLite1,068행·객체640개·Chroma434컬렉션/1,406청크였다. 하지만 검증 준비 중 worker·dispatcher를 기동한 것은 기존 대기 작업을 먼저 차단하지 못한 **이번 실행의 오류**다. 05:04:22 기동 직후 기존 작업30행·자료 상태27행이 바뀌었고, 새 ACTIVE execution27개와 컬렉션27개/청크51개가 생겼다. 기존 자료27개의 활성 포인터가 이번 새 실행을 참조함을 확인했다. 신규 fixture 준비나 발행 API는 실행하지 않았으며 이 변화는 허용된 테스트 방문자 카운터 변화가 아니다.
+
+기존 실행457개의 행 hash, 원본 SQLite·객체·Chroma434컬렉션/1,406청크는 일치했지만 **엄격한 보존49항목 중47 PASS/2 FAIL**(index_jobs30행, index_resources27행)을 그대로 남긴다. 현재 실행484개·컬렉션461개이며 새 결과는 삭제하지 않았다. baseline이 행 hash만 담았으므로 각 행의 이전 상태·이전 활성 포인터 값은 복원해 주장할 수 없다. 변경된 작업의 현재 상태는 SUCCEEDED27/REVOKED3이다. worker·dispatcher를05:06:10–05:06:20에 중지하고 추가 데이터 검사를 중단했다. DB를 추측으로 복구하거나 baseline을 바꿔 PASS로 만들지 않았다. `BACKEND_DATA=CHANGED_BY_VALIDATION`, `DATA_PRESERVATION=FAIL`이다.
+
+브라우저 수정은 패키지·Chrome smoke와 인증 경로까지만 실제 확인했다. 전체 통합 완료가 아니므로 코드10파일(7종 검사·helper·정책 검사·package script)은 미커밋으로 남기며, 독립 검토한 README·기존 문서만 로컬 커밋한다. runbook의 새 실행 정책도 로컬 수정안임을 명시한다. 공개 entry/UI/CSS/샘플/이미지·폰트, 제품 Java/Python·DB 스키마, lock·Pages workflow의 Git diff는 없다. 이는 **제품 소스 불변** 판정이며 위 런타임 데이터 보존 FAIL과 구분한다.
+
+05:12:03 UTC 종료 대조에서는 컨테이너78개의 ID·이름·상태·라벨·이미지 태그가 최초와 같았다. 자체11개 모두 중지, 타 프로젝트67개 불변, 볼륨61개·네트워크23개도 일치했다. 기존 컨테이너를 교체하지 않았으며 브라우저·임시 HTTP 서버는 각 실행의 finally에서 닫았다. 인증은 기존 컨테이너 이미지와 현재 수정 harness의 실행으로, 백엔드 이미지를 이번 소스에서 새로 빌드했다고 주장하지 않는다. 이 자원 복구 PASS는 DB 변경을 되돌렸다는 뜻이 아니다. 상세 대조는 `integration/results/integration-outcome.json`, `data-preservation.json`, `background-impact-summary.json`, `resources-restored-exact.json`에 있다. scope 단위 검사의 최초 sandbox loopback 차단과 읽기 전용 진단 실패도 원본에 보존했다.
+
+| 상태 | 판정 |
+|---|---|
+| CLAIM_EVIDENCE_MAPPING | PASS — 코드 의미와 경로·줄/anchor 별도 대조 |
+| BROWSER_DEPENDENCY_PORTABILITY / BROWSER_LAUNCH_SMOKE | PASS_ISOLATED / PASS — 로컬 수정안, 통합 완료 커밋 보류 |
+| AFFECTED_INTEGRATION_CHECKS | PARTIAL_BLOCKED — 인증17 PASS, 나머지6종 미완료; 데이터 보존 FAIL |
+| CURRENT_STATUS_CLARITY / METRIC_BASELINE_CLARITY | PASS / PASS — 과거 수치·원시 대조·현재 참조 버전 구분 |
+| PRODUCT_AND_SHOWCASE_UNCHANGED | PASS — 제품 소스·동일 환경 앱13파일 불변, 런타임 데이터와 별도 |
+| REMOTE_CI_EXECUTION_THIS_CHANGE / push·PR·merge | NOT_RUN / NOT_RUN |
+| PAGES_REDEPLOYMENT | NOT_REQUIRED_UNCHANGED_APP |
+
+상세 증거는 ignored `.local/evidence-portability/`와 그 `integration/results/`에 분리한다. 요약은 원시 실행 증거를 대신하는 새 독립 검사로 취급하지 않는다. 원격 CI 실행·push·PR·merge는 NOT_RUN, `PAGES_REDEPLOYMENT=NOT_REQUIRED_UNCHANGED_APP`이다. 기존 공개 데모 승인·배포 완료는 유지한다. 실제 AI·음성 청취·VoiceOver·네이티브 앱은 이번에도 NOT_RUN이다.
+
+<a name="evidence-portability-safe-resume"></a>
+
+### 안전 정리와 통합 재개 조건 (2026-10-08)
+
+문서 커밋 `dde553e2d15f678bae1986dc94914e955a3fc8ee`와 미커밋 검사10파일을 확인했다. 이번 정리는 저장된 파일·소스와 필요한 Docker 상태 메타데이터만 읽었다. 기존 서비스 start/up/restart, worker·dispatcher, DB·Redis·Chroma 접속, 통합 검사·복구·삭제·큐 정리·dump·볼륨 복제는 실행하지 않았다. 현재 판정은 **BACKEND_DATA=CHANGED_UNEXPECTEDLY, DATA_PRESERVATION=FAIL, RECOVERY_EXECUTED=false**다. 위 당시 `CHANGED_BY_VALIDATION` 표기와 실패 원본은 보존하며, 원인 미확인 외부 변화로 재분류하지 않는다.
+
+**실제 실행 경로:** `integration/results/commands.jsonl`의5행은05:04:22.185390–05:04:22.533453 UTC에 기존 web·web-auth-test·index-dispatcher·worker의 **4개 ID를 직접 지정한 `docker start`**다. 접두부는 순서대로 `2ee13f903f6d`, `747f49a71245`, `b5dc18999787`, `fe52c08ab649`이며 전체64자리 argv는 해당 행과 `integration-browser-services-start.json`에 있다. 데이터3서비스 → AI → before hash → BE/PDF/short-BE → 이 직접 start → auth 순서였다. `manage.py`의 `run→record` 형식으로 실제 argv·종료값이 저장됐지만 최상위 일회성 호출 스크립트 원문은 이 증거 목록에 없어 추정하지 않는다. **이번 사건에 전체 Compose up이나 의존성 자동 기동을 사용했다는 기록은 없다.** 별도로 공개 기준 `manage.py:268–275`의 `up/demo-up`은 서비스 목록 없는 Compose up이며 worker·dispatcher가 기본 목록에 있다는 정적 위험은 남는다.
+
+직전 `mutation-scope.jsonl:89`는05:04:21.824674 UTC의 **operation=config PASS**이고 해당 직접 시작을 operation=start로 검증한 기록은 없다. [scope gate](../../scripts/local/scope_guard.py)의 `_gate()`는 대상 소유권·구성·마운트·네트워크를 확인하고 결과에도 metadata-only 한계를 명시한다. 기존 작업 처리·데이터 변경 허가를 검사하지 않는다. 이를 데이터 보존 승인으로 취급한 실행 판단 오류였다. [dispatcher](../../ai/app/indexing/dispatcher.py)가 호출하는 `store.claim_deliveries()` → `indexing-v3` 전송 → worker의 후보 생성·검증 → `activate()`가 현재 코드 경로다. DB 전체의 QUEUED/PROCESSING 후보를 읽으므로 사후 Redis 큐 길이0은 DB outbox가 비었다는 증거가 아니다.
+
+**저장된 영향 대조:** jobs545→545·resources400→400이지만 원래 행 hash가 각각30개·27개 불일치한다. 현재 필드 진단에는 SUCCEEDED27/REVOKED3과05:04:23.625389–05:04:27.395818 갱신 시각이 있다. 실행457→484 중 새 ACTIVE27개를 기존 자료27개가 참조하고, 컬렉션434→461·새 청크51개다. 원래 실행457행·SQLite1,068행·객체640개와 기존434컬렉션/1,406청크의 내용 보존은 **활성 포인터 보존과 다르다**. `data-preservation.json`, `index-preservation-diagnosis.json`, `background-impact-summary.json`, `physical-additions-summary.json`, `chroma-preservation.json`을 대조했으며47 PASS/2 FAIL 판정을 유지한다. 개별 작업의 상세 이벤트 로그와 변경 전 필드값은 확보되지 않아 작업별 전이 과정을 추가로 만들어 쓰지 않는다.
+
+**복구 원값: 현재 확보하지 못함.** 위 증거 목록의 `data-before.json`은 컬럼 이름과 SHA256별 개수, `chroma-before.json`은 이름·UUID·청크 수·hash를 담지만 자료→이전 active_execution_id 대응이 없다. 진단파일은 변경 후 값이다. 해시·현재값·generation-1·가까운 옛 컬렉션으로 이전 값을 역산하지 않는다. 이후 복구 검토에는 영향 job30/resource27의 정확한 이전 상태·포인터·카운터/lease/시각과 원래 execution/collection 대응, 소비자 정지·재처리 방지 조건이 먼저 필요하다. 근거 확보와 실제 복구는 별도이며 이번에는 복구하지 않았다.
+
+| 문서/코드 정합성 | 이번 확인·보완 |
+|---|---|
+| A: 커밋 코드만으로 유효 | README의 근거·통계·제목,04/09/11의 의미 대응,05/08/10/12의 결과 anchor,18의 역사적 측정,20/21의 앱/문서 버전 구분은 유효 |
+| B: 미커밋 코드가 필요한 안내 | 02의 import/helper·오류 분류·결과 경로·추가 정책 검사는 **10파일 반영·통합 검증 대기**로 명시. `dde553e`의 `test:hardening`은 HTML 경계6개뿐이다. README와02의 기존 서비스 기동 안내에 현재 통합 중단을 표시 |
+| C: 사건·미완료 | 독립 의존성/Chrome 확인과 실제 auth17 PASS를 구분. authorization·grading·hardening NOT_RUN, indexing·student·disabled BLOCKED를 그대로 유지. 검사 코드10파일은 이전 검증 hash와 같고 이번 문서 커밋에 포함하지 않음 |
+
+**최소 재개안은 현재 실행 불가(BLOCKED)이며 이번에는 기동하지 않는다.** 기존 `.local/env`·자격증명·DB·Redis·Chroma·객체 경로·볼륨을 전혀 재사용하지 않는 새 합성 시험 범위를 먼저 검토해야 한다. 새 자원명·마운트/endpoint·loopback 포트·내부망·의존 서비스의 완전한 목록을 한정된 명세로 검증하며, 프로젝트명 변경이나 결과 폴더 변경만으로 격리를 판정하지 않는다. 기존 데이터를 복제하지 않고 추적된 합성 seed로 빈 시험 저장소를 준비한다. auth·disabled 및 새 fixture의 grading 등 배경 처리가 불필요한 단계는 worker·dispatcher를 제외한다. 게시·색인·학생 검사는 새 DB와 새 Redis에 시험 작업만 존재하고 새 Chroma·객체 저장 경로임을 확인한 후에만 두 서비스를 명시 허용해야 한다. auth-short의2초와 일반900초, 데모 비활성/활성 서버도 새 시험 범위에서 구분한다.
+
+| 현재 재개 차단 파일·조건 | 필요한 최소 보완·예방 가드 제안(미구현) |
+|---|---|
+| `scripts/local/manage.py:22–23,53–55`; `scope_guard.py:10–16,218–237`의 기존 project/env/볼륨 강제 | 기존 gate를 우회·무제한 확장하지 않고 **하나의 한정된 새 시험 범위**를 별도로 검토. 소유권 PASS와 데이터 변경 허용을 분리하고 직접 Docker 실행도 실제 서비스 계획 검증을 거치게 함 |
+| `manage.py:268–275`, `scope_guard.py:111–114`의 서비스 생략; `verify_indexing.py:68–73`의 의존 기동 | 보존 작업에서 서비스 없는 up/start/restart와 배경 소비자 포함 계획을 거부. `validate_plan()`이 의존 서비스까지 계산하고 기존 저장소와 새 저장소의 혼합을 차단 |
+| `compose.local.yml:100,119`, `ai/app/celery_config.py:7–8`, `dispatcher.py:15–16`의 큐 고정; `store.py:222–245`의 DB 전체 outbox | 큐명만 바꿔 격리됐다고 가정하지 않음. 새 DB·Redis·Chroma·객체 저장소 조합과 새 시험 작업 소유를 검사하고 기존 endpoint·마운트를 거부 |
+| 7종 browser harness의 기존 origin/`.local/env`; `indexing_fixtures.py:10–16`; `verify_student_web.py:28–31,65–97` | 새 시험 endpoint·자격증명 경로와 합성 seed 순서를 명시하고 기존 fixture/plan을 복사하지 않음. authorization의 게시·재게시, student의 revision/공유 변경, indexing의 finally 기동까지 새 시험 자원만 대상으로 검증 |
+
+이 제안은 새 플랫폼이나 Compose 전체 개편의 구현 완료가 아니다. 향후 순수 명령 계획·합성 metadata 검사로 기존 저장소 혼입, 암묵적 소비자 기동, 잘못된 plan을 먼저 거부해야 한다. 이번에는 저장 파일 대조와 통제된 브라우저 정책6개만 실행해 PASS였으며 실제 Chrome·통합 재실행으로 세지 않는다. Docker context/inspect의 제한된 ID·상태·소유 라벨 조회에서 자체11개가 여전히 exited임을 확인했다. 최초 sandbox 메타데이터 조회 차단과 후속 읽기 성공은 새 ignored `.local/evidence-portability-safety-review/20261008T052844Z/`에 분리했다. 기존 기준선·증거94파일·미커밋10파일은 변경하지 않으며 데이터 보존 FAIL을 새 PASS로 대체하지 않는다. 이번 문서 보완만 별도 로컬 커밋하고 push·PR·merge·Pages 재배포는 하지 않는다.
+
+<a name="isolated-preflight-2026-10-14"></a>
+
+### 독립 합성 시험의 오프라인 준비 (2026-10-14)
+
+이 구역은 실제 실행 승인 전의 기록이다. 이후 승인된 새 환경의 실행과 색인 실패는 [독립 시험 실행 후속](#isolated-execution-2026-10-14)에 구분한다. 아래의 과거 미기동·미실행 판정과 증거는 보존한다.
+
+시작 HEAD `91ebc824a36d12848b607dc7bb560778c1795a31`, 브랜치 `codex/dodream-evidence-portability`를 확인했다. **준비됨, 실제 기동·통합 검증 전**이다. 아래 설정·실행기·검사 코드는 모두 미커밋 작업트리 안이며 이 문서만 checkout해 실행할 수 없다. 제품 Java/Python·DB 스키마·기존 Compose/scope gate·showcase는 바꾸지 않았다. 사고 원인은 위 기록대로 **기존 ID를 직접 지정한 docker start에 worker/dispatcher 포함, operation=config 소유권 확인을 데이터 변경 허가로 사용**한 것이다. 재조사하거나 외부 변화로 재분류하지 않는다.
+
+**구현:** `scripts/local/isolated-trial.json` 한 파일에서 시험 ID·project·root·자격증명 위치·두 origin을 지정한다. `isolated_trial.py`는 suite별 Compose 후보와 정확한 argv를 **출력만** 한다. `.local/env`를 읽거나 `manage.py`를 import하지 않는다. `validate_invocation()`은 실제 argv의 operation·서비스·root·config와 전체 서비스 환경·볼륨·네트워크를 대조한다. 직접 ID start, config→up 허가 재사용, external/name 기존 볼륨, 기존 DB/Redis/Chroma endpoint, 객체/SQLite bind, 홈/socket, 불필요한 소비자, 누락·알 수 없는 입력을 거부한다. 상속 환경변수도 거부하고 `execute_invocation()`은 유효한 계획이어도 항상 중단한다. `validate_fresh_inventory()`는 전달된 최소 메타데이터의 이름 충돌을 검사할 뿐 실제 Docker 조회나 기동 허가가 아니다. 일반 셸의 모든 직접 명령 오용까지 차단한다고 주장하지 않는다.
+
+`fe-web/tests/isolated-runtime.mjs`는7종 실제 서버 harness에 명시 manifest·새 합성 fixture receipt를 연결한다. origin·결과·plan·자격증명 기본 경로와 자료명/계정/device/학생 ID 가정을 제거했고, `browser-student-boundaries.mjs`의 short origin도 전달받는다. 새 `fixtures/<suite>.json`은 trial/project/suite/origin/runId와 합성 seed에서 얻은 식별자를 담아야 한다. indexing/student plan도 같은 실행에 속해야 한다. 자격증명 읽기는 별도 함수이며 이번에는 메모리의 `SYNTHETIC_NOT_A_SECRET`만 사용했다. receipt 표식 자체가 실제 저장소의 새 생성 증거를 대신하지 않는다.
+
+| 자원 | 동결된 기존 환경 | 새 시험 계획 |
+|---|---|---|
+| project·root | `dodream-phase1`, `.local/`의 기존 결과·데이터 | `dodream-evidence-20261014`, `.local/isolated/evidence-portability-20261014/` |
+| 주소 | 15173/15174 및 기존 직접 API 포트 | loopback 25173/25174만; 브라우저는 same-origin API 사용 |
+| 설정·자격증명 | `.local/env` | 명시 manifest + 시험 root의 `credentials.env`; 아직 생성하지 않음, 이후 새 `ISOLATED_*` 값과 실행 ID만 |
+| MySQL·Redis | 기존 `dodream-phase1_*` 볼륨과 outbox/queue | 새 project의 `mysql-data`, `redis-data`; DB `dodream_evidence_20261014`; 내부망의 mysql:3306·redis:6379/1 |
+| Chroma·SQLite·객체 | 기존 chroma-data·ai-data·be-data | 새 project의 동명 **논리 키**에 해당하는 별개 볼륨; 내부 경로만 유지. 두 BE는 새 be-data 공유 |
+| 네트워크·bind | 기존 default/gateway·데이터 bind | 새 project default(internal)/gateway. 데이터 bind 없음; short nginx의 검토된 설정 복사본 하나만 새 root에서 read-only mount |
+| fixture·결과 | 과거 자료/작업 ID·browser plan·결과 | 새 합성 seed에서 조회한 ID, `fixtures/`, `browser-ui/`, `results/`; 기존 파일/큐 복사 금지 |
+
+queue명 `indexing-v3`는 제품 코드에 고정되어 유지한다. **새 MySQL outbox·Redis·Chroma·객체 저장소의 조합**으로 격리하며 queue명이나 project명만으로 격리를 판정하지 않는다.
+
+| 검사 | 명시할 서비스(브라우저 단계) | 소비자·준비 조건 |
+|---|---|---|
+| auth / demo-disabled | mysql, redis, be, ai, be-auth-short, web-auth-test | 소비자 없음; short BE 2초·demo=false |
+| grading | mysql, redis, be, ai, python-service, web | 소비자·Chroma 없음; 새 Spring grading seed |
+| authorization / indexing | grading의6개 + chroma, worker, index-dispatcher | 게시·복원·새 색인에 필요; 새 시험 작업만 |
+| hardening | grading의6개 + chroma | 새 catalog 준비 때 소비자 필요, 검사 단계에서는 제외; 준비 실행기는 아직 차단 |
+| student | authorization의9개 + be-auth-short, web-auth-test | short BE도 demo=true; 새 demo/색인과 장애 복구 실행기 필요 |
+| 공개 showcase | Docker 서비스 없음 | 기존 정상 공개본·검사 경로 유지, 이번에는 실행하지 않음 |
+
+기존 nginx main 설정은 사용하지 않는 PDF 경로도 시작 시 `python-service` 이름을 해석하므로 main 웹 검사에 포함한다. auth nginx에는 이 upstream이 없어 제외한다. 일반 BE의 demo는 student/hardening에서만 켜고 phase5 API는 모두 끈다. 데이터 준비 단계는 각 행에서 mysql·redis 및 필요한 chroma만 선택하며 worker/dispatcher를 공통 시작하지 않는다.
+
+**실행 없는 재현 명령(현재 미커밋 안 필요):**
+
+```bash
+python3 scripts/local/test_isolated_trial.py
+node --test fe-web/tests/isolated-runtime.test.mjs fe-web/tests/browser-runtime.test.mjs
+python3 scripts/local/isolated_trial.py \
+  --manifest "$PWD/scripts/local/isolated-trial.json" --suite auth --phase data \
+  --operation up --services mysql redis
+python3 scripts/local/isolated_trial.py \
+  --manifest "$PWD/scripts/local/isolated-trial.json" --suite auth --phase browser \
+  --operation up --services mysql redis be ai be-auth-short web-auth-test
+```
+
+`--operation up`도 실행하지 않고 JSON을 출력한다. 실제 기동 단계의 최소 명령 후보는 출력 `argv`의 `docker compose --project-directory <새 root> --env-file <새 credentials> -p <새 project> -f <새 compose.json> up -d --no-deps --wait --wait-timeout 180 <명시 서비스>`다. 현재 해당 파일들을 materialize하거나 이 명령을 실행하지 않았다. 이후 아래 차단 조건을 먼저 해결하고 기동을 별도로 승인받아야 한다. 준비 완료 후 실제 auth 브라우저 후보는 `DODREAM_ISOLATED_MANIFEST="$PWD/scripts/local/isolated-trial.json" node fe-web/tests/browser-auth.mjs`이며 현재는 새 receipt·자격증명이 없어 실행할 수 없다.
+
+**실제 기동 전 차단:** `manage.py`, `verify.py`의 import-time 기존 env/RESULTS, `scope_guard.py`의 기존 project, `indexing_browser_checks.py`의 origin override 제거와 서비스 제어, `verify_indexing.py`·`verify_student_web.py`의 기존 fixture/plan 및 finally 기동을 아직 전환하지 않았다. 새 설정을 전달해도 이들 실행기를 호출하면 안 된다. 새 시험에 한정된 V003/V004 적용 → 일반 BE 합성 seed 완료 → short BE 순서, 새 fixture/receipt/handshake 생성, 소비자 장애 복구 동작을 별도로 연결해야 한다. 첫 생성 메타데이터 검사 후의 단계 전환에는 새 자원 생성 증표와 정확한 현재 상태 검사가 더 필요하며 처음의 config PASS를 재사용하지 않는다. 이미지 재사용은 immutable digest·소스/Dockerfile/lock 대응과 비밀·데이터 미포함을 확인한 뒤에만 가능하다(현재 미확인). 새 자격증명은 이후 생성하고 MySQL URL에 안전한 문자를 사용한다. 실제 Compose 해석·포트 가용성·자원 부재도 이번에는 검사하지 않았다.
+
+**최종 순수 검사:** Python 정책28개 PASS(exit0), Node의 새 파일 격리10개 + 기존 Chrome 대역 정책6개 PASS(exit0),8개 브라우저 파일 문법 검사 exit0. 모든 신규 정책 검사에서 프로세스·네트워크 실행 진입점을 실패 처리했다.7종×2단계의 CLI 계획14개도 exit0이며 `executionAuthorized=false`다. 이 수치는 실제 Chrome·서버 통합 통과 수가 아니다. 개발 중 합성 검사 fixture 공유와 루트 경로 처리의 실패를 고친 뒤 최종 실행을 새로 수행했으며 기대값을 낮추지 않았다.
+
+새 증거는 ignored `.local/evidence-portability-isolated-preflight/20261014/`의 `before.json`, `after.json`, `working-tree.patch`, `final-pure-commands.json`, `plan-commands.json`, `plan-*.json`으로 구분한다. 시작 시 기존10파일 hash와 원본94개 증거 hash가 직전 기록과 같았다. 이번에는 그중7개 harness를 수정하고 package.json·chrome-launch·browser-runtime.test의3개 hash는 유지했다. 학생 boundary1개와 신규 설정/helper/순수 검사5개를 포함해 코드16파일을 미커밋으로 보존한다. 과거 해시 불변 기록은 당시 상태로 남기고 원본94개·기존 사용자 파일을 보존한다. 문서3개만 별도 로컬 커밋 대상이다.
+
+`PREEXISTING_ENVIRONMENT=FROZEN`, `ISOLATED_EXECUTION_PLAN=PREPARED_OFFLINE_ONLY`, `ISOLATION_POLICY_TESTS=PASS`, `NEW_ENVIRONMENT_STARTED=false`, `INTEGRATION_VALIDATION=NOT_RUN`, `RECOVERY_EXECUTED=false`. **BACKEND_DATA=CHANGED_UNEXPECTEDLY, DATA_PRESERVATION=FAIL**을 유지한다. 이번에는 Docker 명령·DB/Redis/Chroma 연결·실제 브라우저·실제 비밀 파일 읽기/생성·복구·원격 Git/Pages 변경을 하지 않았다. 시험 root 자체도 생성하지 않았고 공개 데모는 그대로다. 과거 auth17 PASS 및 나머지 BLOCKED/NOT_RUN은 새 검증으로 바꾸지 않는다.
+
+<a name="isolated-execution-2026-10-14"></a>
+
+### 독립 시험 실제 실행과 색인 준비 실패 (2026-10-14)
+
+**판정:** 새 환경의 실행 연결과 생성·기동 검증을 구현하고 실제 인증·권한·채점 검사를 통과했다. 색인 준비 API의 제품 경계 오류에서 중단했으므로 **브라우저 이식성 전체 완료가 아니다.** 시작 HEAD는 `50f63a6a0762866dae6412282624636687621830`, 브랜치는 `codex/dodream-evidence-portability`다. 기존16파일 중15개는 그대로이고 `isolated_trial.py`를 확장했다. launcher5개와 실행 보조·순수 검사7개를 더해 코드·설정28파일을 미커밋으로 보존한다. 필수 통합 검증이 끝나지 않아 이번에는 확인한02·18 문서만 별도 로컬 커밋한다. 문서 커밋만으로 새 실행기가 제공되는 것은 아니다.
+
+**연결한 범위:** `isolated_trial.py` 한 실행기에 A. `manage.py`·`verify.py`·indexing/student launcher의 설정·plan·fixture·finally, B. 실제 생성 증표와 매 operation의 현재 자원 대조(`isolated_provenance.py`), C. 새 합성 seed·fixture·소비 전 작업 소유권(`isolated_checks.py`), D. 선별 빌드 입력·이미지 ID/command/entrypoint 확인(`isolated_images.py`)을 연결했다. 기존 scope gate의 전역 허용 범위는 바꾸지 않았다. auth/disabled용 demo=false와 student용 demo=true short 서비스를 별도로 고정하여 실행 중 컨테이너 설정을 바꿔 끼우지 않는다. 원래 실행 없는 `plan`의 PRESTART 설명에는 사전 단계 문구가 남아 있으며 실제 실행 근거는 아래의 새 증표와 `--action` 경로다. 이를 완료된 범용 실행 도구로 공개하지 않는다.
+
+**실제 자원:** manifest는 `scripts/local/isolated-trial.json`, root는 `.local/isolated/evidence-portability-20261014/`, project는 `dodream-evidence-20261014`, run ID는 `0f5a799e-696c-4750-8519-92e055f8bb57`, origin은 loopback25173·25174다. 새0600 자격증명만 생성했다. `preparation.json` → `images.json` → `creation-intent.json` → `creation.json`이 manifest/source digest, 생성 전 부재, 실제 생성 argv·exit0, 시각·컨테이너/이미지/네트워크 ID·마운트를 연결한다. 생성 전 config 성공을 start 허가로 재사용하지 않았다.
+
+| 새 자원 | 실제 생성·사용 범위 |
+|---|---|
+| 컨테이너13개 | mysql, redis, be, ai, python-service, web, chroma, worker, index-dispatcher, be-auth-short, web-auth-test, be-student-short, web-student-short |
+| 데이터 볼륨5개 | 새 project의 `mysql-data`, `redis-data`, `be-data`, `ai-data`, `chroma-data`; 기존 volume·객체·SQLite·queue 복사 없음 |
+| 네트워크2개 | 새 `default` internal=true, `gateway`는 web만 연결; backend·DB·소비자는 내부망만 사용 |
+| bind·포트 | 새 root 아래 검토한 nginx 설정2개만 read-only; 홈·저장소 전체·Docker socket·기존 데이터 bind 없음; loopback25173·25174만 게시 |
+| 종료 상태 | 시작한11개 모두 `exited`, student short2개는 미기동 `created`; 새 데이터·볼륨·네트워크·증거 보존 |
+
+BE·AI·PDF·web·Chroma는 별도 `dodream-evidence-20261014-*:run-0f5a799e` 태그로 새 빌드했고 기존 태그를 덮지 않았다. allowlist433개 입력(텍스트423/바이너리10)의 원본/복사본 hash·Dockerfile·lock·현재 소스 대응과 알려진 비밀 파일·토큰 후보를 확인했다. MySQL/Redis는 읽기 전용 stock 이미지의 immutable ID·RepoDigest·실행 구성을 확인했다. ID와 입력별 hash는 root의 `image-*.json`·`images.json`에 있다. 시험 root·`.local`·`.env`·Git·사용자 파일은 context에서 제외했고 ambient Docker 인증 설정을 복사하지 않았다. 이 제한된 검토를 이미지 전체 과거 layer의 비밀 부재 보증으로 확대하지 않는다.
+
+**생성 중간 실패 보존:** 새 HOME에서 Compose plugin을 찾지 못한 실패, 숫자가 든 환경변수 이름의 치환 오류, Compose의 null/빈 기본값 정규화 차이, 생성 후 Docker 나노초 시각·미기동 NetworkID·mount 순서 해석 실패를 원본 결과로 남겼다. 실제 관측한 기본값만 좁게 처리하고 부정 검사를 추가했다. 성공한 생성 자체는 한 번이며, `verify-created`가 원래 생성 명령의 성공·부재/시각/ID·미기동 상태를 읽기 전용으로 검증한 뒤에만 시작했다. 원본 `creation-observed-blocked.json`·후속 관측과 실패 로그를 덮지 않았다. 실제 명령 순서는 [02 실행 기록](02-local-runbook.md#isolated-execution-runbook-2026-10-14)에 있다.
+
+| 검사 | 이번 실제 결과 | 증거 범위 |
+|---|---|---|
+| 기본 인증 준비 | PASS | 신규 MySQL application table0, Redis DB0/1 key0 → 기존 V003/V004 → 일반 BE seed → 신규 로그인·보호 API; worker/dispatcher 없음. 신규 SQLite 빈 상태도 확인 |
+| auth | 17 PASS, FAIL0 | 실제 서버/UI12 + 실제 응답 지연/전달 장애3 + 오류 응답 주입2; 과거17 PASS와 별개 |
+| authorization | 18 PASS, FAIL0 | 준비 시 신규 Chroma collection0 확인. 실제 편집 UI와 브라우저 API 권한·공유·복원 검사; 소비자는 이번 fixture/큐 대응 확인 후에만 기동 |
+| grading | 11 PASS, FAIL0 | 브라우저 API9 + 실제 commit 후 응답 유실/재전송2. 학생 채점 화면 E2E는 아님 |
+| indexing | 준비 API5 PASS /1 FAIL | 로그인4·실제 Chroma/non-eager Celery 확인 후 `actual_binary_pdf_initial_accept` HTTP503; 색인 브라우저는 실행 전 차단 |
+| student·demo-disabled·hardening·학생 boundary | NOT_RUN | 앞선 정상 색인 준비 실패로 순차 실행 중단. PASS나 skip으로 처리하지 않음 |
+| 순수 정책 | Python130 / Node16 PASS, 모두 exit0 | 정책28·이미지20·증표37·실행25·launcher20, Node10+6. 실제 통합 통과 수에 합산하지 않음 |
+
+실제 Chrome은155.0.8059.40이며 auth는25174, authorization/grading은25173을 사용했다. 세 브라우저 결과의 `externalRequestsBlocked`는 각각0이다. 공급자 경계만 기존 local 대역을 사용했고 Spring/FastAPI·DB를 가짜 서버로 대체하지 않았다. 오류 주입은 위와 같이 분리했다. 실제 음성 청취·VoiceOver·네이티브 앱/실기기·실제 공급자는 NOT_RUN이다.
+
+**구체적 차단:** 전체 `--action validate`는 exit2로 종료했다. 별도 제한 진단에서 신규6서비스만 잠시 기동하여 새 합성 PDF 요청의 HTTP503 `code=INDEXING_TRANSACTION_BOUNDARY`를 확인했고 `uploaded_files`는20→20이었다. 이 진단에는 worker/dispatcher를 기동하지 않았고 동일 증표 기반 finally로6개를 다시 중지했다. [IndexingLocalHooks](../../be/src/main/java/A704/DODREAM/indexing/IndexingLocalHooks.java)의 경계 조건 중 하나 이상이 참이었다는 것은 확인했으나 어느 조건인지는 관측하지 못했다. [PdfController](../../be/src/main/java/A704/DODREAM/file/controller/PdfController.java)의 선행 `policy.teacher` 조회, [AuthorizationPolicy](../../be/src/main/java/A704/DODREAM/authorization/AuthorizationPolicy.java)의 읽기 트랜잭션, [IndexingStore](../../be/src/main/java/A704/DODREAM/indexing/IndexingStore.java)의 기존 OSIV holder 복원으로 물리 연결이 남는 경로는 **소스 기반 유력 원인**이다. 시험 설정 누락 근거는 찾지 못했다. 제품 수정 승인 없이 경계 검사를 완화하거나 isolated 설정에서만 OSIV를 꺼서 통과시키지 않았다. 재개에는 권한 확인을 유지하는 국소 제품 수정·원인 관측·회귀 승인과 실패 원본을 보존하는 새 시도, 같은 소스의 전체 최종 실행이 필요하다.
+
+**보존과 근거:** 새 코드/순수 검사의 증거는 `.local/evidence-portability-isolated-execution/20261014T035459Z/`의 `initial.json`, `pure-full-commands.json`, `before-integration-code.json`, `scope-audit-final.json`, `final-resource-audit.json`에 있다. 통합 중28코드 hash는 불변이며 원본94개 증거도 모두 불변이다. 이번 생성 root의 `results/`에는 `isolated-auth-gate.json`, 실행별 `browser-*-checks-*.json`(auth는 `browser-checks-*.json`), `indexing-checks-20261014T043235-d56d328a.json`, `indexing-upload-diagnostic.json`, 종료 기록을 보존한다. 실패와 최종 실행의 부분 PASS를 섞어 전체 PASS로 만들지 않았다.
+
+종료 후 신규 자원/증표 재대조 PASS, 기록된 start/exec/stop 대상 ID는 전부 이번 생성 자원이었다. 기존11개 컨테이너 상태·시작/종료 시각과 기존78개(외부67개 포함)의 ID·이름·상태 행은 시작 전과 같고, 기존61볼륨·23네트워크 이름도 모두 남아 있다. **기존 DB 내용은 접속하거나 새 hash를 계산하지 않았다.** 기존 사고의 직접 ID `docker start`에 worker/dispatcher가 포함되고 `operation=config` 소유권을 데이터 변경 허가로 사용했다는 판정과 데이터 보존 FAIL은 그대로다. 제품 Java/Python·DB 스키마·showcase·기존 Compose/scope gate 및 사용자 `.DS_Store`는 수정하지 않았다. 복구·삭제·prune·원격 Git·Pages 변경 없음.
+
+`PREEXISTING_ENVIRONMENT=FROZEN`, `HISTORICAL_DATA_PRESERVATION=FAIL`, `BACKEND_DATA=CHANGED_UNEXPECTEDLY`, `DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`.
+
+`NEW_RESOURCE_PROVENANCE=PASS`, `NEW_ENVIRONMENT_ISOLATION=PASS_WITHIN_OBSERVED_SCOPE`, `NEW_ENVIRONMENT_STARTED=true` (현재 기동분 모두 중지), `SYNTHETIC_FIXTURE_PREPARATION=PARTIAL_FAILED_INDEXING_PDF`, `INTEGRATION_VALIDATION=FAIL_INDEXING_PREPARATION_REMAINING_NOT_RUN`, `PRODUCT_AND_SHOWCASE_UNCHANGED=true`. 공개 데모는 그대로 유지한다.
+
+
+<a name="indexing-boundary-followup-2026-10-14"></a>
+
+### PDF 물리 연결 경계 수정과 독립 시험 완료 (2026-10-14)
+
+시작 HEAD는 `80bf830fce1f4305641959852d2ed873c8f62b49`, 브랜치는 `codex/dodream-evidence-portability`다. 기존 미커밋28파일 중17개 hash를 유지하고11개를 최소 보완했다. 제품/직접 회귀7개와 검사 helper4개를 더한39개 코드·설정의 최종 실행 중 hash는 불변이다. 아래는 사용자가 승인한 제품 수정과 **같은 신규 시험의 관련 통합** 결과이며, 앞선503 실패·NOT_RUN·과거 데이터 보존 FAIL을 대체하지 않는다.
+
+검증한 코드·설정39파일은 `2e83b88`(실행기·자원 정책19개), `5a0d456`(브라우저 설정·의존성13개), `5eed21e`(제품 경계·직접 회귀7개)로 명시 경로만 stage하고 별도 로컬 커밋했다. README·02·이 결과 문서는 후속 문서 커밋으로 구분한다. 코드 미커밋은 남기지 않으며 기존 사용자 `.DS_Store`3개는 미추적 상태로 보존한다.
+
+**실측 원인:** `POST /api/pdf/upload-and-parse`의 같은 합성 filename·본문 hash로 실제503을 재현했다. 컨트롤러 선행 `policy.teacher()` 뒤 요청 EntityManager와 물리 연결 보유가 true였지만 transactionActive/synchronizationActive/dataSourceBound는 모두 false였다. `IndexingStore.teacher()`의 임시 분리 중에도 detachedPhysicalConnectionHeld=true였고, 복원 후 첫 객체 저장 전 `IndexingLocalHooks.boundary()`가 이를 거부했다. 활성 트랜잭션 잔류나 잘못된 시험 endpoint/fixture는 이 실패의 원인이 아니었다. 파일20→20·작업2→2·자원1→1·실행2→2이며 첫 저장 이전의 실패였다. 진단은 상관 ID·단계·boolean만 기록하며 getConnection/관측 SQL·공개 debug API를 추가하지 않았다.
+
+**최소 수정:** [PdfController](../../be/src/main/java/A704/DODREAM/file/controller/PdfController.java)의 입력 읽기 전 `policy.teacher(userId)`를 기존 `indexingStore.teacher(userId)`로 교체했다. 같은 역할 검사를 짧은 트랜잭션에서 처리해 OSIV 요청 holder가 먼저 연결을 빌리지 않게 한다. 역할·소유/공유·입력 제한·경계 가드는 유지했다. [PdfService](../../be/src/main/java/A704/DODREAM/file/service/PdfService.java), [IndexingStore](../../be/src/main/java/A704/DODREAM/indexing/IndexingStore.java), [IndexingLocalHooks](../../be/src/main/java/A704/DODREAM/indexing/IndexingLocalHooks.java)에 local 요청 scope 관측을 추가했다. 전역 OSIV·DB 스키마·라이브러리·타임아웃 변경은 없다.
+
+**전후 직접 회귀:** `001-observation-01`의503과 동일 입력인 `002-fixed-01` 요청은200이며 외부 호출 전 활성 트랜잭션·물리 연결·분리 holder 연결 보유가 모두 false였다. 무토큰401·학생403·다른 교사 파일404·잘못된 filename/본문400·크기 초과413은 파일/작업을 늘리지 않았다. local AI를 멈춘 별도 요청은500이고 원본 객체와 파일1개만 남았다(파싱 참조·색인 작업 없음). 이를 보존했으며 **전체 업로드는 원자적이지 않다.** AI를 다시 시작한 뒤 새 요청은200이었다. 정상2개 작업의 세대1·원본revision1·ACTIVE·원본 bytes/hash·소유자 대응과 실제 Chroma 각6청크/벡터 질의를 확인했다. 이 상세 증거는 fixed-01 이미지의 결과로 구분한다.
+
+**최종 실행:** 제품4파일은 fixed-01과 같은 hash이며, 직접 HTTP의 동일 서버 스레드 회귀를 추가한 `004-fixed-03` 이미지에서 아래를 새로 실행했다. Java 회귀는 물리 연결/활성 트랜잭션을 실제 보유하면 가드가 거부함을 확인한다. 실제 단일 Tomcat 스레드의403→400→200 뒤 트랜잭션·동기화·EntityManager/DataSource·SecurityContext 정리도 확인했다. 테스트의 바깥 트랜잭션 실패를 실제 HTTP 재현으로 세지 않았다.
+
+| 최종 검사 | 실제 결과 | 구분 |
+|---|---|---|
+| Java 직접 경계 | 23 PASS, 실패/오류/skip0 | 관측5·실제 DB/OSIV/HTTP6·입력9·컨트롤러 권한3 |
+| auth | 17 PASS | 실제 서버/UI12·전달 장애3·오류 응답 주입2 |
+| authorization | 18 PASS | 편집·자료 소유/공유 권한 |
+| grading | 11 PASS | 실제 브라우저 API9·응답 유실/replay2; 학생 채점 UI 수가 아님 |
+| indexing | 준비·연결 검사29 PASS / 브라우저14 PASS | 포함 관계이므로43개로 합산하지 않음 |
+| student·학생 boundary | 55 PASS | 실제 학생 흐름·권한 변경·짧은 토큰·저장 장애·입력 경계 포함 |
+| demo-disabled | PASS | 상태 보고서이며 임의 검사 개수를 부여하지 않음 |
+| hardening | 13 PASS | 실제 브라우저 입력·오류 경계 |
+| 순수 정책 | Python186 / Node18 PASS | 통합 수에 합산하지 않음 |
+
+최종 명령·절차는 [02번 기록](02-local-runbook.md#indexing-boundary-runbook-2026-10-14)에 있다. Java/전체 통합/정책 명령은 exit0이다. Chrome155.0.8059.40의7종 결과에서 외부 요청 관측은 모두0이다. 학생 검사 전후 application source digest도 같다. 기존 서버를 가짜 서버로 대체하지 않았으며 외부 공급자 경계만 명시적 local 대역이다. 실제 음성·VoiceOver·네이티브/실기기·실제 공급자·다른 OS 브라우저 실행은 NOT_RUN이다.
+
+중간 실행은 분리 보존했다. fixed-01 통합도 통과했지만 최종 수에 합산하지 않았다. 전용 검사 준비의 entrypoint/cache 처리 및 Gradle selector 실패는 Java0이었다. fixed-02는 추가 테스트의 assertEquals 타입 모호성으로 빌드 실패했고 컨테이너를 교체하지 않았다. 타입을 명시한 fixed-03에서 실제23개를 통과했다. 가드·assertion 삭제나 skip으로 해결하지 않았다. 모든 실패 증거·이전 이미지/context는 보존했다.
+
+**소스·신규 자원:** project `dodream-evidence-20261014`, run `0f5a799e-696c-4750-8519-92e055f8bb57`와 원본5볼륨·2네트워크를 유지했다. revision별 이전/새 BE3개 ID를 추가 증표로 연결하고 다른10개 ID는 유지했다. 전용 Java 검사3개는 별도 생성 증표를 가진 컨테이너이며 동일 신규 내부망·be-data만 사용했다(추가 볼륨0). 앱13개와 검사3개 모두 exited다. 실패 검사2개도 삭제하지 않았다.
+
+최종 BE 이미지 `sha256:f2874ad7e6d36c55eb3dd67dc3cdd56b4bfbf17405133dffcedaa3e5a761681e`, BE source digest `13845fa079dc67f8c050a9aaed270fec0de2ec62601881330a0bea41d1bcd97b`, 전체 이미지 입력 fingerprint `d3ee2a0258376d5c871ade2789731fafc95b7b95b2e1c6cbf9d1786e619fb445`다. 빌드 당시 HEAD와 미커밋 내용 hash를 함께 연결했으며, 후속 로컬 커밋을 이미지의 빌드 당시 SHA로 소급하지 않는다.
+
+증거는 `.local/isolated/evidence-portability-20261014/`의 `revisions/`, `attempts/boundary-before-01/`, `attempts/boundary-fixed-01/`, `boundary-tests/004-fixed-03/focused-java-04/`, `attempts/integration-fixed-03/`와 `.local/evidence-portability-indexing-boundary/20261014T045644Z/`의 최종 요약·자원/소스 대조에 있다. 원본94개 hash 모두 불변, 기존78컨테이너 ID/이름/상태와 기존11개 시작/종료 시각 불변, 기존61볼륨·23네트워크 보존이다. 기존 DB 내용은 접속하거나 다시 hash하지 않았다. 공개 showcase 소스·자산·원본 Compose/scope gate는 불변이며 사용자 `.DS_Store`는 읽거나 수정하지 않았다.
+
+`INDEXING_BOUNDARY_ROOT_CAUSE=CONFIRMED_OSIV_PHYSICAL_CONNECTION_AFTER_CONTROLLER_PERMISSION`, `INDEXING_BOUNDARY_REGRESSION=PASS`, `SYNTHETIC_FIXTURE_PREPARATION=PASS`, `INTEGRATION_VALIDATION=PASS_RELATED_ISOLATED_SCOPE`, `PRODUCT_CHANGE=PDF_PERMISSION_SHORT_TRANSACTION_AND_LOCAL_OBSERVATION`, `SHOWCASE_SOURCE_UNCHANGED=PASS`.
+
+`PREEXISTING_ENVIRONMENT=FROZEN`, `HISTORICAL_DATA_PRESERVATION=FAIL`, `BACKEND_DATA=CHANGED_UNEXPECTEDLY`, `DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`을 유지한다. 기존 사고의 직접 docker start 및 config 소유권 검사의 오용 판정도 그대로다. 기존 데이터 복구·데이터 삭제·prune·push·PR·merge·Pages 재배포 없음. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`다.
+
+<a id="evidence-portability-publication-followup"></a>
+
+## 2026-10-14 최신 안내·추적 실행 명령·원격 반영 후속
+
+상단에서 [최신 로컬 완료 결과](#indexing-boundary-followup-2026-10-14)로 바로 연결한다. 당시 Java23개 실제 실행 기록은 보존하고, [현재 추적 코드의 실행 방법](02-local-runbook.md#java-boundary-repro-command)을 별도로 제공한다. `isolated_trial.py --action java-boundary-plan`은 파일 기반 계획만 출력하며, `java-boundary`는 기존 runtime·생성 증표·revision·소스/이미지·operation 검사와 `isolated_boundary_tests.run(runtime)`을 연결한다. 필요한 서비스는 신규 mysql·redis·local AI뿐이며 worker·dispatcher를 시작하지 않는다.
+
+**현재 재실행 범위:** 고정 HTTP fixture가 이미 사용된 시험은 기동 전에 거부한다. fixture를 지우거나 제품 가드를 해제하지 않았으며, 이번 Java 실제 재실행은 **NOT_RERUN**이다. 새 진입점의 순수 검사15개는 기존 실행/경계 정책60개와 함께75개 PASS다. 이 수는 Java23개 또는 브라우저 통합 검사 수가 아니다. 기존 local `validate`는 브라우저/서버 통합용이며 Java23개를 포함하지 않는다.
+
+**CI 연결:** 기존 필수5개 작업을 유지한다. offline-tools의 기존 discovery 밖에 있던 순수7파일186개와 새 진입점15개, web의 Node 자원 정책12개를 연결한다(Chrome 설정6개는 `test:hardening`에 포함). backend는 서비스 없는 Observation5·FileInput9·PdfPermission3을 실행하고 JUnit의 실제 실행·0개/skip·실패 여부를 확인한다. 실제 DB/HTTP/OSIV가 필요한 RequestBoundary6은 필수 CI에 섞지 않으며 기존 독립 시험의23개 증거와 추적 실행 명령으로 연결한다. 수동 keyless-integration은 기존 클래스와 서비스 없는 추가 회귀를 유지하는 명시 selector를 사용한다. AI·phase5 합성 준비가 없는 해당 수동 환경에서 RequestBoundary6은 별도 경로이고, 수동 workflow 자체는 이번에 **NOT_RUN**이다. 관련 CI 계약9개·Node18개·기존 순수186개는 로컬 PASS다. 원격 통과 여부는 실제 job 결과로 후속 기록한다.
+
+**공개 검토:** 원격 main `8767ec82b9818d96ea6b7a28a696475ab2122408` 이후 `f11ad8987c23dba808255c1df1c0826af5fb68c0`까지8개 커밋, 변경51경로·중간 blob62개를 검토했다. 비밀값·비공개 데이터·raw 로그·생성 증표 원문이 없고 팀 기여·AI 활용 설명을 유지했다. 로컬 문서/anchor/저장소 permalink728개를 대조했으며 외부 링크59개 재접속·전체 과거 이력 감사·이미지 layer 전체 감사는 범위 밖이다. 이후 이 절과 진입점·CI의 최소 변경도 push 전에 별도로 검토한다.
+
+**자원과 배포:** 이번 작업은 순수 검사와 필요한 읽기 전용 메타데이터 확인만 수행했다. 기존78컨테이너와 기존11개 동결 시각 불변, 신규 앱13개·전용 검사3개 모두 중지 상태다. DB 연결·서비스 기동·데이터 복구를 하지 않았다. 공개 앱 entry/UI/CSS/샘플/자산/빌드 설정/lock과 Pages workflow는 불변이며 앱 배포 SHA는 계속 `888609661595d4cbef89de15097007453c871ca3`이다. `HISTORICAL_DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`, `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`를 유지한다.

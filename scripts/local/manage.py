@@ -17,12 +17,24 @@ import scope_guard
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / '.local'
-RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase5' / 'results')))
-RESULTS.mkdir(parents=True, exist_ok=True)
-PROJECT = 'dodream-phase1'
-ENV_FILE = LOCAL / 'env'
+# The explicit isolated path is fail-closed: load_active_runtime validates the
+# new creation receipt and never adopts the historical local environment.
+ISOLATED = None
+if 'DODREAM_ISOLATED_MANIFEST' in os.environ:
+    from isolated_trial import load_active_runtime
+    ISOLATED = load_active_runtime()
+    RESULTS = ISOLATED.results
+    PROJECT = ISOLATED.project
+    ENV_FILE = ISOLATED.credentials_path
+else:
+    RESULTS = Path(os.environ.get('DODREAM_RESULTS_DIR', str(LOCAL / 'phase5' / 'results')))
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    PROJECT = 'dodream-phase1'
+    ENV_FILE = LOCAL / 'env'
 
 def settings():
+    if ISOLATED is not None:
+        return ISOLATED.settings()
     if not ENV_FILE.exists():
         raise SystemExit('Run python3 scripts/local/manage.py init first.')
     values = {}
@@ -33,6 +45,8 @@ def settings():
     return values
 
 def clean_env():
+    if ISOLATED is not None:
+        return ISOLATED.clean_env()
     env = os.environ.copy()
     # Explicit file takes precedence over shell values and any pre-existing .env.
     for key in settings():
@@ -44,6 +58,8 @@ def clean_env():
     return env
 
 def redact(text):
+    if ISOLATED is not None:
+        return ISOLATED.redact(text)
     if ENV_FILE.exists():
         for key, value in settings().items():
             if any(word in key for word in ('PASSWORD', 'SECRET')) and value:
@@ -53,10 +69,16 @@ def redact(text):
     return text
 
 def compose_base():
+    if ISOLATED is not None:
+        raise RuntimeError('Raw Compose access is unavailable for isolated trials; use the validated operation proxy')
     return ['docker', 'compose', '--project-directory', str(ROOT), '--env-file', str(ENV_FILE),
             '-p', PROJECT, '-f', str(ROOT / 'compose.local.yml')]
 
 def compose_args(*args):
+    if ISOLATED is not None:
+        # This is a central-runner proxy argv, never a raw docker command.
+        # The receiving process rechecks operation and receipt at execution.
+        return ISOLATED.compose_args(*args)
     args=list(args)
     # Every one-off run is identifiable by labels as well as a unique task name.
     at=0
@@ -72,6 +94,8 @@ def compose_args(*args):
     return [*base,*args]
 
 def stop_owned_test(name):
+    if ISOLATED is not None:
+        return ISOLATED.stop_owned_test(name)
     # Revalidate local endpoint and full resource scope even on a timeout path.
     scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
     rows=scope_guard.read_metadata(clean_env())
@@ -84,6 +108,8 @@ def stop_owned_test(name):
                           env=clean_env(),timeout=15)
 
 def source_identity():
+    if ISOLATED is not None:
+        return ISOLATED.source_identity()
     head=subprocess.run(['git','rev-parse','HEAD'],cwd=ROOT,capture_output=True,text=True).stdout.strip()
     names=subprocess.run(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=ROOT,capture_output=True).stdout.split(b'\0')
     digest=hashlib.sha256()
@@ -94,12 +120,16 @@ def source_identity():
     return {'head':head,'working_source_sha256':digest.hexdigest()}
 
 def crash_owned(service):
+    if ISOLATED is not None:
+        return ISOLATED.crash_owned(service)
     scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
     row=next((r for r in scope_guard.read_metadata(clean_env()) if r['service']==service and r['project']==PROJECT and r['name']==PROJECT+'-'+service+'-1'),None)
     target=scope_guard.crash_target(row,service)
     return run('crash-'+service,['docker','kill','--signal','KILL',target])
 
 def pause_chroma(resume=False):
+    if ISOLATED is not None:
+        return ISOLATED.pause_chroma(resume)
     scope_guard.gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
     row=next((r for r in scope_guard.read_metadata(clean_env()) if r['service']=='chroma' and r['project']==PROJECT),None)
     target=scope_guard.chroma_pause_target(row,resume)
@@ -107,6 +137,8 @@ def pause_chroma(resume=False):
     return run('chroma-'+action,['docker',action,target])
 
 def record(name, command, result, started):
+    if ISOLATED is not None:
+        return ISOLATED.record(name, command, result, started)
     RESULTS.mkdir(parents=True, exist_ok=True)
     entry = {'command': command, 'exit_code': result.returncode,
              'status': 'PASS' if result.returncode == 0 else 'FAIL',
@@ -128,6 +160,8 @@ def record(name, command, result, started):
     print('sanitized_output:', RESULTS / (name + '.log'))
 
 def run(name, args):
+    if ISOLATED is not None:
+        return ISOLATED.run(name, args)
     started = datetime.datetime.now(datetime.timezone.utc).isoformat()
     result = subprocess.run(args, cwd=ROOT, env=clean_env(), stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True)
@@ -137,9 +171,13 @@ def run(name, args):
     return result
 
 def compose(name, *args):
+    if ISOLATED is not None:
+        return ISOLATED.compose(name, *args)
     return run(name, compose_args(*args))
 
 def unit_tests():
+    if ISOLATED is not None:
+        raise RuntimeError('Legacy whole-stack unit launcher is not an isolated trial operation')
     scope_guard.require_keyless_local(scope_guard.read_metadata(clean_env()))
     # The real-DB indexing suite creates new synthetic ledger rows and requires
     # the dispatcher to remain stopped while it asserts transaction state.
@@ -181,6 +219,8 @@ def unit_tests():
                                 'Unit-test dispatcher running state was not restored')
 
 def init():
+    if ISOLATED is not None:
+        raise RuntimeError('Isolated credentials are created only by isolated_trial.py')
     LOCAL.mkdir(exist_ok=True, mode=0o700)
     RESULTS.mkdir(exist_ok=True)
     if ENV_FILE.exists():
@@ -199,6 +239,8 @@ def init():
     print('Created ignored .local/env (0600); generated secrets are not printed.')
 
 def check():
+    if ISOLATED is not None:
+        raise RuntimeError('Use isolated_trial.py preflight for this trial')
     status = 0
     for name, args in [('java', ['java', '-version']), ('node', ['node', '--version']),
                        ('npm', ['npm', '--version']), ('python', [sys.executable, '--version']),
@@ -223,6 +265,8 @@ def check():
     return status
 
 def snapshot(name):
+    if ISOLATED is not None:
+        raise RuntimeError('Use the isolated creation receipt and bounded metadata evidence')
     items = {}
     commands = {
         'containers': ['docker', 'ps', '-a', '--format', '{{.ID}}\t{{.Names}}\t{{.State}}\t{{.Ports}}'],
@@ -242,6 +286,8 @@ def snapshot(name):
     print('resource inventory saved:', target)
 
 def main():
+    if ISOLATED is not None:
+        raise SystemExit('Invoke the explicit isolated_trial.py command; legacy manage commands are frozen for this trial')
     os.chdir(ROOT)
     command = sys.argv[1] if len(sys.argv) > 1 else 'help'
     if command == 'init': init(); return 0

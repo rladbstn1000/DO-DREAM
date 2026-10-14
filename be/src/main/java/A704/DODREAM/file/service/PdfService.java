@@ -93,7 +93,9 @@ public class PdfService {
 	 */
 	public Map<String, Object> uploadAndParsePdfFromBytes(byte[] pdfBytes, String filename, Long userId,
 		String authorizationHeader) {
+        indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.SERVICE_PERMISSION_BEFORE);
         indexingStore.teacher(userId);
+        indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.SERVICE_PERMISSION_AFTER);
 		try {
 			// 1. 파일 검증
             PdfInputPolicy.filename(filename);
@@ -115,6 +117,7 @@ public class PdfService {
 					LocalDateTime.now().toString()))
 				.build();
 
+            indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.OBJECT_WRITE_BEFORE);
             indexingHooks.boundary(0,false);
 			s3Client.putObject(putRequest, RequestBody.fromBytes(pdfBytes));
 
@@ -131,7 +134,9 @@ public class PdfService {
 				.uploaderId(userId)
 				.build();
 
+            indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.FILE_RECORD_BEFORE);
             long savedFileId=indexingStore.createUploadedFile(userId,uploadedFile);
+            indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.FILE_RECORD_AFTER);
 
 			log.info("✅ DB 저장 완료: pdfId={}", savedFileId);
 
@@ -145,6 +150,7 @@ public class PdfService {
 			request.put("cloudfront_url", cloudFrontUrl);
             request.put("uploaded_file_id", savedFileId);
 
+            indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.PARSE_BEFORE);
             indexingHooks.boundary(savedFileId,filename.startsWith("indexing-synthetic"));
 			ResponseEntity<Map> response = webClient.post()
 				.uri(fastApiEndpoint)
@@ -169,7 +175,9 @@ public class PdfService {
 
             // Parsed object preparation is outside the publication transaction. The JSON reference
             // and durable initial-index job become visible together; no user token enters the queue.
+            indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.INITIAL_INDEX_BEFORE);
             var indexing=indexingService.completeInitial(userId,savedFileId,parsedData);
+            indexingHooks.observe(A704.DODREAM.indexing.IndexingLocalHooks.Stage.INITIAL_INDEX_AFTER);
             return Map.of("pdfId",savedFileId,"filename",filename,"parsedData",parsedData,"indexing",indexing);
 
 		} catch (A704.DODREAM.authorization.AuthorizationFailure | org.springframework.web.server.ResponseStatusException | A704.DODREAM.indexing.IndexingFailure denied) {

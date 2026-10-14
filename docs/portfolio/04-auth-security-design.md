@@ -62,3 +62,17 @@ Refresh cookie: HttpOnly, SameSite=Lax, Path=/api/auth. 발급·삭제에 같은
 일반 서비스는900초 그대로다. 별도 `auth-test` Compose 프로필의 `be-auth-short`만 AT2초, 실제 웹과 같은 이미지의 `web-auth-test`만 loopback15174를 사용한다. 기존 MySQL/Redis 데이터는 유지하며 합성 계정만 사용한다. 실제 브라우저의 만료/쿠키/CSRF/refresh를 확인하는 경로다. 정상Redis 동시성은12개 독립HTTP클라이언트×3라운드, logout/refresh는 장벽을 둔3라운드를 사용한다.
 
 실제 결과·미검증 범위·예상된 2-B 실패는 [05-phase2a-results.md](05-phase2a-results.md)에 별도로 기록한다.
+
+<a name="claim-evidence-auth"></a>
+
+## 주장과 근거 연결 (2026-10-08)
+
+아래 코드·검사는 이미 공개된 `8767ec82b9818d96ea6b7a28a696475ab2122408`의 현재 구현 참조다. 05·08번 결과는 각 단계 당시의 실제 실행 기록이며, 현재 참조 버전의 재실행 결과로 바꾸지 않는다. Lua 회전과 객체 권한은 서로 다른 검증 범위다.
+
+| 주장 | 코드·검사 구간 | 기존 실제 결과와 범위 |
+|---|---|---|
+| 같은 RT의 회전은 해시 비교와 교체를 한 번의 Lua 실행으로 처리 | [ROTATE Lua와 validateAndRotate()](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/auth/service/RefreshTokenService.java#L26-L49) | 정상 단일 Redis에서의 원자성이다. 전체 인증 계약·로그아웃·운영 장애를 이 함수 하나로 보장하지 않는다. |
+| 회전 후 이전 RT 재사용 거부, 동시 회전 승자 1개 | [실제 HTTP 회전·재사용 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/scripts/local/verify_auth.py#L154-L189); [실제 Redis 회전 경쟁 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/test/java/A704/DODREAM/auth/RefreshTokenRedisTests.java#L27-L87) | [05번 실제 인증 결과](05-phase2a-results.md#auth-runtime-results). HTTP 클라이언트 12개 × 3라운드와 별도 Redis 통합 검사를 구분한다. Java 검사는 2개 Lettuce connection factory를 사용하며 이를 12개의 독립 Redis 연결이라고 부르지 않는다. |
+| 학생의 자료 접근은 현재 소유·발행·공유·담당 관계로 판단 | [AuthorizationPolicy.studentMaterial()/studentCanRead()](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/authorization/AuthorizationPolicy.java#L63-L81); [공유·현재 학급 관계 회수 검사](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/scripts/local/verify_authorization.py#L191-L210) | [08번 권한 회수 결과](08-phase2b-results.md#authorization-runtime-results). 공유·학급 연결 회수 후 Spring/FastAPI 거부와 복구를 확인한 범위다. 토큰 회전 검사의 결과로 대신하지 않는다. |
+
+명령·실행 조건·최초 실패·미검증 범위는 [05번 실행 표](05-phase2a-results.md#실행-환경과-증거), [08번 실행 표](08-phase2b-results.md#실제-명령과-증거)에 보존한다. 이 연결표는 기존 보고서를 설명하며 새로운 실행 증거를 생성하지 않는다.

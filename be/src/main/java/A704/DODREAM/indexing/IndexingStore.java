@@ -42,11 +42,19 @@ public class IndexingStore {
     private <T> T transaction(TransactionCallback<T> callback) {
         // As in grading, the short transaction owns/closes its EntityManager despite request OSIV.
         Object holder=null;
+        hooks.observe(IndexingLocalHooks.Stage.STORE_BEFORE_DETACH);
         if(!TransactionSynchronizationManager.isActualTransactionActive())
             holder=TransactionSynchronizationManager.unbindResourceIfPossible(factory);
-        try { return tx.execute(s->{em.clear(); return callback.doInTransaction(s);}); }
+        try {
+            hooks.observe(IndexingLocalHooks.Stage.STORE_AFTER_DETACH,holder);
+            return tx.execute(s->{em.clear(); return callback.doInTransaction(s);});
+        }
         catch(org.springframework.dao.DataAccessException unavailable) { throw new IndexingFailure(503,"INDEXING_DATABASE_UNAVAILABLE"); }
-        finally { if(holder!=null) TransactionSynchronizationManager.bindResource(factory,holder); }
+        finally {
+            try { hooks.observe(IndexingLocalHooks.Stage.STORE_BEFORE_RESTORE,holder); }
+            finally { if(holder!=null) TransactionSynchronizationManager.bindResource(factory,holder); }
+            hooks.observe(IndexingLocalHooks.Stage.STORE_AFTER_RESTORE);
+        }
     }
     public void teacher(long actor) { transaction(s->{policy.teacher(actor); return null;}); }
     public long createUploadedFile(long actor,UploadedFile file) {

@@ -20,7 +20,7 @@
     "preview": "vite preview --config vite.config.ts",
     "test:student": "node --experimental-strip-types --test tests/student-*.test.ts",
     "test:browser-student": "node tests/browser-student.mjs",
-    "test:hardening": "node --experimental-strip-types --test tests/html-boundaries.test.ts",
+    "test:hardening": "node --experimental-strip-types --test tests/html-boundaries.test.ts tests/browser-runtime.test.mjs",
     "build:showcase": "node scripts/showcase-build.mjs",
     "preview:showcase": "node scripts/showcase-server.mjs",
     "test:showcase": "node --experimental-strip-types --test tests/showcase-state.test.ts tests/original-ui-state.test.ts tests/showcase-build.test.mjs",

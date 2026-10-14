@@ -76,3 +76,19 @@ BE 응답 수신과 파싱은 최대 2MiB로 제한한다. 문자 수 제한과 
 JPA 엔티티와 명시적 flush·잠금 조회로 같은 계약을 구현하는 대안도 가능하다. 엔티티 매핑과 관계 처리를 재사용할 수 있지만, UNIQUE 충돌을 어느 시점에 발생시키고 실패한 트랜잭션을 어디서 끝낼지, 잠금·flush 순서와 영속성 컨텍스트의 상태를 어떻게 관리할지 별도로 설계해야 한다. 현재 JDBC 경로는 SQL 순서가 눈에 보이는 대신 수동 SQL·행 매핑·파라미터 순서와 [V003 스키마](../../be/src/main/resources/db/migration/V003__grading_attempts.sql)를 함께 관리해야 한다. JPA와 JDBC를 함께 쓰는 유지보수 부담도 남는다. 이 선택의 성능 우위는 측정하지 않았다.
 
 **JDBC 선택과 OSIV 처리는 별개다.** `transaction()`은 비활성 요청 OSIV holder를 잠시 분리하고 자체 트랜잭션이 끝나면 복원하며, `currentPermission()`은 보관된 엔티티를 clear한 뒤 현재 권한을 다시 조회한다. 이 처리를 JDBC 사용 자체의 효과로 설명하지 않는다. 외부 공급자 호출은 [GradingAttemptService](../../be/src/main/java/A704/DODREAM/quiz/grading/GradingAttemptService.java)의 저장 트랜잭션 밖에서 수행하며, 결과·로그 중복 반영 방지가 외부 AI 호출의 exactly-once를 보장하지는 않는다.
+
+<a name="claim-evidence-grading"></a>
+
+## 주장과 근거 연결 (2026-10-08)
+
+아래 코드·검사는 이미 공개된 `8767ec82b9818d96ea6b7a28a696475ab2122408`의 현재 구현 참조다. [10번 결과](10-phase3a-results.md#grading-concurrency-results)는 2026-09-29~30 당시 실행 기록이며, 현재 참조 버전으로 새로 재실행했다는 뜻이 아니다.
+
+| 주장 | 직접 근거 | 검증의 의미 |
+|---|---|---|
+| 제출 키 확보 → 문제 잠금·snapshot 저장, 중복 충돌 뒤 replay | [GradingStore.accept()/replay()](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/quiz/grading/GradingStore.java#L83-L146) | UNIQUE INSERT와 snapshot이 같은 접수 트랜잭션에 속한다. 충돌은 트랜잭션 밖에서 받아 별도 트랜잭션으로 기존 제출을 조회한다. |
+| 결과·로그·성공 상태를 함께 확정하며 외부 대기와 DB 경계를 분리 | [complete()](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/quiz/grading/GradingStore.java#L212-L241); [트랜잭션·OSIV 경계](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/quiz/grading/GradingStore.java#L41-L72); [경계 확인 뒤 외부 호출](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/main/java/A704/DODREAM/quiz/grading/GradingAttemptService.java#L49-L64) | 확정 중 실패의 rollback과 현재 권한·세대·기한 검사를 포함한다. 외부 AI 실행의 exactly-once를 보장하지 않는다. |
+| 서비스 요청 경로의 동시 접수와 replay | [concurrent()](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/scripts/local/verify_grading.py#L257-L267) | HTTP 요청 12개 × 3라운드. 각 라운드의 attempt 1·snapshot 2·result 2·log 2·대역 공급자 시작 1/반환 1은 [당시 결과](10-phase3a-results.md#grading-concurrency-results)다. 12개 요청이 동시에 12개 DB 연결을 점유했다는 증거는 아니다. |
+| DB UNIQUE/NOT NULL 제약 자체의 경쟁 | [actual_database_constraints()](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/scripts/local/verify_grading.py#L269-L312) | `CONNECTION_ID()`로 서로 다른 MySQL 연결 12개를 확인한다. 성공 1·1062 중복 오류 11, NULL 1048 거부를 요구한다. 이 직접 INSERT 검사는 HTTP 경로나 채점 공급자를 실행한 검사가 아니다. |
+| 충돌 예외 뒤 호출·rollback·재조회 순서 | [GradingAcceptanceRaceTests](https://github.com/rladbstn1000/DO-DREAM/blob/8767ec82b9818d96ea6b7a28a696475ab2122408/be/src/test/java/A704/DODREAM/quiz/grading/GradingAcceptanceRaceTests.java#L15-L36) | mock 기반 단위 검사다. 실제 MySQL 잠금·경쟁의 실행 증거를 대신하지 않는다. |
+
+실제 동시성·장애·재시작의 수치와 대역 호출 횟수는 [10번 상세 결과](10-phase3a-results.md#grading-concurrency-results), 명령·종료 코드와 시각별 원본 경로는 [10번 최종 검증 표](10-phase3a-results.md#최종-실제-검증)에 있다. 당시 전체 실행 이후 추가한 공급자 대기 중 독립 DB 조회는 별도 보조 실행으로 기록하며 전체 결과에 합산하지 않는다.

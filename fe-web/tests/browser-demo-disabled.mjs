@@ -1,15 +1,18 @@
 /** Actual disabled server configuration, no response injection. */
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright-core';
+import { launchChrome } from './chrome-launch.mjs';
+import { loadIsolatedRuntime, readTrialFixture } from './isolated-runtime.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
-const require=createRequire(import.meta.url);
-let playwright;try{playwright=require('playwright');}catch{playwright=require('/Users/yoonsu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');}
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-const origin='http://127.0.0.1:15174';let browser;let passed=false;let errorType;let external=0;
+const runtime = await loadIsolatedRuntime('demo-disabled', root);
+await readTrialFixture(runtime);
+const { resultsDir, origin } = runtime;
+let browser;let passed=false;let errorType;let external=0;
 try{
-  browser=await playwright.chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,
+  browser=await launchChrome(chromium, {headless:true,
     args:['--disable-background-networking','--disable-component-update','--disable-sync','--no-first-run']});
   const context=await browser.newContext({serviceWorkers:'block'});
   await context.route('**/*',route=>{if(new URL(route.request().url()).origin!==origin){external++;return route.abort();}return route.continue();});
@@ -24,6 +27,7 @@ try{
   const version=browser?.version();if(browser)await browser.close();
   const report={status:passed?'PASS':'FAIL',mode:'ACTUAL_DISABLED_SERVER_UI',browser:'Chrome '+version,origin,external,errorType};
   const encoded=JSON.stringify(report,null,2)+'\n';
-  for(const name of ['student-disabled-ui-'+Date.now()+'.json','student-disabled-ui.json'])await fs.writeFile(path.join(root,'.local/phase5/results',name),encoded);
+  await fs.mkdir(resultsDir,{recursive:true});
+  for(const name of ['student-disabled-ui-'+Date.now()+'.json','student-disabled-ui.json'])await fs.writeFile(path.join(resultsDir,name),encoded);
   console.log(JSON.stringify(report));process.exitCode=passed?0:1;
 }

@@ -2,23 +2,19 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright-core';
+import { launchChrome } from './chrome-launch.mjs';
+import { loadIsolatedRuntime, readTrialFixture, readTrialCredentials, readTrialBrowserPlan } from './isolated-runtime.mjs';
 import assert from 'node:assert/strict';
-const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const directory = path.join(root, '.local/phase5/browser-ui');
-const planPath = path.resolve(process.env.DODREAM_STUDENT_BROWSER_PLAN || '');
-assert.equal(path.dirname(planPath), directory);
-const plan = JSON.parse(await fs.readFile(planPath, 'utf8'));
-assert.match(plan.runId, /^[a-f0-9-]{36}$/);
-const origin = 'http://127.0.0.1:15173';
-const resultsDir = path.join(root, '.local/phase5/results');
+const runtime = await loadIsolatedRuntime('student', root);
+const fixture = await readTrialFixture(runtime);
+const { resultsDir, origin } = runtime;
+const directory = runtime.planDir;
+const { plan } = await readTrialBrowserPlan(runtime, fixture);
+const settings = await readTrialCredentials(runtime, fixture);
 const screenshots = path.join(directory, plan.runId + '.screenshots');
 await fs.mkdir(screenshots, { recursive: true });
-const settings = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n')
-  .filter(line => line && !line.startsWith('#')).map(line => { const at=line.indexOf('='); return [line.slice(0,at),line.slice(at+1)]; }));
-let playwright;
-try { playwright=require('playwright'); } catch { playwright=require('/Users/yoonsu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); }
 const checks=[], logicalSubmissions=[], sourceEvidence=[];
 let browser, step='launch', blockedExternal=0, seq=0, keyboardFocusChecks=0, category='ACTUAL_UI';
 process.once('SIGTERM',async()=>{await browser?.close();process.exit(143);});
@@ -164,7 +160,7 @@ async function waitIndex(teacher,mid){
 }
 let a,b,teacher,tts={apiEvents:[],audible:'NOT_RUN',voiceOver:'NOT_RUN'};
 try{
-  browser=await playwright.chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,
+  browser=await launchChrome(chromium, {headless:true,
     args:['--disable-background-networking','--disable-component-update','--disable-sync','--no-first-run']});
   const sample=plan.samples[0];
   step='initial actual teacher login and first end-to-end student journey';
@@ -239,7 +235,7 @@ try{
   }finally{assert.equal((await api(teacher.page,`/api/materials/${sample.materialId}/quizzes`,'POST',oldQuizzes)).status,200);}
   // The remaining cases are separate real-server faults or explicitly identified response injections.
   const extra=await import('./browser-student-boundaries.mjs');
-  await extra.runBoundaries({a,b,teacher,plan,origin,screenshots,api,check,setStep:value=>{step=value;},
+  await extra.runBoundaries({a,b,teacher,plan,origin,shortOrigin:runtime.shortOrigin,screenshots,api,check,setStep:value=>{step=value;},
     setCategory:value=>{category=value;},event,question,waitIndex,pause,start,context,logicalSubmissions,sourceEvidence});
   category='ACTUAL_UI';step='final healthy student flow after fault cleanup';
   await a.page.goto(origin+'/learn');await a.page.getByRole('link',{name:sample.title+' 학습 시작',exact:true}).waitFor();

@@ -1,5 +1,7 @@
 # 20. 소스 공개와 GitHub Pages 배포 근거
 
+> **현재 상태 안내 · 2026-10-08 확인:** 이 문서는 단계별 소스 공개·CI·Pages 검증의 누적 기록이다. [최신 공개 결과](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)의 실제 앱 배포 SHA는 `888609661595d4cbef89de15097007453c871ca3`이며 [공개 데모](https://rladbstn1000.github.io/DO-DREAM/)는 유지된다. 이후 소스·문서의 원격 main `8767ec82b9818d96ea6b7a28a696475ab2122408`을 앱 배포 SHA로 대신하지 않는다. 이번 [로컬 근거·검사 보완](18-portfolio-code-review.md#evidence-portability-2026-10-08)은 재배포 작업이 아니다. 아래 미배포·PENDING은 각 당시 상태다.
+
 2026-10-01(KST). 팀 구현과 이후 개인 개선을 기존 `rladbstn1000/DO-DREAM` 공개 저장소에 이력을 보존해 반영하고, 검증한 정적 showcase만 공개하는 작업이다. 실제 AI·백엔드 운영 준비·새 기능 개발은 범위에 넣지 않는다. [18 코드 리뷰](18-portfolio-code-review.md)는 실제 서버 검증, [19 정적 인수](19-static-showcase-results.md)는 이전 로컬 showcase 검증의 당시 기록이다.
 
 ## 기준과 승인 범위

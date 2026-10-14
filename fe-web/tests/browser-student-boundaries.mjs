@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 export async function runBoundaries(ctx) {
-  const { a,b,teacher,plan,origin,api,check,setStep,setCategory,event,question,waitIndex,pause,start,context,
+  const { a,b,teacher,plan,origin,shortOrigin,api,check,setStep,setCategory,event,question,waitIndex,pause,start,context,
     logicalSubmissions,sourceEvidence }=ctx;
   const sample=plan.samples[0], mid=sample.materialId;
   const quizUrl=`${origin}/api/materials/${mid}/quizzes/submit`;
@@ -142,7 +142,7 @@ export async function runBoundaries(ctx) {
 
   setStep('short-lived access token expires and real student cookie refresh preserves identity');
   setCategory('ACTUAL_UI');
-  const short=await start(await context('http://127.0.0.1:15174'));
+  const short=await start(await context(shortOrigin));
   try {
     await pause(8000);
     const refreshed=short.page.waitForResponse(r=>r.url().endsWith('/api/auth/student/refresh')&&r.request().method()==='POST');

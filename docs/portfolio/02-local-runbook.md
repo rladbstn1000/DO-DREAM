@@ -30,6 +30,113 @@ npm run verify:showcase
 
 ## 실제 백엔드 로컬 통합 실행 (phase1)
 
+> **현재 통합 재개 중단:** evidence-portability 검증 준비에서 기존 대기 작업이 처리돼 데이터 보존이 실패했다. 아래의 기존 기동·준비·통합 검사 명령은 과거 절차와 전제를 보존한 참조이며 현재 실행 허가가 아니다. 기존 서비스의 start/up/restart, worker·dispatcher 실행, DB·큐·포인터 복구는 하지 않는다. 재개에는 [기존 저장소와 분리한 새 시험 범위의 검토](18-portfolio-code-review.md#evidence-portability-safe-resume)가 먼저 필요하다. 공개 정적 showcase 절차와 구분한다.
+
+<a name="indexing-boundary-runbook-2026-10-14"></a>
+
+### PDF 경계 수정 후 같은 독립 시험 재사용 — 2026-10-14
+
+사용자가 승인한 국소 제품 수정 후 **관련 독립 통합 검사 PASS, 실행분 종료**를 확인했다. [원인·최종 결과](18-portfolio-code-review.md#indexing-boundary-followup-2026-10-14)에 범위와 한계를 기록한다. 아래의 기존503 중단·미커밋·기동 전 설명은 각 단계 당시 기록이다. 기존 `dodream-phase1`과 데이터·자격증명을 사용하는 실행 중단은 계속 유효하다.
+
+같은 `isolated-trial.json`, `.local/isolated/evidence-portability-20261014/`, project `dodream-evidence-20261014`의 생성 증표를 대조했다. 새 환경을 또 만들거나 `prepare/create`를 다시 실행하지 않았다. 다음은 실제 실행한 최종 명령 기록이며, 보존 중인 revision·attempt 이름을 재실행하라는 안내가 아니다.
+
+```bash
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action revise-be --revision fixed-03 \
+  --include-source be/src/test/java/A704/DODREAM/indexing/IndexingObservationTests.java \
+  --include-source be/src/test/java/A704/DODREAM/indexing/IndexingRequestBoundaryDatabaseTests.java \
+  --include-source be/src/test/java/A704/DODREAM/file/PdfUploadPermissionBoundaryTests.java
+python3 -B .local/evidence-portability-indexing-boundary/20261014T045644Z/run-focused-java-04.py
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action validate --attempt integration-fixed-03
+```
+
+세 명령은 각각 exit0이다. 두 번째는 이번 증거에 보존한 한정 실행 파일이며 Git에 포함된 범용 CLI가 아니다. 내용은 `TrialRuntime(repo, manifest, attempt="focused-java-04")` → `prepare_attempt()` → `set_stage("auth", "browser")` → 신규 mysql/redis/ai start → `isolated_boundary_tests.run(runtime)` → `finally: stop_started()`다. 해당 helper는4개 클래스의 실제 JUnit 결과23개, 실패·오류·skip0을 검증했다. 같은 고정 합성 HTTP 사례는 중복 실행을 거부한다.
+
+`revise-be`는 전체 신규 서비스가 멈춘 상태에서 새 BE tag/context를 빌드하고 BE·auth-short·student-short만 `up --no-start --no-deps --force-recreate --no-build --pull never`로 재생성한다. 원본 증표·이전 이미지·실패 기록은 보존하고 `revisions/<번호>-<이름>/`에 이전/새3개 ID와 시각·소스·이미지를 추가한다. 다른10개 서비스·신규5볼륨·2네트워크의 동일성과 교체3개 컨테이너의 미기동 상태를 확인한다.
+
+`--attempt`는 결과·fixture·plan을 별도 디렉터리로 분리한다. 현재 증표와 소스에 대응하는 인증 PASS가 있어야 후속 검사를 시작한다. config 성공이나 이전 이미지의 인증 PASS를 start 허가로 사용하지 않는다. 실제 start/exec/stop은 매번 대상 ID와 operation을 검사한다. 소비자가 필요한 색인·학생 준비 단계에서만 새 DB 원장과 Redis 메시지가 이번 합성 사례인지 대조한 후 worker/dispatcher를 시작한다. 동일25174 포트의 인증용 demo=false와 학생용 demo=true는 순서대로 사용한다.
+
+실제 HTTP 전후 비교는 `verify_pdf_boundary`를 부모 runtime에 연결해 `boundary-before-01`/`boundary-fixed-01`에 기록했다. 최종 Java 증거는 `boundary-tests/004-fixed-03/focused-java-04/result.json`, 전체 통합은 `attempts/integration-fixed-03/results/`다. 각 앞 경로는 위 신규 root 기준이다. 중간 Gradle 준비/selector 실패와 Java 컴파일 실패도 원본 그대로 남겼다. 이 중간 결과를 최종 통합 수에 합산하지 않는다.
+
+최종 자원·소스·원본94개 증거 대조는 `.local/evidence-portability-indexing-boundary/20261014T045644Z/final-resource-and-source-audit.json`에 있다. 신규 앱13개와 전용 검사3개는 모두 exited이며 데이터·볼륨·네트워크를 보존한다. 기존 DB 내용 재조회·복구·원격 변경은 하지 않았다. 이후 실행도 현재 이미지/receipt·새 attempt 및 별도 승인 범위를 다시 확인해야 하며, 기존 환경으로 fallback하지 않는다.
+
+<a name="java-boundary-repro-command"></a>
+
+### 현재 추적 코드의 Java 경계 검사 진입점
+
+위 `run-focused-java-04.py`는 **당시 실제 실행 기록**으로 보존한다. 현재는 [isolated_trial.py](../../scripts/local/isolated_trial.py)의 `java-boundary` action이 [기존 helper](../../scripts/local/isolated_boundary_tests.py)를 직접 호출한다. `validate`는 브라우저/서버 통합 경로이며 Java23개를 포함하지 않는다. Git에 없는 개인 실행 파일을 현재 명령의 의존성으로 사용하지 않는다.
+
+다음은 서비스·DB·자격증명에 접근하지 않는 실제 계획 확인 명령이다. `--help`도 실행기를 생성하지 않는다.
+
+```bash
+python3 -B scripts/local/isolated_trial.py --help
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action java-boundary-plan --revision 004-fixed-03 --attempt planned-java-next
+```
+
+계획은 `executionAuthorized=false`, `resourceProvenance=NOT_CHECKED`와 mysql/redis/ai,4개 Java 클래스·정확한 Gradle selector를 표시한다. 계획 성공은 실제 자원 시작 허가가 아니다. 실행 계약은 아래와 같지만, **현재 보존 중인 시험에서는 실행 전 차단 대상**이다.
+
+```bash
+# 현재 고정 fixture는 이미 사용됨: 이 환경에서 재실행하라는 안내가 아니다.
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action java-boundary --revision 004-fixed-03 --attempt java-boundary-next
+```
+
+현재 `IndexingRequestBoundaryDatabaseTests`의 PDF 이름은 `indexing-synthetic-44444444-4444-4444-8444-444444444444.pdf`로 고정이며 새 namespace 인자는 없다. 동일 source의 성공 결과가 있으면 기동 전에 파일 근거로 거부한다. 성공 증거가 없다는 이유로 DB가 비었다고 가정하지 않으며 Java의 중복 거부도 유지한다. 현재 `focused-java-04`의 실제23 PASS를 보존하고, 이 후속 작업에서는 **실제 Java 재실행 NOT_RUN / 진입점 순수 검사 별도**로 판정한다. 기존 행·객체·결과 삭제나 guard 해제로 재실행하지 않는다.
+
+실제 실행에는 명시 manifest/root, 새 고유 attempt, 현재 fixed revision의 소스·이미지와 생성/교체 증표, 신규5볼륨·2네트워크 및 중지된13서비스의 동일성이 필요하다. 또한 새 시험 DB의 기존 스키마·합성 seed(`authz-owner`)와 미사용 고정 fixture가 필요하다. 실행기는 이를 위한 두 번째 환경을 만들지 않는다. source/receipt/attempt를 검증한 뒤 신규 mysql/redis/ai만 시작하고 전용 검사 컨테이너를 사용한다. worker/dispatcher·브라우저는 필요 없다. 예외·SIGINT·SIGTERM은 동일한 증표 기반 `stop_started()` 경로를 거쳐 시작분만 종료한다.
+
+대상은 `IndexingObservationTests`5개, `IndexingRequestBoundaryDatabaseTests`6개, `FileInputBoundaryTests`9개, `PdfUploadPermissionBoundaryTests`3개다. 실제 helper는4개 JUnit 결과·각 클래스 검사수 양수·실패/오류/skip0을 요구한다. 전체 숫자23은 당시 실행 결과이며 새 검사 추가 시 숫자를 맞추려고 검사를 빼지 않는다.
+
+같은 시험의 재개는 기존 receipt·데이터·실패 기록을 유지하는 절차다. **빈 환경의 최초 준비**는 root 부재 확인, 새 자격증명·이미지·컨테이너 생성, 스키마와 합성 seed 준비가 먼저 필요한 다른 단계다. 새 checkout만으로 위 명령이 동작하지 않으며 이번에 빈 환경이나 다른 OS를 다시 검증하지 않았다. 기존 `.local/env`·`dodream-phase1`으로 fallback하거나 기존 볼륨을 복사하지 않는다. 합성 데이터·이전 결과·생성 증표를 삭제하지 않는다.
+
+필수 `keyless-ci`는23개 중 서비스 없는17개를 실행하며 XML로 실제 실행·0개·skip 여부를 확인한다. 실제 DB/HTTP6개는 위 독립 경로와 당시 로컬 증거에 연결한다. 기존 수동 `keyless-integration`은 이6개가 필요로 하는 local AI/phase5 seed를 제공하지 않으므로 해당 클래스만 양의 selector 목록에서 분리하고 나머지34개 클래스는 유지한다. 이번에는 수동 통합 workflow를 실행하지 않는다.
+
+<a name="isolated-execution-runbook-2026-10-14"></a>
+
+### 독립 합성 시험 실제 실행 — 2026-10-14, 색인 준비 실패로 중단
+
+사용자가 별도로 승인한 새 `dodream-evidence-20261014` 환경에서 인증·권한·채점 검사를 실행했다. **전체 통합 검증은 완료되지 않았다.** 색인 준비의 실제 PDF 업로드가 HTTP503 `INDEXING_TRANSACTION_BOUNDARY`로 실패해 학생·demo-disabled·hardening 및 학생 경계 검사를 실행하지 않았다. 제품 코드·스키마 수정은 승인 범위 밖이므로 시험 설정만 바꿔 경계 검사를 우회하지 않았다. [실제 결과와 남은 차단](18-portfolio-code-review.md#isolated-execution-2026-10-14)을 참조한다. 아래 사전 검사 기록의 “실제 기동 전”은 그 단계 당시 상태다.
+
+실제 사용한 명세는 `scripts/local/isolated-trial.json`, 실행기는 `scripts/local/isolated_trial.py`이며, 관련 코드·설정28파일은 **미커밋 작업트리**로 보존한다. 이 문서 커밋만 checkout하면 아래 명령을 실행할 수 없다. 다음은 이번 실행 순서를 기록한 것이며, 이미 생성한 root에 `prepare/create/validate`를 재실행하라는 안내가 아니다. 기존 receipt·실패·시험 데이터를 덮어쓰지 않는다.
+
+```bash
+# 저장소 루트에서 실제 사용한 명령. 현재는 종료 상태로 보존한다.
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action prepare
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action build
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action create
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action verify-created
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action validate
+```
+
+`prepare/build`는 새 자격증명·선별 소스·전용 이미지만 준비한다. `create`는 정확한13서비스를 `compose create --no-build --no-recreate --pull never`로 생성하고 앱을 시작하지 않는다. 생성 후 메타데이터 형식 처리에서 중단된 원본을 보존한 채, `verify-created`가 실제 성공한 생성 명령·생성 전 부재·시각·ID·구성·한 번도 시작하지 않은 상태를 읽기 전용으로 대조했다. 불완전한 증표를 이름만 보고 수용하거나 `create`를 다시 실행하지 않았다.
+
+`validate`는 새 MySQL·Redis의 빈 상태 → 기존 V003/V004 → 일반 Spring 합성 seed → auth 전용 short 서비스 → 실제 인증을 확인한 뒤 나머지 검사를 순차 실행한다. main은25173, short는25174다. 기본 인증에는 worker/dispatcher가 없고 authorization/indexing에서만 새 fixture와 큐 대응을 확인한 뒤 기동했다. auth의 demo=false와 student의 demo=true는 각각 별도 신규 short 서비스로 만들었다. 이번에는 student short2서비스를 기동하지 않았다. 원래 `plan`의 실행 없는 후보 출력과 `config` 성공은 이 실행 경로의 시작 허가가 아니다.
+
+종료는 `validate`의 `finally`와 진단의 동일한 증표 기반 종료 경로로 수행했다. 시작했던 신규11컨테이너는 모두 중지, 미기동2개는 `created` 상태이며 신규5볼륨·2네트워크·fixture·증거는 보존한다. 새 환경 재개에는 제품 경계 문제의 국소 수정 승인, 실패 원본을 보존하는 별도 시도 증거, 동일 소스의 전체 최종 검증이 필요하다. 기존 환경이나 기존 자격증명으로 돌아가는 재시도는 허용하지 않는다.
+
+### 호스트 브라우저 검사 보완안 — 당시 코드 반영·통합 검증 대기
+
+**2026-10-14 후속 상태:** 기존 검사10파일 중7종 harness의 설정 전달을 보완하고, student 경계의 short origin·독립 manifest/실행 계획·순수 검사 파일을 작업트리에 추가했다. 현재 안은 명시적 `DODREAM_ISOLATED_MANIFEST`와 새 시험 receipt를 요구하고, 기존 origin·결과 경로·`.local/env` fallback을 거부한다. **준비됨, 실제 기동·통합 검증 전**이며 코드 전체를 미커밋으로 보존한다. 아래10월8일 정책의 결과 경로 기본값은 당시 안이고 현재 독립 시험에는 적용되지 않는다. 실행 없는 최소 검사 명령·서비스 표·남은 launcher 차단 조건은 [18번 후속 기록](18-portfolio-code-review.md#isolated-preflight-2026-10-14)에 있다. 문서 커밋만으로 신규 명령을 실행할 수 없고, 이전 `manage.py` 준비·기동 명령을 대신 실행해서도 안 된다.
+
+> 아래 정책은 보존 중인 **미커밋 검사10파일**에 의존한다. 문서 커밋 `dde553e2d15f678bae1986dc94914e955a3fc8ee`만 checkout하면 적용되지 않는다. 코드 반영과 새 격리 환경의 통합 검증 전에는 확정 실행 절차로 사용하지 않는다. [통합 미완료·보존 실패](18-portfolio-code-review.md#evidence-portability-2026-10-08)는 계속 유효하다.
+
+보완안은 auth·authorization·grading·indexing·student·demo-disabled·hardening을 웹 lock의 `playwright-core`만 사용하도록 변경한다. 현재 커밋의7종 검사에는 개인 모듈 fallback이 남아 있다. 아래는 패키지 준비·순수 검사의 명령 참조이며, 현재 커밋의 `test:hardening`에는 기존 HTML 경계6개만 있다. 미커밋 코드의 추가 정책 검사6개를 현재 커밋의 검사로 계산하지 않는다.
+
+```bash
+npm --prefix fe-web ci --ignore-scripts --no-audit --no-fund
+npm --prefix fe-web run test:hardening
+# 기존 Chrome이 기본 설치 위치에 없을 때만 실제 실행 파일의 절대경로를 지정
+# export DODREAM_CHROME_EXECUTABLE='/absolute/path/to/chrome'
+```
+
+보완안의 실행 파일 정책은 다음과 같다. 예시 경로를 그대로 실행하지 않는다. 명시값이 없으면 설치된 Chrome `channel: 'chrome'`, 명시값이 있으면 해당 파일만 선택한다. 빈 값·상대경로·없는 파일·실행 권한 오류는 `ChromeExecutableConfigurationError`, 설치된 Chrome 없음은 `ChromeUnavailableError`, 다른 시작 실패는 `ChromeLaunchError`로 구분한다. 이 helper와 오류 분류는 아직 미커밋이다. 패키지 로딩 오류(`ERR_MODULE_NOT_FOUND`)·서버 실패와 구분하고 자동 설치·대체 브라우저·사용자 프로필 재사용을 하지 않는 것이 보완안의 계약이다. 이미 커밋된 showcase 검사의 Chrome channel 정책은 그대로다.
+
+보완안의 정책 검사는 통제된 launch 대역의 단위 검사이며 실제 Chrome·인증 성공을 뜻하지 않는다. 기존 통합 전제는 auth의 짧은 토큰 서버, authorization/grading의 합성 사례, indexing·student 실행기가 준비한 plan, disabled의15174 데모 비활성 서버, hardening의15173 데모 활성 서버다. 이 전제가 현재 안전하게 재현됐다는 뜻은 아니다. 기존 `auth-test-up`, `indexing browser`, `demo-prepare`, `student-web`을 재개 목적으로 실행하지 않는다. 새 격리 환경의 plan을 별도로 준비해야 하며401/403/500을 준비 지연으로 숨기지 않는다.
+
+10월8일 보완안은 `DODREAM_RESULTS_DIR`로 Python 실행기와7종 브라우저의 결과 경로를 맞추고, indexing/student의 plan·handshake를 그 형제 `browser-ui/`에 두었다. 당시 기본값은6종의 `.local/phase5/results`와 hardening의 `.local/portfolio-hardening/results`였다. 10월14일 독립 시험안에서는 이 fallback을 제거했다. **결과 폴더 변경은 DB·큐·자격증명·볼륨 격리가 아니다.** 소유권 scope PASS나 hash 기준선 확보도 기존 데이터 변경 허가가 아니다. 현재 통합 재개는 BLOCKED이며 [18번 안전한 재개 조건](18-portfolio-code-review.md#evidence-portability-safe-resume)을 따른다.
+
 아래 4~5단계의 미배포·미실행 판정은 당시 실행 기록이며, 현재 공개된 정적 showcase의 배포 결과와 구분한다.
 
 이하 절차는 키 없는 `LOCAL_FAKE`와 실제 자체 백엔드/DB를 사용한다. 실제 AI 호출·모델 평가·비용 측정은 현재 완료 조건이 아니며 `REAL_AI_INTEGRATION=NOT_RUN`이다. 공급자 adapter·오프라인 계약·평가셋과 과거 재개 절차를 보존한다. 키 탐색·읽기·설정·live 활성화는 이번 showcase 작업에서 수행하지 않았다. live 오류를 대역 성공으로 숨기거나 키 존재로 자동 전환하지 않는다.
@@ -41,7 +148,7 @@ npm run verify:showcase
 호스트 필수: Docker Desktop/Compose v2, Python3. Node/Java를 호스트에 추가 설치할 필요는 없다. 이미지 안에서 Java17/Node22/Python3.11을 사용한다. 최초 빌드에는 명세의 공개 의존성/이미지 다운로드가 필요하다. 전역 설치, sudo, 모델 다운로드는 하지 않는다.
 
 ```bash
-cd /Users/yoonsu/Desktop/projects/DO-DREAM
+# 저장소 루트에서 실행
 python3 scripts/local/manage.py init
 python3 scripts/local/manage.py check
 python3 scripts/local/manage.py config
@@ -108,7 +215,7 @@ npm run typecheck
 npm run build -- --mode phase1
 ```
 
-실제 Chrome 인증 검증은 `python3 scripts/local/manage.py auth-test-up` 후 `cd fe-web && npm run test:browser-auth`를 실행한다. 기존 Chrome과 Playwright가 필요하며 harness 상단의 경로/환경변수 설정을 확인한다. 별도 테스트 서버만 AT2초이며 일반 서버는900초다. 15174 포트를 다른 프로세스가 쓰면 종료하지 말고 테스트 profile 포트를 바꾼다. 이 테스트는 인증 흐름이며 전체 학습 E2E가 아니다. 장애 주입 항목은 실제 happy path와 결과에서 구분한다.
+과거 Chrome 인증 검증은 `auth-test-up` 후 `test:browser-auth`로 실행했다. 현재는 통합 재개 중단이며 위 미커밋 helper 정책을 현재 커밋의 동작으로 보지 않는다. 별도 테스트 서버만 AT2초이며 일반 서버는900초다. 새 격리 환경에서도 이 구분과 포트 충돌 거부가 필요하다. 이 테스트는 인증 흐름이며 전체 학습 E2E가 아니다. 장애 주입 항목은 실제 happy path와 결과에서 구분한다.
 
 `phase1`은 `local-env`만 읽고 API base를 same-origin으로 고정한다. 빌드 mode를 생략한 기존 배포 명령과 구분한다. 로컬 CSP는 원격 폰트/이미지/API를 차단한다.
 
@@ -278,7 +385,7 @@ python3 scripts/local/manage.py isolation
 보존된 로컬 환경에서 아래 명령을 저장소 루트에서 실행한다. 처음 환경을 만드는 경우 앞 절의 생성·추가형 migration 절차를 먼저 따른다. 소스를 변경했다면 시작 전에 `build`로 해당 이미지를 갱신한다.
 
 ```bash
-cd /Users/yoonsu/Desktop/projects/DO-DREAM
+# 저장소 루트에서 실행
 python3 scripts/local/manage.py check
 python3 scripts/local/manage.py config
 python3 scripts/local/manage.py build

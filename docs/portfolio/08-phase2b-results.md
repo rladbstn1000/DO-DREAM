@@ -58,6 +58,8 @@
 
 호스트 Spring 컴파일/단위60 PASS와 컨테이너 전체77 PASS를 중복 합산하지 않는다. AI 기존24개, Spring 기존53개, PDF 기존6개를 보존했다. 기존 보안9개의 이전/이후 표는 [security-evidence](security-evidence.md#2-b-객체권한-수정과-검증-2026-09-29)에 있다. 이전 인증3개 PASS 유지, 이전 객체6개 FAIL→PASS다. `security`의 비공유 세션 교체404와 `authorization`의 두 공유 자료 간 세션 교체409는 서로 다른 조건이다.
 
+<a name="authorization-runtime-results"></a>
+
 ## 양성·우회·회수·무부작용과 최초 실패
 
 실제 HTTP188개는 각 계정의 새 AT로 시작한다. 소유 교사, 같은 학교 비담당 교사, 다른 학교 교사, 직접 공유 학생, 같은 반 비공유 학생, CLASS 공유 학생, 다른 반/학교 학생을 사용했다. 교사와 학생의 User/Profile ID가 실제로 다름을 검사했다. 같은 합성 MySQL 관계를 Spring/FastAPI 모두 사용했고, 소유 파일 URL·원본 JSON·교사 정답·공유 학생 JSON/문제·직접/학급 RAG·초기본·정상 제출·자기/담당 이력은 성공했다.
