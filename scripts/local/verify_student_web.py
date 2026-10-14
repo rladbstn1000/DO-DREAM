@@ -8,7 +8,7 @@ import signal
 import subprocess
 import time
 import uuid
-from manage import ROOT, RESULTS, clean_env, compose, pause_chroma, record
+from manage import ROOT, RESULTS, ISOLATED, clean_env, compose, pause_chroma, record
 
 
 def app_digest():
@@ -22,22 +22,31 @@ def app_digest():
 
 
 def main():
-    run_id=str(uuid.uuid4())
+    if ISOLATED is not None:
+        ISOLATED.assert_ready_for_browser('student')
+    run_id=ISOLATED.run_id if ISOLATED is not None else str(uuid.uuid4())
     directory=RESULTS.parent/'browser-ui'
     directory.mkdir(parents=True,exist_ok=True)
     plan=json.loads((RESULTS/'student-demo-plan.json').read_text())
+    if ISOLATED is not None:
+        binding=ISOLATED.fixture_binding('student')
+        if any(plan.get(key)!=value for key,value in binding.items()):
+            raise RuntimeError('Student preparation plan does not belong to this isolated run')
     plan['runId']=run_id
     plan_path=directory/(run_id+'.student-plan.json')
     with plan_path.open('x') as stream:json.dump(plan,stream)
     env=clean_env();env['DODREAM_STUDENT_BROWSER_PLAN']=str(plan_path)
-    env['DODREAM_DEMO_ENABLED']='true'
-    os.environ['DODREAM_DEMO_ENABLED']='true'
+    if ISOLATED is None:
+        env['DODREAM_DEMO_ENABLED']='true'
+        os.environ['DODREAM_DEMO_ENABLED']='true'
     command=['node','tests/browser-student.mjs']
     started=datetime.now(timezone.utc).isoformat()
     before=app_digest();process=None;error=None;restores=set();handled=set()
     capture=RESULTS/('student-browser-child-'+run_id+'.log')
     try:
         with capture.open('x') as output:
+            if ISOLATED is not None:
+                ISOLATED.assert_ready_for_browser('student')
             process=subprocess.Popen(command,cwd=ROOT/'fe-web',env=env,stdout=output,stderr=subprocess.STDOUT,
                                      text=True,start_new_session=True)
             deadline=time.monotonic()+1200

@@ -12,10 +12,12 @@ import sys
 import time
 import uuid
 
-from manage import ROOT, RESULTS, clean_env, record
+from manage import ROOT, RESULTS, ISOLATED, clean_env, record
 
 
 def browser(r):
+    if ISOLATED is not None:
+        ISOLATED.assert_ready_for_browser('indexing')
     check = sys.modules[type(r).__module__].check
     publish, _ = r.healthy('ui-ready')
     try:
@@ -40,11 +42,13 @@ def browser(r):
         r.service('up', 'index-dispatcher')
         raise
 
-    run_id = str(uuid.uuid4())
+    run_id = ISOLATED.run_id if ISOLATED is not None else str(uuid.uuid4())
     directory = RESULTS.parent / 'browser-ui'
     directory.mkdir(parents=True, exist_ok=True)
     plan = {'runId': run_id, 'publishTitle': publish['title'], 'firstFailureTitle': first['title'],
             'reindexFailureTitle': reindex['title']}
+    if ISOLATED is not None:
+        plan.update(ISOLATED.fixture_binding('indexing'))
     plan_path = directory / (run_id + '.plan.json')
     with plan_path.open('x') as stream:
         json.dump(plan, stream, ensure_ascii=False)
@@ -52,8 +56,8 @@ def browser(r):
     command = ['npm', 'run', 'test:browser-indexing']
     env = clean_env()
     env['DODREAM_INDEX_BROWSER_PLAN'] = str(plan_path)
-    # This helper always uses the reviewed local default target.
-    env.pop('DODREAM_INDEX_BROWSER_ORIGIN', None)
+    if ISOLATED is None:
+        env.pop('DODREAM_INDEX_BROWSER_ORIGIN', None)
     process = None
     published = None
     complete = None
@@ -81,6 +85,8 @@ def browser(r):
     try:
         r.service('stop', 'index-dispatcher')
         with capture.open('x') as output:
+            if ISOLATED is not None:
+                ISOLATED.assert_ready_for_browser('indexing')
             process = subprocess.Popen(command, cwd=ROOT / 'fe-web', env=env,
                                        stdout=output, stderr=subprocess.STDOUT, text=True,
                                        start_new_session=True)

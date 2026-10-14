@@ -11,18 +11,22 @@ import time
 import urllib.error
 import urllib.request
 import uuid
-from manage import ROOT, RESULTS, PROJECT, settings, compose_args, compose_base, clean_env
+from manage import ROOT, RESULTS, PROJECT, ISOLATED, settings, compose_args, compose_base, clean_env
 from scope_guard import MAIN, gate, port_available, read_metadata
 
 ENV = settings()
-BASE = {name: 'http://127.0.0.1:' + ENV[key] for name, key in
-        [('be','BE_PORT'), ('ai','AI_PORT'), ('pdf','PDF_PORT'), ('web','WEB_PORT')]}
+BASE = ({'be': ISOLATED.origins['main'], 'ai': ISOLATED.origins['main'] + '/ai',
+         'web': ISOLATED.origins['main']} if ISOLATED is not None else
+        {name: 'http://127.0.0.1:' + ENV[key] for name, key in
+         [('be','BE_PORT'), ('ai','AI_PORT'), ('pdf','PDF_PORT'), ('web','WEB_PORT')]})
 CHECKS = []
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs): return None
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 def req(service, path, token=None, body=None, headers=None, timeout=20):
+    if service not in BASE:
+        raise ValueError('Service has no explicitly configured trial HTTP origin')
     if not path.startswith('/') or path.startswith('//'):
         raise ValueError('Only explicit local paths allowed')
     h = {'Content-Type': 'application/json'}
@@ -225,6 +229,8 @@ def persistence_binding(session):
     return json.loads(docker_exec('ai',['python','-c',code]))
 
 def persistence_containers():
+    if ISOLATED is not None:
+        raise RuntimeError('Legacy full-environment persistence restart is not an isolated trial operation')
     """Validate ownership before selecting the nine existing primary containers."""
     gate(['config','--quiet'],compose_base(),ROOT,clean_env(),RESULTS)
     inventory=read_metadata(clean_env())
@@ -270,6 +276,8 @@ def persistence_wait_ready(before):
     return False,rows
 
 def persistence():
+    if ISOLATED is not None:
+        raise RuntimeError('Legacy full-environment persistence restart is not an isolated trial operation')
     # Other regressions may legitimately publish a new source after smoke. Bind a
     # fresh real session immediately before stopping; never relax RAG_SOURCE_CHANGED.
     teacher,_=credentials('index-owner'); student,_=credentials('index-shared')
@@ -355,6 +363,8 @@ def persistence():
         'HTTP '+str(code)+'; same source/session, without enqueue before or after restart')
 
 if __name__=='__main__':
+    if ISOLATED is not None:
+        raise SystemExit('Run the explicit isolated_trial.py suite; legacy standalone verification is not an isolated operation')
     mode=sys.argv[1]
     try: {'smoke':smoke,'security':security,'persistence':persistence}[mode]()
     except Exception as error:

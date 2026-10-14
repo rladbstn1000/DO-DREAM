@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "id": "evidence-portability-20261014",
+  "project": "dodream-evidence-20261014",
+  "root": ".local/isolated/evidence-portability-20261014",
+  "credentials": "credentials.env",
+  "origins": {
+    "main": "http://127.0.0.1:25173",
+    "short": "http://127.0.0.1:25174"
+  }
+}

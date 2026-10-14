@@ -10,13 +10,17 @@ import json
 import time
 from pathlib import Path
 from verify import ENV, req
-from manage import ROOT, RESULTS
+from manage import ROOT, RESULTS, ISOLATED
 
 EMAIL = 'demo-phase5-v1@local.dodream.invalid'
 VERSION = 'student-web-phase5-v1'
 
 
-def prepare(wait_seconds=120):
+def prepare(wait_seconds=120, after_enqueue=None, write_plan=True):
+    # The isolated runner checks the newly created jobs against this preparation
+    # before starting its consumers. No import or CLI path silently starts them.
+    if ISOLATED is not None and not callable(after_enqueue):
+        raise RuntimeError('Isolated preparation requires the validated pending-job callback')
     code, config, _, _ = req('be', '/api/auth/demo/config')
     if code != 200 or not isinstance(config, dict) or not config.get('enabled'):
         raise RuntimeError('Demo is disabled; enable the server local opt-in first')
@@ -45,6 +49,8 @@ def prepare(wait_seconds=120):
     if (counts.get('files') != 2 or counts.get('materials') != 2
             or counts.get('quizzes') != 4 or counts.get('logicalJobs', 0) < 4):
         raise RuntimeError('Unexpected dedicated fixture counts')
+    if after_enqueue is not None:
+        after_enqueue(first)
     until = time.monotonic() + wait_seconds
     while True:
         code, config, _, _ = req('be', '/api/auth/demo/config')
@@ -57,8 +63,9 @@ def prepare(wait_seconds=120):
               'counts': first['counts'], 'samples': first['samples'], 'readable': True}
     destination = RESULTS
     destination.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-    (destination / ('demo-preparation-' + stamp + '.json')).write_text(json.dumps(result, ensure_ascii=False, indent=2))
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+    with (destination / ('demo-preparation-' + stamp + '.json')).open('x') as stream:
+        json.dump(result, stream, ensure_ascii=False, indent=2)
     statuses = {s['key']: s for s in config['samples']}
     plan = {'fixtureVersion': VERSION, 'teacherEmail': EMAIL, 'teacherUserId': first['teacherId'],
             'classroomId': first['classroomId'], 'samples': [
@@ -66,7 +73,12 @@ def prepare(wait_seconds=120):
                  'title': statuses[s['key']]['title'], 'source': statuses[s['key']]['source'],
                  'indexing': {'sourceRevision': statuses[s['key']]['sourceRevision'], 'readable': statuses[s['key']]['readable']}}
                 for s in first['samples']]}
-    (destination / 'student-demo-plan.json').write_text(json.dumps(plan, ensure_ascii=False, indent=2))
+    if ISOLATED is not None:
+        plan.update(ISOLATED.fixture_binding('student'))
+    if write_plan:
+        # A later hardening preparation must not replace the student attempt's plan.
+        with (destination / 'student-demo-plan.json').open('x' if ISOLATED is not None else 'w') as stream:
+            json.dump(plan, stream, ensure_ascii=False, indent=2)
     print(json.dumps(result, ensure_ascii=False))
     return result
 
