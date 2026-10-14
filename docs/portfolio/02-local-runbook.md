@@ -32,6 +32,29 @@ npm run verify:showcase
 
 > **현재 통합 재개 중단:** evidence-portability 검증 준비에서 기존 대기 작업이 처리돼 데이터 보존이 실패했다. 아래의 기존 기동·준비·통합 검사 명령은 과거 절차와 전제를 보존한 참조이며 현재 실행 허가가 아니다. 기존 서비스의 start/up/restart, worker·dispatcher 실행, DB·큐·포인터 복구는 하지 않는다. 재개에는 [기존 저장소와 분리한 새 시험 범위의 검토](18-portfolio-code-review.md#evidence-portability-safe-resume)가 먼저 필요하다. 공개 정적 showcase 절차와 구분한다.
 
+<a name="isolated-execution-runbook-2026-10-14"></a>
+
+### 독립 합성 시험 실제 실행 — 2026-10-14, 색인 준비 실패로 중단
+
+사용자가 별도로 승인한 새 `dodream-evidence-20261014` 환경에서 인증·권한·채점 검사를 실행했다. **전체 통합 검증은 완료되지 않았다.** 색인 준비의 실제 PDF 업로드가 HTTP503 `INDEXING_TRANSACTION_BOUNDARY`로 실패해 학생·demo-disabled·hardening 및 학생 경계 검사를 실행하지 않았다. 제품 코드·스키마 수정은 승인 범위 밖이므로 시험 설정만 바꿔 경계 검사를 우회하지 않았다. [실제 결과와 남은 차단](18-portfolio-code-review.md#isolated-execution-2026-10-14)을 참조한다. 아래 사전 검사 기록의 “실제 기동 전”은 그 단계 당시 상태다.
+
+실제 사용한 명세는 `scripts/local/isolated-trial.json`, 실행기는 `scripts/local/isolated_trial.py`이며, 관련 코드·설정28파일은 **미커밋 작업트리**로 보존한다. 이 문서 커밋만 checkout하면 아래 명령을 실행할 수 없다. 다음은 이번 실행 순서를 기록한 것이며, 이미 생성한 root에 `prepare/create/validate`를 재실행하라는 안내가 아니다. 기존 receipt·실패·시험 데이터를 덮어쓰지 않는다.
+
+```bash
+# 저장소 루트에서 실제 사용한 명령. 현재는 종료 상태로 보존한다.
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action prepare
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action build
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action create
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action verify-created
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" --action validate
+```
+
+`prepare/build`는 새 자격증명·선별 소스·전용 이미지만 준비한다. `create`는 정확한13서비스를 `compose create --no-build --no-recreate --pull never`로 생성하고 앱을 시작하지 않는다. 생성 후 메타데이터 형식 처리에서 중단된 원본을 보존한 채, `verify-created`가 실제 성공한 생성 명령·생성 전 부재·시각·ID·구성·한 번도 시작하지 않은 상태를 읽기 전용으로 대조했다. 불완전한 증표를 이름만 보고 수용하거나 `create`를 다시 실행하지 않았다.
+
+`validate`는 새 MySQL·Redis의 빈 상태 → 기존 V003/V004 → 일반 Spring 합성 seed → auth 전용 short 서비스 → 실제 인증을 확인한 뒤 나머지 검사를 순차 실행한다. main은25173, short는25174다. 기본 인증에는 worker/dispatcher가 없고 authorization/indexing에서만 새 fixture와 큐 대응을 확인한 뒤 기동했다. auth의 demo=false와 student의 demo=true는 각각 별도 신규 short 서비스로 만들었다. 이번에는 student short2서비스를 기동하지 않았다. 원래 `plan`의 실행 없는 후보 출력과 `config` 성공은 이 실행 경로의 시작 허가가 아니다.
+
+종료는 `validate`의 `finally`와 진단의 동일한 증표 기반 종료 경로로 수행했다. 시작했던 신규11컨테이너는 모두 중지, 미기동2개는 `created` 상태이며 신규5볼륨·2네트워크·fixture·증거는 보존한다. 새 환경 재개에는 제품 경계 문제의 국소 수정 승인, 실패 원본을 보존하는 별도 시도 증거, 동일 소스의 전체 최종 검증이 필요하다. 기존 환경이나 기존 자격증명으로 돌아가는 재시도는 허용하지 않는다.
+
 ### 호스트 브라우저 검사 보완안 — 코드 반영·통합 검증 대기
 
 **2026-10-14 후속 상태:** 기존 검사10파일 중7종 harness의 설정 전달을 보완하고, student 경계의 short origin·독립 manifest/실행 계획·순수 검사 파일을 작업트리에 추가했다. 현재 안은 명시적 `DODREAM_ISOLATED_MANIFEST`와 새 시험 receipt를 요구하고, 기존 origin·결과 경로·`.local/env` fallback을 거부한다. **준비됨, 실제 기동·통합 검증 전**이며 코드 전체를 미커밋으로 보존한다. 아래10월8일 정책의 결과 경로 기본값은 당시 안이고 현재 독립 시험에는 적용되지 않는다. 실행 없는 최소 검사 명령·서비스 표·남은 launcher 차단 조건은 [18번 후속 기록](18-portfolio-code-review.md#isolated-preflight-2026-10-14)에 있다. 문서 커밋만으로 신규 명령을 실행할 수 없고, 이전 `manage.py` 준비·기동 명령을 대신 실행해서도 안 된다.

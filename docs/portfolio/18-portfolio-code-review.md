@@ -289,6 +289,8 @@ README의 세 사례는 공개 main 전체 SHA의 코드·검사 줄 범위와 �
 
 ### 독립 합성 시험의 오프라인 준비 (2026-10-14)
 
+이 구역은 실제 실행 승인 전의 기록이다. 이후 승인된 새 환경의 실행과 색인 실패는 [독립 시험 실행 후속](#isolated-execution-2026-10-14)에 구분한다. 아래의 과거 미기동·미실행 판정과 증거는 보존한다.
+
 시작 HEAD `91ebc824a36d12848b607dc7bb560778c1795a31`, 브랜치 `codex/dodream-evidence-portability`를 확인했다. **준비됨, 실제 기동·통합 검증 전**이다. 아래 설정·실행기·검사 코드는 모두 미커밋 작업트리 안이며 이 문서만 checkout해 실행할 수 없다. 제품 Java/Python·DB 스키마·기존 Compose/scope gate·showcase는 바꾸지 않았다. 사고 원인은 위 기록대로 **기존 ID를 직접 지정한 docker start에 worker/dispatcher 포함, operation=config 소유권 확인을 데이터 변경 허가로 사용**한 것이다. 재조사하거나 외부 변화로 재분류하지 않는다.
 
 **구현:** `scripts/local/isolated-trial.json` 한 파일에서 시험 ID·project·root·자격증명 위치·두 origin을 지정한다. `isolated_trial.py`는 suite별 Compose 후보와 정확한 argv를 **출력만** 한다. `.local/env`를 읽거나 `manage.py`를 import하지 않는다. `validate_invocation()`은 실제 argv의 operation·서비스·root·config와 전체 서비스 환경·볼륨·네트워크를 대조한다. 직접 ID start, config→up 허가 재사용, external/name 기존 볼륨, 기존 DB/Redis/Chroma endpoint, 객체/SQLite bind, 홈/socket, 불필요한 소비자, 누락·알 수 없는 입력을 거부한다. 상속 환경변수도 거부하고 `execute_invocation()`은 유효한 계획이어도 항상 중단한다. `validate_fresh_inventory()`는 전달된 최소 메타데이터의 이름 충돌을 검사할 뿐 실제 Docker 조회나 기동 허가가 아니다. 일반 셸의 모든 직접 명령 오용까지 차단한다고 주장하지 않는다.
@@ -340,3 +342,47 @@ python3 scripts/local/isolated_trial.py \
 새 증거는 ignored `.local/evidence-portability-isolated-preflight/20261014/`의 `before.json`, `after.json`, `working-tree.patch`, `final-pure-commands.json`, `plan-commands.json`, `plan-*.json`으로 구분한다. 시작 시 기존10파일 hash와 원본94개 증거 hash가 직전 기록과 같았다. 이번에는 그중7개 harness를 수정하고 package.json·chrome-launch·browser-runtime.test의3개 hash는 유지했다. 학생 boundary1개와 신규 설정/helper/순수 검사5개를 포함해 코드16파일을 미커밋으로 보존한다. 과거 해시 불변 기록은 당시 상태로 남기고 원본94개·기존 사용자 파일을 보존한다. 문서3개만 별도 로컬 커밋 대상이다.
 
 `PREEXISTING_ENVIRONMENT=FROZEN`, `ISOLATED_EXECUTION_PLAN=PREPARED_OFFLINE_ONLY`, `ISOLATION_POLICY_TESTS=PASS`, `NEW_ENVIRONMENT_STARTED=false`, `INTEGRATION_VALIDATION=NOT_RUN`, `RECOVERY_EXECUTED=false`. **BACKEND_DATA=CHANGED_UNEXPECTEDLY, DATA_PRESERVATION=FAIL**을 유지한다. 이번에는 Docker 명령·DB/Redis/Chroma 연결·실제 브라우저·실제 비밀 파일 읽기/생성·복구·원격 Git/Pages 변경을 하지 않았다. 시험 root 자체도 생성하지 않았고 공개 데모는 그대로다. 과거 auth17 PASS 및 나머지 BLOCKED/NOT_RUN은 새 검증으로 바꾸지 않는다.
+
+<a name="isolated-execution-2026-10-14"></a>
+
+### 독립 시험 실제 실행과 색인 준비 실패 (2026-10-14)
+
+**판정:** 새 환경의 실행 연결과 생성·기동 검증을 구현하고 실제 인증·권한·채점 검사를 통과했다. 색인 준비 API의 제품 경계 오류에서 중단했으므로 **브라우저 이식성 전체 완료가 아니다.** 시작 HEAD는 `50f63a6a0762866dae6412282624636687621830`, 브랜치는 `codex/dodream-evidence-portability`다. 기존16파일 중15개는 그대로이고 `isolated_trial.py`를 확장했다. launcher5개와 실행 보조·순수 검사7개를 더해 코드·설정28파일을 미커밋으로 보존한다. 필수 통합 검증이 끝나지 않아 이번에는 확인한02·18 문서만 별도 로컬 커밋한다. 문서 커밋만으로 새 실행기가 제공되는 것은 아니다.
+
+**연결한 범위:** `isolated_trial.py` 한 실행기에 A. `manage.py`·`verify.py`·indexing/student launcher의 설정·plan·fixture·finally, B. 실제 생성 증표와 매 operation의 현재 자원 대조(`isolated_provenance.py`), C. 새 합성 seed·fixture·소비 전 작업 소유권(`isolated_checks.py`), D. 선별 빌드 입력·이미지 ID/command/entrypoint 확인(`isolated_images.py`)을 연결했다. 기존 scope gate의 전역 허용 범위는 바꾸지 않았다. auth/disabled용 demo=false와 student용 demo=true short 서비스를 별도로 고정하여 실행 중 컨테이너 설정을 바꿔 끼우지 않는다. 원래 실행 없는 `plan`의 PRESTART 설명에는 사전 단계 문구가 남아 있으며 실제 실행 근거는 아래의 새 증표와 `--action` 경로다. 이를 완료된 범용 실행 도구로 공개하지 않는다.
+
+**실제 자원:** manifest는 `scripts/local/isolated-trial.json`, root는 `.local/isolated/evidence-portability-20261014/`, project는 `dodream-evidence-20261014`, run ID는 `0f5a799e-696c-4750-8519-92e055f8bb57`, origin은 loopback25173·25174다. 새0600 자격증명만 생성했다. `preparation.json` → `images.json` → `creation-intent.json` → `creation.json`이 manifest/source digest, 생성 전 부재, 실제 생성 argv·exit0, 시각·컨테이너/이미지/네트워크 ID·마운트를 연결한다. 생성 전 config 성공을 start 허가로 재사용하지 않았다.
+
+| 새 자원 | 실제 생성·사용 범위 |
+|---|---|
+| 컨테이너13개 | mysql, redis, be, ai, python-service, web, chroma, worker, index-dispatcher, be-auth-short, web-auth-test, be-student-short, web-student-short |
+| 데이터 볼륨5개 | 새 project의 `mysql-data`, `redis-data`, `be-data`, `ai-data`, `chroma-data`; 기존 volume·객체·SQLite·queue 복사 없음 |
+| 네트워크2개 | 새 `default` internal=true, `gateway`는 web만 연결; backend·DB·소비자는 내부망만 사용 |
+| bind·포트 | 새 root 아래 검토한 nginx 설정2개만 read-only; 홈·저장소 전체·Docker socket·기존 데이터 bind 없음; loopback25173·25174만 게시 |
+| 종료 상태 | 시작한11개 모두 `exited`, student short2개는 미기동 `created`; 새 데이터·볼륨·네트워크·증거 보존 |
+
+BE·AI·PDF·web·Chroma는 별도 `dodream-evidence-20261014-*:run-0f5a799e` 태그로 새 빌드했고 기존 태그를 덮지 않았다. allowlist433개 입력(텍스트423/바이너리10)의 원본/복사본 hash·Dockerfile·lock·현재 소스 대응과 알려진 비밀 파일·토큰 후보를 확인했다. MySQL/Redis는 읽기 전용 stock 이미지의 immutable ID·RepoDigest·실행 구성을 확인했다. ID와 입력별 hash는 root의 `image-*.json`·`images.json`에 있다. 시험 root·`.local`·`.env`·Git·사용자 파일은 context에서 제외했고 ambient Docker 인증 설정을 복사하지 않았다. 이 제한된 검토를 이미지 전체 과거 layer의 비밀 부재 보증으로 확대하지 않는다.
+
+**생성 중간 실패 보존:** 새 HOME에서 Compose plugin을 찾지 못한 실패, 숫자가 든 환경변수 이름의 치환 오류, Compose의 null/빈 기본값 정규화 차이, 생성 후 Docker 나노초 시각·미기동 NetworkID·mount 순서 해석 실패를 원본 결과로 남겼다. 실제 관측한 기본값만 좁게 처리하고 부정 검사를 추가했다. 성공한 생성 자체는 한 번이며, `verify-created`가 원래 생성 명령의 성공·부재/시각/ID·미기동 상태를 읽기 전용으로 검증한 뒤에만 시작했다. 원본 `creation-observed-blocked.json`·후속 관측과 실패 로그를 덮지 않았다. 실제 명령 순서는 [02 실행 기록](02-local-runbook.md#isolated-execution-runbook-2026-10-14)에 있다.
+
+| 검사 | 이번 실제 결과 | 증거 범위 |
+|---|---|---|
+| 기본 인증 준비 | PASS | 신규 MySQL application table0, Redis DB0/1 key0 → 기존 V003/V004 → 일반 BE seed → 신규 로그인·보호 API; worker/dispatcher 없음. 신규 SQLite 빈 상태도 확인 |
+| auth | 17 PASS, FAIL0 | 실제 서버/UI12 + 실제 응답 지연/전달 장애3 + 오류 응답 주입2; 과거17 PASS와 별개 |
+| authorization | 18 PASS, FAIL0 | 준비 시 신규 Chroma collection0 확인. 실제 편집 UI와 브라우저 API 권한·공유·복원 검사; 소비자는 이번 fixture/큐 대응 확인 후에만 기동 |
+| grading | 11 PASS, FAIL0 | 브라우저 API9 + 실제 commit 후 응답 유실/재전송2. 학생 채점 화면 E2E는 아님 |
+| indexing | 준비 API5 PASS /1 FAIL | 로그인4·실제 Chroma/non-eager Celery 확인 후 `actual_binary_pdf_initial_accept` HTTP503; 색인 브라우저는 실행 전 차단 |
+| student·demo-disabled·hardening·학생 boundary | NOT_RUN | 앞선 정상 색인 준비 실패로 순차 실행 중단. PASS나 skip으로 처리하지 않음 |
+| 순수 정책 | Python130 / Node16 PASS, 모두 exit0 | 정책28·이미지20·증표37·실행25·launcher20, Node10+6. 실제 통합 통과 수에 합산하지 않음 |
+
+실제 Chrome은155.0.8059.40이며 auth는25174, authorization/grading은25173을 사용했다. 세 브라우저 결과의 `externalRequestsBlocked`는 각각0이다. 공급자 경계만 기존 local 대역을 사용했고 Spring/FastAPI·DB를 가짜 서버로 대체하지 않았다. 오류 주입은 위와 같이 분리했다. 실제 음성 청취·VoiceOver·네이티브 앱/실기기·실제 공급자는 NOT_RUN이다.
+
+**구체적 차단:** 전체 `--action validate`는 exit2로 종료했다. 별도 제한 진단에서 신규6서비스만 잠시 기동하여 새 합성 PDF 요청의 HTTP503 `code=INDEXING_TRANSACTION_BOUNDARY`를 확인했고 `uploaded_files`는20→20이었다. 이 진단에는 worker/dispatcher를 기동하지 않았고 동일 증표 기반 finally로6개를 다시 중지했다. [IndexingLocalHooks](../../be/src/main/java/A704/DODREAM/indexing/IndexingLocalHooks.java)의 경계 조건 중 하나 이상이 참이었다는 것은 확인했으나 어느 조건인지는 관측하지 못했다. [PdfController](../../be/src/main/java/A704/DODREAM/file/controller/PdfController.java)의 선행 `policy.teacher` 조회, [AuthorizationPolicy](../../be/src/main/java/A704/DODREAM/authorization/AuthorizationPolicy.java)의 읽기 트랜잭션, [IndexingStore](../../be/src/main/java/A704/DODREAM/indexing/IndexingStore.java)의 기존 OSIV holder 복원으로 물리 연결이 남는 경로는 **소스 기반 유력 원인**이다. 시험 설정 누락 근거는 찾지 못했다. 제품 수정 승인 없이 경계 검사를 완화하거나 isolated 설정에서만 OSIV를 꺼서 통과시키지 않았다. 재개에는 권한 확인을 유지하는 국소 제품 수정·원인 관측·회귀 승인과 실패 원본을 보존하는 새 시도, 같은 소스의 전체 최종 실행이 필요하다.
+
+**보존과 근거:** 새 코드/순수 검사의 증거는 `.local/evidence-portability-isolated-execution/20261014T035459Z/`의 `initial.json`, `pure-full-commands.json`, `before-integration-code.json`, `scope-audit-final.json`, `final-resource-audit.json`에 있다. 통합 중28코드 hash는 불변이며 원본94개 증거도 모두 불변이다. 이번 생성 root의 `results/`에는 `isolated-auth-gate.json`, 실행별 `browser-*-checks-*.json`(auth는 `browser-checks-*.json`), `indexing-checks-20261014T043235-d56d328a.json`, `indexing-upload-diagnostic.json`, 종료 기록을 보존한다. 실패와 최종 실행의 부분 PASS를 섞어 전체 PASS로 만들지 않았다.
+
+종료 후 신규 자원/증표 재대조 PASS, 기록된 start/exec/stop 대상 ID는 전부 이번 생성 자원이었다. 기존11개 컨테이너 상태·시작/종료 시각과 기존78개(외부67개 포함)의 ID·이름·상태 행은 시작 전과 같고, 기존61볼륨·23네트워크 이름도 모두 남아 있다. **기존 DB 내용은 접속하거나 새 hash를 계산하지 않았다.** 기존 사고의 직접 ID `docker start`에 worker/dispatcher가 포함되고 `operation=config` 소유권을 데이터 변경 허가로 사용했다는 판정과 데이터 보존 FAIL은 그대로다. 제품 Java/Python·DB 스키마·showcase·기존 Compose/scope gate 및 사용자 `.DS_Store`는 수정하지 않았다. 복구·삭제·prune·원격 Git·Pages 변경 없음.
+
+`PREEXISTING_ENVIRONMENT=FROZEN`, `HISTORICAL_DATA_PRESERVATION=FAIL`, `BACKEND_DATA=CHANGED_UNEXPECTEDLY`, `DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`.
+
+`NEW_RESOURCE_PROVENANCE=PASS`, `NEW_ENVIRONMENT_ISOLATION=PASS_WITHIN_OBSERVED_SCOPE`, `NEW_ENVIRONMENT_STARTED=true` (현재 기동분 모두 중지), `SYNTHETIC_FIXTURE_PREPARATION=PARTIAL_FAILED_INDEXING_PDF`, `INTEGRATION_VALIDATION=FAIL_INDEXING_PREPARATION_REMAINING_NOT_RUN`, `PRODUCT_AND_SHOWCASE_UNCHANGED=true`. 공개 데모는 그대로 유지한다.
