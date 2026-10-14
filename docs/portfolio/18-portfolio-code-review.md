@@ -386,3 +386,46 @@ BE·AI·PDF·web·Chroma는 별도 `dodream-evidence-20261014-*:run-0f5a799e` �
 `PREEXISTING_ENVIRONMENT=FROZEN`, `HISTORICAL_DATA_PRESERVATION=FAIL`, `BACKEND_DATA=CHANGED_UNEXPECTEDLY`, `DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`.
 
 `NEW_RESOURCE_PROVENANCE=PASS`, `NEW_ENVIRONMENT_ISOLATION=PASS_WITHIN_OBSERVED_SCOPE`, `NEW_ENVIRONMENT_STARTED=true` (현재 기동분 모두 중지), `SYNTHETIC_FIXTURE_PREPARATION=PARTIAL_FAILED_INDEXING_PDF`, `INTEGRATION_VALIDATION=FAIL_INDEXING_PREPARATION_REMAINING_NOT_RUN`, `PRODUCT_AND_SHOWCASE_UNCHANGED=true`. 공개 데모는 그대로 유지한다.
+
+
+<a name="indexing-boundary-followup-2026-10-14"></a>
+
+### PDF 물리 연결 경계 수정과 독립 시험 완료 (2026-10-14)
+
+시작 HEAD는 `80bf830fce1f4305641959852d2ed873c8f62b49`, 브랜치는 `codex/dodream-evidence-portability`다. 기존 미커밋28파일 중17개 hash를 유지하고11개를 최소 보완했다. 제품/직접 회귀7개와 검사 helper4개를 더한39개 코드·설정의 최종 실행 중 hash는 불변이다. 아래는 사용자가 승인한 제품 수정과 **같은 신규 시험의 관련 통합** 결과이며, 앞선503 실패·NOT_RUN·과거 데이터 보존 FAIL을 대체하지 않는다.
+
+검증한 코드·설정39파일은 `2e83b88`(실행기·자원 정책19개), `5a0d456`(브라우저 설정·의존성13개), `5eed21e`(제품 경계·직접 회귀7개)로 명시 경로만 stage하고 별도 로컬 커밋했다. README·02·이 결과 문서는 후속 문서 커밋으로 구분한다. 코드 미커밋은 남기지 않으며 기존 사용자 `.DS_Store`3개는 미추적 상태로 보존한다.
+
+**실측 원인:** `POST /api/pdf/upload-and-parse`의 같은 합성 filename·본문 hash로 실제503을 재현했다. 컨트롤러 선행 `policy.teacher()` 뒤 요청 EntityManager와 물리 연결 보유가 true였지만 transactionActive/synchronizationActive/dataSourceBound는 모두 false였다. `IndexingStore.teacher()`의 임시 분리 중에도 detachedPhysicalConnectionHeld=true였고, 복원 후 첫 객체 저장 전 `IndexingLocalHooks.boundary()`가 이를 거부했다. 활성 트랜잭션 잔류나 잘못된 시험 endpoint/fixture는 이 실패의 원인이 아니었다. 파일20→20·작업2→2·자원1→1·실행2→2이며 첫 저장 이전의 실패였다. 진단은 상관 ID·단계·boolean만 기록하며 getConnection/관측 SQL·공개 debug API를 추가하지 않았다.
+
+**최소 수정:** [PdfController](../../be/src/main/java/A704/DODREAM/file/controller/PdfController.java)의 입력 읽기 전 `policy.teacher(userId)`를 기존 `indexingStore.teacher(userId)`로 교체했다. 같은 역할 검사를 짧은 트랜잭션에서 처리해 OSIV 요청 holder가 먼저 연결을 빌리지 않게 한다. 역할·소유/공유·입력 제한·경계 가드는 유지했다. [PdfService](../../be/src/main/java/A704/DODREAM/file/service/PdfService.java), [IndexingStore](../../be/src/main/java/A704/DODREAM/indexing/IndexingStore.java), [IndexingLocalHooks](../../be/src/main/java/A704/DODREAM/indexing/IndexingLocalHooks.java)에 local 요청 scope 관측을 추가했다. 전역 OSIV·DB 스키마·라이브러리·타임아웃 변경은 없다.
+
+**전후 직접 회귀:** `001-observation-01`의503과 동일 입력인 `002-fixed-01` 요청은200이며 외부 호출 전 활성 트랜잭션·물리 연결·분리 holder 연결 보유가 모두 false였다. 무토큰401·학생403·다른 교사 파일404·잘못된 filename/본문400·크기 초과413은 파일/작업을 늘리지 않았다. local AI를 멈춘 별도 요청은500이고 원본 객체와 파일1개만 남았다(파싱 참조·색인 작업 없음). 이를 보존했으며 **전체 업로드는 원자적이지 않다.** AI를 다시 시작한 뒤 새 요청은200이었다. 정상2개 작업의 세대1·원본revision1·ACTIVE·원본 bytes/hash·소유자 대응과 실제 Chroma 각6청크/벡터 질의를 확인했다. 이 상세 증거는 fixed-01 이미지의 결과로 구분한다.
+
+**최종 실행:** 제품4파일은 fixed-01과 같은 hash이며, 직접 HTTP의 동일 서버 스레드 회귀를 추가한 `004-fixed-03` 이미지에서 아래를 새로 실행했다. Java 회귀는 물리 연결/활성 트랜잭션을 실제 보유하면 가드가 거부함을 확인한다. 실제 단일 Tomcat 스레드의403→400→200 뒤 트랜잭션·동기화·EntityManager/DataSource·SecurityContext 정리도 확인했다. 테스트의 바깥 트랜잭션 실패를 실제 HTTP 재현으로 세지 않았다.
+
+| 최종 검사 | 실제 결과 | 구분 |
+|---|---|---|
+| Java 직접 경계 | 23 PASS, 실패/오류/skip0 | 관측5·실제 DB/OSIV/HTTP6·입력9·컨트롤러 권한3 |
+| auth | 17 PASS | 실제 서버/UI12·전달 장애3·오류 응답 주입2 |
+| authorization | 18 PASS | 편집·자료 소유/공유 권한 |
+| grading | 11 PASS | 실제 브라우저 API9·응답 유실/replay2; 학생 채점 UI 수가 아님 |
+| indexing | 준비·연결 검사29 PASS / 브라우저14 PASS | 포함 관계이므로43개로 합산하지 않음 |
+| student·학생 boundary | 55 PASS | 실제 학생 흐름·권한 변경·짧은 토큰·저장 장애·입력 경계 포함 |
+| demo-disabled | PASS | 상태 보고서이며 임의 검사 개수를 부여하지 않음 |
+| hardening | 13 PASS | 실제 브라우저 입력·오류 경계 |
+| 순수 정책 | Python186 / Node18 PASS | 통합 수에 합산하지 않음 |
+
+최종 명령·절차는 [02번 기록](02-local-runbook.md#indexing-boundary-runbook-2026-10-14)에 있다. Java/전체 통합/정책 명령은 exit0이다. Chrome155.0.8059.40의7종 결과에서 외부 요청 관측은 모두0이다. 학생 검사 전후 application source digest도 같다. 기존 서버를 가짜 서버로 대체하지 않았으며 외부 공급자 경계만 명시적 local 대역이다. 실제 음성·VoiceOver·네이티브/실기기·실제 공급자·다른 OS 브라우저 실행은 NOT_RUN이다.
+
+중간 실행은 분리 보존했다. fixed-01 통합도 통과했지만 최종 수에 합산하지 않았다. 전용 검사 준비의 entrypoint/cache 처리 및 Gradle selector 실패는 Java0이었다. fixed-02는 추가 테스트의 assertEquals 타입 모호성으로 빌드 실패했고 컨테이너를 교체하지 않았다. 타입을 명시한 fixed-03에서 실제23개를 통과했다. 가드·assertion 삭제나 skip으로 해결하지 않았다. 모든 실패 증거·이전 이미지/context는 보존했다.
+
+**소스·신규 자원:** project `dodream-evidence-20261014`, run `0f5a799e-696c-4750-8519-92e055f8bb57`와 원본5볼륨·2네트워크를 유지했다. revision별 이전/새 BE3개 ID를 추가 증표로 연결하고 다른10개 ID는 유지했다. 전용 Java 검사3개는 별도 생성 증표를 가진 컨테이너이며 동일 신규 내부망·be-data만 사용했다(추가 볼륨0). 앱13개와 검사3개 모두 exited다. 실패 검사2개도 삭제하지 않았다.
+
+최종 BE 이미지 `sha256:f2874ad7e6d36c55eb3dd67dc3cdd56b4bfbf17405133dffcedaa3e5a761681e`, BE source digest `13845fa079dc67f8c050a9aaed270fec0de2ec62601881330a0bea41d1bcd97b`, 전체 이미지 입력 fingerprint `d3ee2a0258376d5c871ade2789731fafc95b7b95b2e1c6cbf9d1786e619fb445`다. 빌드 당시 HEAD와 미커밋 내용 hash를 함께 연결했으며, 후속 로컬 커밋을 이미지의 빌드 당시 SHA로 소급하지 않는다.
+
+증거는 `.local/isolated/evidence-portability-20261014/`의 `revisions/`, `attempts/boundary-before-01/`, `attempts/boundary-fixed-01/`, `boundary-tests/004-fixed-03/focused-java-04/`, `attempts/integration-fixed-03/`와 `.local/evidence-portability-indexing-boundary/20261014T045644Z/`의 최종 요약·자원/소스 대조에 있다. 원본94개 hash 모두 불변, 기존78컨테이너 ID/이름/상태와 기존11개 시작/종료 시각 불변, 기존61볼륨·23네트워크 보존이다. 기존 DB 내용은 접속하거나 다시 hash하지 않았다. 공개 showcase 소스·자산·원본 Compose/scope gate는 불변이며 사용자 `.DS_Store`는 읽거나 수정하지 않았다.
+
+`INDEXING_BOUNDARY_ROOT_CAUSE=CONFIRMED_OSIV_PHYSICAL_CONNECTION_AFTER_CONTROLLER_PERMISSION`, `INDEXING_BOUNDARY_REGRESSION=PASS`, `SYNTHETIC_FIXTURE_PREPARATION=PASS`, `INTEGRATION_VALIDATION=PASS_RELATED_ISOLATED_SCOPE`, `PRODUCT_CHANGE=PDF_PERMISSION_SHORT_TRANSACTION_AND_LOCAL_OBSERVATION`, `SHOWCASE_SOURCE_UNCHANGED=PASS`.
+
+`PREEXISTING_ENVIRONMENT=FROZEN`, `HISTORICAL_DATA_PRESERVATION=FAIL`, `BACKEND_DATA=CHANGED_UNEXPECTEDLY`, `DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`을 유지한다. 기존 사고의 직접 docker start 및 config 소유권 검사의 오용 판정도 그대로다. 기존 데이터 복구·데이터 삭제·prune·push·PR·merge·Pages 재배포 없음. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`다.

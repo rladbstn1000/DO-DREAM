@@ -32,6 +32,35 @@ npm run verify:showcase
 
 > **현재 통합 재개 중단:** evidence-portability 검증 준비에서 기존 대기 작업이 처리돼 데이터 보존이 실패했다. 아래의 기존 기동·준비·통합 검사 명령은 과거 절차와 전제를 보존한 참조이며 현재 실행 허가가 아니다. 기존 서비스의 start/up/restart, worker·dispatcher 실행, DB·큐·포인터 복구는 하지 않는다. 재개에는 [기존 저장소와 분리한 새 시험 범위의 검토](18-portfolio-code-review.md#evidence-portability-safe-resume)가 먼저 필요하다. 공개 정적 showcase 절차와 구분한다.
 
+<a name="indexing-boundary-runbook-2026-10-14"></a>
+
+### PDF 경계 수정 후 같은 독립 시험 재사용 — 2026-10-14
+
+사용자가 승인한 국소 제품 수정 후 **관련 독립 통합 검사 PASS, 실행분 종료**를 확인했다. [원인·최종 결과](18-portfolio-code-review.md#indexing-boundary-followup-2026-10-14)에 범위와 한계를 기록한다. 아래의 기존503 중단·미커밋·기동 전 설명은 각 단계 당시 기록이다. 기존 `dodream-phase1`과 데이터·자격증명을 사용하는 실행 중단은 계속 유효하다.
+
+같은 `isolated-trial.json`, `.local/isolated/evidence-portability-20261014/`, project `dodream-evidence-20261014`의 생성 증표를 대조했다. 새 환경을 또 만들거나 `prepare/create`를 다시 실행하지 않았다. 다음은 실제 실행한 최종 명령 기록이며, 보존 중인 revision·attempt 이름을 재실행하라는 안내가 아니다.
+
+```bash
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action revise-be --revision fixed-03 \
+  --include-source be/src/test/java/A704/DODREAM/indexing/IndexingObservationTests.java \
+  --include-source be/src/test/java/A704/DODREAM/indexing/IndexingRequestBoundaryDatabaseTests.java \
+  --include-source be/src/test/java/A704/DODREAM/file/PdfUploadPermissionBoundaryTests.java
+python3 -B .local/evidence-portability-indexing-boundary/20261014T045644Z/run-focused-java-04.py
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action validate --attempt integration-fixed-03
+```
+
+세 명령은 각각 exit0이다. 두 번째는 이번 증거에 보존한 한정 실행 파일이며 Git에 포함된 범용 CLI가 아니다. 내용은 `TrialRuntime(repo, manifest, attempt="focused-java-04")` → `prepare_attempt()` → `set_stage("auth", "browser")` → 신규 mysql/redis/ai start → `isolated_boundary_tests.run(runtime)` → `finally: stop_started()`다. 해당 helper는4개 클래스의 실제 JUnit 결과23개, 실패·오류·skip0을 검증했다. 같은 고정 합성 HTTP 사례는 중복 실행을 거부한다.
+
+`revise-be`는 전체 신규 서비스가 멈춘 상태에서 새 BE tag/context를 빌드하고 BE·auth-short·student-short만 `up --no-start --no-deps --force-recreate --no-build --pull never`로 재생성한다. 원본 증표·이전 이미지·실패 기록은 보존하고 `revisions/<번호>-<이름>/`에 이전/새3개 ID와 시각·소스·이미지를 추가한다. 다른10개 서비스·신규5볼륨·2네트워크의 동일성과 교체3개 컨테이너의 미기동 상태를 확인한다.
+
+`--attempt`는 결과·fixture·plan을 별도 디렉터리로 분리한다. 현재 증표와 소스에 대응하는 인증 PASS가 있어야 후속 검사를 시작한다. config 성공이나 이전 이미지의 인증 PASS를 start 허가로 사용하지 않는다. 실제 start/exec/stop은 매번 대상 ID와 operation을 검사한다. 소비자가 필요한 색인·학생 준비 단계에서만 새 DB 원장과 Redis 메시지가 이번 합성 사례인지 대조한 후 worker/dispatcher를 시작한다. 동일25174 포트의 인증용 demo=false와 학생용 demo=true는 순서대로 사용한다.
+
+실제 HTTP 전후 비교는 `verify_pdf_boundary`를 부모 runtime에 연결해 `boundary-before-01`/`boundary-fixed-01`에 기록했다. 최종 Java 증거는 `boundary-tests/004-fixed-03/focused-java-04/result.json`, 전체 통합은 `attempts/integration-fixed-03/results/`다. 각 앞 경로는 위 신규 root 기준이다. 중간 Gradle 준비/selector 실패와 Java 컴파일 실패도 원본 그대로 남겼다. 이 중간 결과를 최종 통합 수에 합산하지 않는다.
+
+최종 자원·소스·원본94개 증거 대조는 `.local/evidence-portability-indexing-boundary/20261014T045644Z/final-resource-and-source-audit.json`에 있다. 신규 앱13개와 전용 검사3개는 모두 exited이며 데이터·볼륨·네트워크를 보존한다. 기존 DB 내용 재조회·복구·원격 변경은 하지 않았다. 이후 실행도 현재 이미지/receipt·새 attempt 및 별도 승인 범위를 다시 확인해야 하며, 기존 환경으로 fallback하지 않는다.
+
 <a name="isolated-execution-runbook-2026-10-14"></a>
 
 ### 독립 합성 시험 실제 실행 — 2026-10-14, 색인 준비 실패로 중단
@@ -55,7 +84,7 @@ python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolat
 
 종료는 `validate`의 `finally`와 진단의 동일한 증표 기반 종료 경로로 수행했다. 시작했던 신규11컨테이너는 모두 중지, 미기동2개는 `created` 상태이며 신규5볼륨·2네트워크·fixture·증거는 보존한다. 새 환경 재개에는 제품 경계 문제의 국소 수정 승인, 실패 원본을 보존하는 별도 시도 증거, 동일 소스의 전체 최종 검증이 필요하다. 기존 환경이나 기존 자격증명으로 돌아가는 재시도는 허용하지 않는다.
 
-### 호스트 브라우저 검사 보완안 — 코드 반영·통합 검증 대기
+### 호스트 브라우저 검사 보완안 — 당시 코드 반영·통합 검증 대기
 
 **2026-10-14 후속 상태:** 기존 검사10파일 중7종 harness의 설정 전달을 보완하고, student 경계의 short origin·독립 manifest/실행 계획·순수 검사 파일을 작업트리에 추가했다. 현재 안은 명시적 `DODREAM_ISOLATED_MANIFEST`와 새 시험 receipt를 요구하고, 기존 origin·결과 경로·`.local/env` fallback을 거부한다. **준비됨, 실제 기동·통합 검증 전**이며 코드 전체를 미커밋으로 보존한다. 아래10월8일 정책의 결과 경로 기본값은 당시 안이고 현재 독립 시험에는 적용되지 않는다. 실행 없는 최소 검사 명령·서비스 표·남은 launcher 차단 조건은 [18번 후속 기록](18-portfolio-code-review.md#isolated-preflight-2026-10-14)에 있다. 문서 커밋만으로 신규 명령을 실행할 수 없고, 이전 `manage.py` 준비·기동 명령을 대신 실행해서도 안 된다.
 
