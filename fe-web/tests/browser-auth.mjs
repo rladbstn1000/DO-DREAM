@@ -2,19 +2,18 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright-core';
+import { launchChrome } from './chrome-launch.mjs';
+import { loadIsolatedRuntime, readTrialFixture, readTrialCredentials } from './isolated-runtime.mjs';
 import assert from 'node:assert/strict';
 
-const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const origin = process.env.DODREAM_AUTH_BROWSER_ORIGIN || 'http://127.0.0.1:15174';
-if (!['127.0.0.1', 'localhost'].includes(new URL(origin).hostname) || new URL(origin).protocol !== 'http:') throw new Error('Only loopback HTTP test origins allowed');
-const env = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n').filter(line => line && !line.startsWith('#')).map(line => { const i = line.indexOf('='); return [line.slice(0, i), line.slice(i + 1)]; }));
+const runtime = await loadIsolatedRuntime('auth', root);
+const fixture = await readTrialFixture(runtime);
+const { resultsDir, origin } = runtime;
+const env = await readTrialCredentials(runtime, fixture);
 const password = env.LOCAL_TEACHER_PASSWORD;
 if (!password) throw new Error('Generated local teacher credential unavailable');
-let playwright;
-try { playwright = require('playwright'); }
-catch { playwright = require(process.env.DODREAM_PLAYWRIGHT_PATH || '/Users/yoonsu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); }
 const checks = [];
 const check = (name, passed, detail = '') => {
   const entry = { name, status: passed ? 'PASS' : 'FAIL', detail };
@@ -52,7 +51,7 @@ async function fresh() {
   });
   await page.goto(origin);
   await page.getByText('로그인 하기', { exact: true }).click();
-  await page.locator('form.sign-in input[name="email"]').fill('teacher@local.dodream.invalid');
+  await page.locator('form.sign-in input[name="email"]').fill(fixture.teacherEmail);
   await page.locator('form.sign-in input[name="password"]').fill(password);
   const loginResponse = page.waitForResponse(r => r.url().endsWith('/api/auth/teacher/login'));
   await page.locator('form.sign-in button[type="submit"]').click();
@@ -89,8 +88,7 @@ async function enterClassroomBeforeExpiry(page, counts) {
   assert.equal(counts().refreshes, 0, 'Classroom entry must finish before the short AT expires');
 }
 try {
-  browser = await playwright.chromium.launch({
-    executablePath: process.env.DODREAM_CHROME_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  browser = await launchChrome(chromium, {
     headless: true,
     args: ['--disable-background-networking', '--disable-component-update', '--disable-sync', '--no-first-run'],
   });
@@ -229,7 +227,7 @@ try {
   if (browser) await browser.close();
   const report = { browser: 'Chrome ' + version, origin, checks, externalRequestsBlocked: blockedExternal,
     nativeDeviceExecution: 'NOT_RUN', counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase5/results/browser-checks.json');
+  const output = path.join(resultsDir, 'browser-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');

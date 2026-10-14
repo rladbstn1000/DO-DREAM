@@ -2,13 +2,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright-core';
+import { launchChrome } from './chrome-launch.mjs';
+import { loadIsolatedRuntime, readTrialFixture, readTrialCredentials, readTrialBrowserPlan } from './isolated-runtime.mjs';
 import assert from 'node:assert/strict';
-const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const origin = process.env.DODREAM_INDEX_BROWSER_ORIGIN || 'http://127.0.0.1:15173';
-const base = new URL(origin);
-if (!['127.0.0.1', 'localhost'].includes(base.hostname) || base.protocol !== 'http:' || base.origin !== origin) throw new Error('Loopback origin required');
+const runtime = await loadIsolatedRuntime('indexing', root);
+const fixture = await readTrialFixture(runtime);
+const { resultsDir, origin } = runtime;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const checks = [];
 let browser, plan, handshakeDirectory;
@@ -91,12 +92,9 @@ async function recoverThroughUi(page, row, kind, expectedReadable) {
     afterGeneration: after.executionGeneration, beforeReadable: before.readable, afterReadable: after.readable });
 }
 try {
-  const manifestPath = process.env.DODREAM_INDEX_BROWSER_PLAN;
-  if (!manifestPath) throw new Error('Synthetic UI plan required');
-  const allowedDirectory = await fs.realpath(path.join(root, '.local/phase5/browser-ui'));
-  const realPlan = await fs.realpath(manifestPath);
-  assert.ok(realPlan.startsWith(allowedDirectory + path.sep));
-  plan = JSON.parse(await fs.readFile(realPlan, 'utf8'));
+  const loaded = await readTrialBrowserPlan(runtime, fixture);
+  const realPlan = loaded.filename;
+  plan = loaded.plan;
   assert.match(plan.runId, uuid);
   const titles = [plan.publishTitle, plan.firstFailureTitle, plan.reindexFailureTitle];
   assert.equal(new Set(titles).size, 3);
@@ -106,20 +104,16 @@ try {
     await assert.rejects(fs.stat(path.join(handshakeDirectory, `${plan.runId}.${event}.json`)), { code: 'ENOENT' });
   }
   handshakeAccepted = true;
-  const env = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n')
-    .filter(line => line && !line.startsWith('#')).map(line => { const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1)]; }));
-  let playwright;
-  try { playwright = require('playwright'); }
-  catch { playwright = require(process.env.DODREAM_PLAYWRIGHT_PATH || '/Users/yoonsu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); }
+  const env = await readTrialCredentials(runtime, fixture);
   step = 'launch isolated Chrome';
-  browser = await playwright.chromium.launch({ executablePath: process.env.DODREAM_CHROME_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  browser = await launchChrome(chromium, {
     headless: true, args: ['--disable-background-networking', '--disable-component-update', '--disable-sync', '--no-first-run'] });
   if (interrupted) throw new Error('Owning runner stopped launch');
   const { context, page } = await contextPage();
   try {
     step = 'teacher UI login and new synthetic fixture lookup';
     await page.goto(origin); await page.getByText('로그인 하기', { exact: true }).click();
-    await page.locator('form.sign-in input[name="email"]').fill('authz-owner@local.dodream.invalid');
+    await page.locator('form.sign-in input[name="email"]').fill(fixture.ownerEmail);
     await page.locator('form.sign-in input[name="password"]').fill(env.LOCAL_TEACHER_PASSWORD);
     const loggedIn = page.waitForResponse(response => response.url().endsWith('/api/auth/teacher/login'));
     await page.locator('form.sign-in button[type="submit"]').click();
@@ -180,7 +174,7 @@ try {
   const exitCode = checks.some(row => row.status !== 'PASS') ? 1 : 0;
   const report = { browser: 'Chrome ' + version, origin, mode: 'ACTUAL_TEACHER_UI_REAL_INDEXING_SERVICES',
     nativeDeviceExecution: 'NOT_RUN', externalRequestsBlocked, checks, counts, activation: completedActivation, recoveries: observations };
-  const output = path.join(root, '.local/phase5/results/browser-indexing-checks.json');
+  const output = path.join(resultsDir, 'browser-indexing-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   const content = JSON.stringify(report, null, 2) + '\n';
   await fs.writeFile(output, content); await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), content);

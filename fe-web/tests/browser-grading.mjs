@@ -2,20 +2,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright-core';
+import { launchChrome } from './chrome-launch.mjs';
+import { loadIsolatedRuntime, readTrialFixture, readTrialCredentials } from './isolated-runtime.mjs';
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
-const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const origin = process.env.DODREAM_GRADING_BROWSER_ORIGIN || 'http://127.0.0.1:15173';
-const lessonTitle = process.env.DODREAM_GRADING_BROWSER_TITLE || '[GRADING LOCAL] phase5';
-const base = new URL(origin);
-if (!['127.0.0.1', 'localhost'].includes(base.hostname) || base.protocol !== 'http:' || base.origin !== origin) throw new Error('Loopback origin required');
-const env = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n')
-  .filter(line => line && !line.startsWith('#')).map(line => { const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1)]; }));
-let playwright;
-try { playwright = require('playwright'); }
-catch { playwright = require(process.env.DODREAM_PLAYWRIGHT_PATH || '/Users/yoonsu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); }
+const runtime = await loadIsolatedRuntime('grading', root);
+const fixture = await readTrialFixture(runtime);
+const { resultsDir, origin } = runtime;
+const env = await readTrialCredentials(runtime, fixture);
+const lessonTitle = fixture.lessonTitle;
 const checks = [];
 let browser;
 let externalRequestsBlocked = 0;
@@ -45,25 +42,25 @@ async function api(page, pathname, method = 'GET', body, key) {
   }, { pathname, method, body, key });
 }
 async function teacherLogin(page) {
-  return page.evaluate(async password => {
+  return page.evaluate(async ({ password, email }) => {
     const csrf = await (await fetch('/api/auth/csrf', { credentials: 'include' })).json();
     const response = await fetch('/api/auth/teacher/login', { method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
-      body: JSON.stringify({ email: 'authz-owner@local.dodream.invalid', password }) });
+      body: JSON.stringify({ email, password }) });
     if (response.ok) localStorage.setItem('accessToken', (await response.json()).accessToken);
     return response.status;
-  }, env.LOCAL_TEACHER_PASSWORD);
+  }, { password: env.LOCAL_TEACHER_PASSWORD, email: fixture.ownerEmail });
 }
 async function studentLogin(page) {
-  return page.evaluate(async deviceSecret => {
+  return page.evaluate(async ({ deviceSecret, deviceId }) => {
     const response = await fetch('/api/auth/student/native/login', { method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId: 'dodream-authz-shared', deviceSecret }) });
+      body: JSON.stringify({ deviceId, deviceSecret }) });
     if (response.ok) {
       const tokens = await response.json(); localStorage.setItem('accessToken', tokens.accessToken);
       sessionStorage.setItem('grading-test-refresh', tokens.refreshToken);
     }
     return response.status;
-  }, env.LOCAL_STUDENT_SECRET);
+  }, { deviceSecret: env.LOCAL_STUDENT_SECRET, deviceId: fixture.studentDeviceId });
 }
 const containsAnswer = value => value && typeof value === 'object' && Object.entries(value).some(([key, child]) =>
   ['correct_answer', 'correctAnswer', 'answer', 'rubric', 'teacher_notes'].includes(key) || containsAnswer(child));
@@ -78,7 +75,7 @@ async function settle(page, materialId, response) {
 }
 let student;
 try {
-  browser = await playwright.chromium.launch({ executablePath: process.env.DODREAM_CHROME_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  browser = await launchChrome(chromium, {
     headless: true, args: ['--disable-background-networking', '--disable-component-update', '--disable-sync', '--no-first-run'] });
   const owner = await contextPage(); student = await contextPage();
   step = 'synthetic API logins and dedicated grading fixture';
@@ -160,7 +157,7 @@ try {
   const report = { browser: 'Chrome ' + version, origin, mode: 'BROWSER_API_CONTRACT_ONLY', studentWebUi: 'NOT_IMPLEMENTED',
     nativeDeviceExecution: 'NOT_RUN', externalRequestsBlocked, checks,
     counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase5/results/browser-grading-checks.json');
+  const output = path.join(resultsDir, 'browser-grading-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true }); await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify({ counts: report.counts, evidence: output })); process.exitCode = checks.some(row => row.status !== 'PASS') ? 1 : 0;

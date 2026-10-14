@@ -2,25 +2,18 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright-core';
+import { launchChrome } from './chrome-launch.mjs';
+import { loadIsolatedRuntime, readTrialFixture, readTrialCredentials } from './isolated-runtime.mjs';
 import assert from 'node:assert/strict';
 
-const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const origin = process.env.DODREAM_AUTHZ_BROWSER_ORIGIN || 'http://127.0.0.1:15173';
-const base = new URL(origin);
-if (!['127.0.0.1', 'localhost'].includes(base.hostname) || base.protocol !== 'http:' || base.origin !== origin) {
-  throw new Error('Only a loopback HTTP origin is allowed');
-}
-const env = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n')
-  .filter(line => line && !line.startsWith('#')).map(line => {
-    const i = line.indexOf('='); return [line.slice(0, i), line.slice(i + 1)];
-  }));
+const runtime = await loadIsolatedRuntime('authorization', root);
+const fixture = await readTrialFixture(runtime);
+const { resultsDir, origin } = runtime;
+const env = await readTrialCredentials(runtime, fixture);
 const password = env.LOCAL_TEACHER_PASSWORD;
 if (!password) throw new Error('Generated local teacher credential unavailable');
-let playwright;
-try { playwright = require('playwright'); }
-catch { playwright = require(process.env.DODREAM_PLAYWRIGHT_PATH || '/Users/yoonsu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); }
 
 const checks = [];
 let browser;
@@ -112,16 +105,16 @@ function containsTeacherAnswer(value) {
 async function studentLogin() {
   const state = await contextPage();
   await state.page.goto(origin);
-  const status = await state.page.evaluate(async deviceSecret => {
+  const status = await state.page.evaluate(async ({ deviceSecret, deviceId }) => {
     const response = await fetch('/api/auth/student/native/login', { method: 'POST', credentials: 'omit',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: 'dodream-authz-shared', deviceSecret }) });
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId, deviceSecret }) });
     if (response.ok) {
       const data = await response.json();
       localStorage.setItem('accessToken', data.accessToken);
       sessionStorage.setItem('authz-test-native-refresh', data.refreshToken);
     }
     return response.status;
-  }, env.LOCAL_STUDENT_SECRET);
+  }, { deviceSecret: env.LOCAL_STUDENT_SECRET, deviceId: fixture.studentDeviceId });
   assert.equal(status, 200);
   return state;
 }
@@ -134,18 +127,17 @@ async function studentLogout(page) {
     return response.status;
   });
 }
-const lessonTitle = process.env.DODREAM_AUTHZ_BROWSER_TITLE || '[AUTHZ 4] editable';
+const lessonTitle = fixture.lessonTitle;
 let lesson;
 let original;
 
 try {
-  browser = await playwright.chromium.launch({
-    executablePath: process.env.DODREAM_CHROME_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  browser = await launchChrome(chromium, {
     headless: true,
     args: ['--disable-background-networking', '--disable-component-update', '--disable-sync', '--no-first-run'],
   });
   await scenario('browser_owner_editor', async () => {
-    const { context, page } = await login('authz-owner@local.dodream.invalid');
+    const { context, page } = await login(fixture.ownerEmail);
     let mutated = false;
     try {
       step = 'owner fixture lookup';
@@ -207,7 +199,7 @@ try {
   });
   await scenario('browser_unrelated_teacher', async () => {
     assert.ok(lesson && original);
-    const { context, page, refreshes } = await login('authz-other@local.dodream.invalid');
+    const { context, page, refreshes } = await login(fixture.otherEmail);
     try {
       check('browser_unrelated_teacher_list_excludes_private_material', await page.getByRole('heading', { name: lessonTitle, exact: true }).count() === 0);
       step = 'unrelated teacher direct object requests';
@@ -234,7 +226,7 @@ try {
   });
   await scenario('browser_denied_edit_has_no_effect', async () => {
     assert.ok(lesson && original);
-    const { context, page } = await login('authz-owner@local.dodream.invalid');
+    const { context, page } = await login(fixture.ownerEmail);
     try {
       const current = await api(page, `/api/pdf/${lesson.uploadedFileId}/json`);
       assert.equal(current.status, 200);
@@ -244,7 +236,7 @@ try {
   });
   await scenario('browser_share_revocation', async () => {
     assert.ok(lesson);
-    const owner = await login('authz-owner@local.dodream.invalid');
+    const owner = await login(fixture.ownerEmail);
     const student = await studentLogin();
     let revoked = false;
     let restoreBody;
@@ -307,7 +299,7 @@ try {
   if (browser) await browser.close();
   const report = { browser: 'Chrome ' + version, origin, checks, externalRequestsBlocked: blockedExternal,
     nativeDeviceExecution: 'NOT_RUN', counts: Object.fromEntries(['PASS', 'FAIL', 'BLOCKED'].map(status => [status, checks.filter(row => row.status === status).length])) };
-  const output = path.join(root, '.local/phase5/results/browser-authorization-checks.json');
+  const output = path.join(resultsDir, 'browser-authorization-checks.json');
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, JSON.stringify(report, null, 2) + '\n');
   await fs.writeFile(output.replace('.json', '-' + Date.now() + '.json'), JSON.stringify(report, null, 2) + '\n');

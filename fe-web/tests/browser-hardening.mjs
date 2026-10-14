@@ -2,18 +2,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright-core';
+import { launchChrome } from './chrome-launch.mjs';
+import { loadIsolatedRuntime, readTrialFixture, readTrialCredentials } from './isolated-runtime.mjs';
 import assert from 'node:assert/strict';
-const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const origin = 'http://127.0.0.1:15173';
-const settings = Object.fromEntries((await fs.readFile(path.join(root, '.local/env'), 'utf8')).split('\n')
-  .filter(line => line && !line.startsWith('#')).map(line => { const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1)]; }));
-assert.equal(settings.WEB_PORT, '15173');
-let playwright;
-try { playwright = require('playwright'); } catch {
-  playwright = require('/Users/yoonsu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
-}
+const runtime = await loadIsolatedRuntime('hardening', root);
+const fixture = await readTrialFixture(runtime);
+const { resultsDir, origin } = runtime;
+const settings = await readTrialCredentials(runtime, fixture);
 const checks = [];
 let browser, externalRequests = 0, step = 'launch';
 function check(name, ok, category = 'ACTUAL_UI') {
@@ -38,7 +35,7 @@ async function api(page, pathname) {
   }, pathname);
 }
 try {
-  browser = await playwright.chromium.launch({ channel: 'chrome', headless: true });
+  browser = await launchChrome(chromium, { headless: true });
   const student = await context(); const page = student.page;
   step = 'student bootstrap';
   await page.goto(origin + '/demo');
@@ -48,7 +45,7 @@ try {
   check('server_verified_new_demo_student', identity.status === 200 && identity.data.role === 'STUDENT' && identity.data.demo === true);
   const mode = await api(page, '/ai/rag/mode');
   check('explicit_keyless_mode', mode.status === 200 && mode.data.configured_mode === 'LOCAL_FAKE');
-  const unauthorized = await api(page, '/ai/rag/chat/sessions?student_id=1');
+  const unauthorized = await api(page, `/ai/rag/chat/sessions?student_id=${fixture.unauthorizedStudentId}`);
   check('other_subject_history_denied', [403, 404].includes(unauthorized.status), 'API_BOUNDARY');
   const teacherOnly = await api(page, '/api/teacher/me');
   check('student_teacher_api_denied', teacherOnly.status === 403, 'API_BOUNDARY');
@@ -88,7 +85,7 @@ try {
   await teacher.page.goto(origin + '/');
   await teacher.page.getByText('로그인 하기', { exact: true }).click();
   step = 'teacher login form';
-  await teacher.page.locator('form.sign-in input[name=email]').fill('teacher@local.dodream.invalid');
+  await teacher.page.locator('form.sign-in input[name=email]').fill(fixture.teacherEmail);
   await teacher.page.locator('form.sign-in input[type=password]').fill(settings.LOCAL_TEACHER_PASSWORD);
   await teacher.page.locator('form.sign-in button[type=submit]').click();
   await teacher.page.waitForURL('**/classrooms');
@@ -114,16 +111,15 @@ try {
   await teacher.context.close();
   check('no_external_resource_requests', externalRequests === 0, 'NETWORK');
 } catch (error) {
-  checks.push({ name: step, status: 'FAIL', category: 'HARNESS', errorType: error.constructor.name });
+  checks.push({ name: step, status: 'FAIL', category: 'HARNESS', errorType: error.name });
   process.exitCode = 1;
 } finally {
   await browser?.close();
   const result = { status: process.exitCode ? 'FAIL' : 'PASS', checks, externalRequests,
     scope: 'one new synthetic student; existing material rows untouched; teacher DOM probe never published' };
-  const directory = path.join(root, '.local/portfolio-hardening/results');
-  await fs.mkdir(directory, { recursive: true });
+  await fs.mkdir(resultsDir, { recursive: true });
   const stamp = new Date().toISOString().replaceAll(':', '').replaceAll('.', '');
-  await fs.writeFile(path.join(directory, `browser-hardening-${stamp}.json`), JSON.stringify(result, null, 2) + '\n', { flag: 'wx' });
-  await fs.writeFile(path.join(directory, 'browser-hardening-checks.json'), JSON.stringify(result, null, 2) + '\n');
+  await fs.writeFile(path.join(resultsDir, `browser-hardening-${stamp}.json`), JSON.stringify(result, null, 2) + '\n', { flag: 'wx' });
+  await fs.writeFile(path.join(resultsDir, 'browser-hardening-checks.json'), JSON.stringify(result, null, 2) + '\n');
   console.log(JSON.stringify(result));
 }
