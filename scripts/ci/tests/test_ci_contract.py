@@ -1,6 +1,8 @@
 import importlib.util
+import fnmatch
 import json
 from pathlib import Path
+import re
 import unittest
 from unittest.mock import patch
 
@@ -11,6 +13,54 @@ spec.loader.exec_module(ci)
 
 
 class CIIsolationContract(unittest.TestCase):
+    def job(self, name):
+        workflow = (ROOT / ".github/workflows/keyless-ci.yml").read_text()
+        match = re.search(r"(?ms)^  " + re.escape(name) + r":\n(.*?)(?=^  [a-z][a-z0-9_-]*:\n|\Z)", workflow)
+        self.assertIsNotNone(match, name)
+        return match[1]
+
+    def test_required_ci_executes_portability_policy_suites_outside_legacy_discovery(self):
+        offline = self.job("offline-tools")
+        for filename in ("test_isolated_trial.py", "test_isolated_images.py", "test_isolated_provenance.py",
+                         "test_isolated_execution.py", "test_isolated_launcher_bindings.py",
+                         "test_isolated_boundary_tests.py", "test_verify_pdf_boundary.py",
+                         "test_isolated_java_entrypoint.py"):
+            with self.subTest(filename=filename):
+                self.assertTrue((ROOT / "scripts/local" / filename).is_file())
+                self.assertRegex(offline, r"(?m)^\s+python scripts/local/" + re.escape(filename) + r"\s*$")
+        web = self.job("web")
+        self.assertRegex(web, r"(?m)^\s+node --test tests/isolated-runtime\.test\.mjs\s*$")
+        self.assertRegex(web, r"(?m)^\s+npm run test:hardening\s*$")
+        package = json.loads((ROOT / "fe-web/package.json").read_text())
+        self.assertIn("tests/browser-runtime.test.mjs", package["scripts"]["test:hardening"])
+
+    def test_backend_selectors_cover_pure_boundaries_without_actual_database_tests(self):
+        selectors = re.findall(r"--tests '([^']+)'", self.job("backend"))
+        self.assertTrue(selectors)
+        sources = {str(path.relative_to(ROOT / "be/src/test/java")).removesuffix(".java").replace("/", "."): path
+                   for path in (ROOT / "be/src/test/java").rglob("*Tests.java")}
+        selected = {name for name in sources if any(fnmatch.fnmatchcase(name, pattern) for pattern in selectors)}
+        self.assertTrue({"A704.DODREAM.indexing.IndexingObservationTests", "A704.DODREAM.file.FileInputBoundaryTests",
+                         "A704.DODREAM.file.PdfUploadPermissionBoundaryTests"} <= selected)
+        self.assertNotIn("A704.DODREAM.indexing.IndexingRequestBoundaryDatabaseTests", selected)
+        for name in selected:
+            with self.subTest(name=name):
+                self.assertNotRegex(sources[name].read_text(), r"@(?:SpringBootTest|DataJpaTest)\b")
+
+    def test_manual_ci_preserves_all_classes_except_the_dedicated_http_boundary_suite(self):
+        compose = (ROOT / "scripts/ci/compose.yml").read_text()
+        backend = re.search(r"(?ms)^  be-test:\n(.*?)(?=^  probe:\n)", compose)[1]
+        selectors = re.findall(r"--tests, '([^']+)'", backend)
+        self.assertTrue(selectors)
+        names = {str(path.relative_to(ROOT / "be/src/test/java")).removesuffix(".java").replace("/", ".")
+                 for path in (ROOT / "be/src/test/java").rglob("*Tests.java")}
+        selected = {name for name in names if any(fnmatch.fnmatchcase(name, pattern) for pattern in selectors)}
+        dedicated = "A704.DODREAM.indexing.IndexingRequestBoundaryDatabaseTests"
+        self.assertIn(dedicated, names)
+        self.assertEqual(selected, names - {dedicated})
+        self.assertNotIn("--exclude", backend)
+        self.assertNotIn("-x", backend)
+
     def environment(self):
         return {"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted", "RUNNER_OS": "Linux",
                 "GITHUB_WORKSPACE": str(ROOT), "GITHUB_RUN_ID": "123456", "GITHUB_RUN_ATTEMPT": "2"}

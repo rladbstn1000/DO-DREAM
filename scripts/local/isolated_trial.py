@@ -1096,11 +1096,76 @@ def load_active_runtime():
     return TrialRuntime(Path(__file__).resolve().parents[2],config)
 
 
+def java_boundary_plan(manifest, repo, manifest_path, revision, attempt):
+    """File-only description of the existing helper, not execution permission."""
+    from isolated_boundary_tests import CLASSES, COMMAND
+    root=validate_manifest(manifest,repo,manifest_path)
+    require(isinstance(revision,str) and re.fullmatch(r'\d{3}-fixed-\d{2}',revision), 'Explicit planned fixed BE revision required')
+    require(isinstance(attempt,str) and re.fullmatch(r'[a-z][a-z0-9-]{0,47}',attempt), 'Explicit planned attempt required')
+    return {'status':'PLAN_ONLY','executionAuthorized':False,'resourceProvenance':'NOT_CHECKED',
+            'project':manifest['project'],'root':str(root),'manifest':str(manifest_path),
+            'revision':revision,'attempt':attempt,'requiredServices':['mysql','redis','ai'],
+            'javaClasses':list(CLASSES),'testCommand':list(COMMAND),
+            'fixedFixture':'indexing-synthetic-44444444-4444-4444-8444-444444444444.pdf',
+            'condition':'Fixed HTTP fixture must be unused; missing prior success evidence does not prove an empty database.'}
+
+
+def prepare_java_boundary(runtime, revision):
+    """Validate the existing trial before starting the three required services."""
+    from isolated_provenance import validate_current
+    require(isinstance(revision,str) and re.fullmatch(r'\d{3}-fixed-\d{2}',revision),
+            'An explicit verified fixed BE revision is required')
+    require(isinstance(runtime.attempt_id,str) and re.fullmatch(r'[a-z][a-z0-9-]{0,47}',runtime.attempt_id),
+            'An explicit new boundary test attempt is required')
+    receipt=runtime._receipt()
+    revisions=runtime._revision_records()
+    require(revisions and revisions[-1][0].name==revision, 'Requested BE revision is not the current verified revision')
+    images=runtime._image_records()
+    # A successful run of this exact source already consumed its fixed HTTP fixture.
+    # Missing evidence is not an emptiness proof; the Java duplicate guard remains mandatory.
+    previous=lexical_path(runtime.root/'boundary-tests')
+    if previous.exists():
+        records=list(previous.glob('???-fixed-??/*/result.json'))
+        require(len(records)<=100, 'Too many prior boundary results; review the trial explicitly')
+        for filename in records:
+            result=json.loads(lexical_path(filename).read_text())
+            same_source=result.get('sourceDigest')==images['be']['source']['sourceDigest']
+            http_class=next((row for row in result.get('classes',[]) if row.get('class')==
+                'A704.DODREAM.indexing.IndexingRequestBoundaryDatabaseTests'),{})
+            require(not (same_source and result.get('status')=='PASS' and http_class.get('tests',0)>=6
+                         and all(http_class.get(key)==0 for key in ('failures','errors','skipped'))),
+                    'This source already completed its fixed HTTP fixture; Java rerun is blocked without deleting data or bypassing the guard')
+    runtime.verify_image_sources(images)
+    observed=runtime.observe(receipt['expected'])
+    validate_current(receipt,observed)
+    require(all(row['state'] in ('created','exited') for row in observed['containers'].values()),
+            'Java boundary action requires stopped trial services; no running resources are adopted')
+    runtime.prepare_attempt()
+    runtime._check_attempt_binding(receipt)
+    # Reuse the existing non-consumer scope; a fresh Java attempt has no browser auth PASS.
+    runtime.set_stage('auth','browser')
+
+
+def run_with_owned_cleanup(runtime, action):
+    """Shared signal and finally path; only this runtime's recorded starts may stop."""
+    def interrupted(signum,frame):
+        raise KeyboardInterrupt('Trial interrupted; stopping only recorded new starts')
+    previous={sig:signal.signal(sig,interrupted) for sig in (signal.SIGINT,signal.SIGTERM)}
+    os.environ['DODREAM_ISOLATED_MANIFEST']=str(runtime.manifest_path)
+    if runtime.attempt_id:os.environ['DODREAM_ISOLATED_ATTEMPT']=runtime.attempt_id
+    try:
+        return action()
+    finally:
+        try:runtime.stop_started()
+        finally:
+            for sig,handler in previous.items():signal.signal(sig,handler)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--manifest', required=True)
-    parser.add_argument('--action', choices=('plan','prepare','build','create','verify-created','revise-be','validate','stop','legacy-exec'), default='plan',
-                        help='Explicit stage. prepare/build/create never start application containers. validate always stops only its recorded starts.')
+    parser.add_argument('--action', choices=('plan','java-boundary-plan','prepare','build','create','verify-created','revise-be','validate','java-boundary','stop','legacy-exec'), default='plan',
+                        help='Explicit stage. prepare/build/create never start applications. validate runs browser integration; java-boundary runs the four selected Java classes using only new mysql/redis/ai and a receipt-checked test container. Both stop only recorded new starts.')
     parser.add_argument('--revision')
     parser.add_argument('--include-source',action='append',default=[])
     parser.add_argument('--attempt')
@@ -1113,11 +1178,19 @@ def main(argv=None):
     repo = Path(__file__).resolve().parents[2]
     runtime = None
     try:
-        if args.action=='plan':
+        if args.action in ('plan','java-boundary-plan'):
             manifest = load_manifest(args.manifest, repo)
-            result = build_plan(manifest, repo, Path(args.manifest), args.suite, args.phase, args.operation, args.services)
+            if args.action=='plan':
+                result = build_plan(manifest, repo, Path(args.manifest), args.suite, args.phase, args.operation, args.services)
+            else:
+                require(not any((args.suite,args.phase,args.operation,args.services,args.include_source,args.payload)),
+                        'Java boundary plan does not accept other suite, operation or source overrides')
+                result = java_boundary_plan(manifest,repo,Path(args.manifest),args.revision,args.attempt)
         else:
             require(not any((args.phase,args.operation,args.services)), 'Plan arguments cannot authorize execution')
+            if args.action=='java-boundary':
+                require(args.attempt and args.revision and args.suite is None and not args.include_source and args.payload is None,
+                        'Java boundary execution requires explicit --revision and --attempt without suite or source overrides')
             runtime = TrialRuntime(repo,args.manifest,preparing=args.action=='prepare',attempt=args.attempt)
             if args.action=='prepare': result=runtime.prepare()
             elif args.action=='build': result=runtime.build_images()
@@ -1125,6 +1198,14 @@ def main(argv=None):
             elif args.action=='verify-created': result=runtime.verify_created()
             elif args.action=='revise-be': result=runtime.revise_be(args.revision,args.include_source)
             elif args.action=='stop': result=runtime.stop_started()
+            elif args.action=='java-boundary':
+                prepare_java_boundary(runtime,args.revision)
+                from isolated_boundary_tests import run as run_java_boundary
+                def selected_java():
+                    runtime.compose('java-boundary-stores','start','mysql','redis')
+                    runtime.compose('java-boundary-local-provider','start','ai')
+                    return run_java_boundary(runtime)
+                result=run_with_owned_cleanup(runtime,selected_java)
             elif args.action=='legacy-exec':
                 require(args.payload is not None,'Explicit legacy proxy payload required')
                 payload=json.loads(args.payload)
@@ -1138,17 +1219,11 @@ def main(argv=None):
                 require(args.suite in (None,'auth'), 'Validation must begin with auth; no suite skipping')
                 if runtime.attempt_id: runtime.prepare_attempt()
                 from isolated_checks import run_auth, run_remaining
-                def interrupted(signum,frame): raise KeyboardInterrupt('Trial interrupted; stopping only recorded new starts')
-                previous={sig:signal.signal(sig,interrupted) for sig in (signal.SIGINT,signal.SIGTERM)}
-                os.environ['DODREAM_ISOLATED_MANIFEST']=str(runtime.manifest_path)
-                if runtime.attempt_id:os.environ['DODREAM_ISOLATED_ATTEMPT']=runtime.attempt_id
-                try:
+                def selected_integration():
                     run_auth(runtime)
                     if args.suite is None: run_remaining(runtime)
-                    result={'status':'PASS','scope':'AUTH_ONLY' if args.suite else 'RELATED_INTEGRATION'}
-                finally:
-                    runtime.stop_started()
-                    for sig,handler in previous.items():signal.signal(sig,handler)
+                    return {'status':'PASS','scope':'AUTH_ONLY' if args.suite else 'RELATED_INTEGRATION'}
+                result=run_with_owned_cleanup(runtime,selected_integration)
     except (Exception, KeyboardInterrupt) as error:
         message=f'{type(error).__name__}: {error}'
         if runtime is not None and runtime.preparation:

@@ -46,7 +46,22 @@ services:
       context: ../../be
       dockerfile: Dockerfile.local
       target: test
-    command: [gradle, --offline, --no-daemon, test, --rerun-tasks]
+    # Preserve every existing class and the new service-free boundary classes.
+    # IndexingRequestBoundaryDatabaseTests additionally needs the synthetic AI
+    # and phase5 seed; run it through isolated_trial's Java boundary entrypoint.
+    command: [gradle, --offline, --no-daemon, test, --rerun-tasks,
+      --tests, '*A704.DODREAM.auth.*',
+      --tests, '*A704.DODREAM.authorization.*',
+      --tests, '*A704.DODREAM.quiz.*',
+      --tests, '*A704.DODREAM.local.*',
+      --tests, '*A704.DODREAM.file.*',
+      --tests, '*A704.DODREAM.demo.*',
+      --tests, '*A704.DODREAM.hardening.*',
+      --tests, '*.DodreamApplicationTests',
+      --tests, '*.IndexingDatabaseTests',
+      --tests, '*.IndexingBoundaryTests',
+      --tests, '*.IndexingSourceTests',
+      --tests, '*.IndexingObservationTests']
     environment:
       SPRING_PROFILES_ACTIVE: local
       MYSQL_DATABASE: dodream_ci

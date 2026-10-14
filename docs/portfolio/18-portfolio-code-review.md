@@ -1,6 +1,10 @@
 # 18. 포트폴리오 코드 최종 리뷰
 
-> **현재 상태 안내 · 2026-10-08 확인:** 이 문서는 단계별 코드 검토·검증의 누적 기록이다. 현재 [공개 정적 데모](https://rladbstn1000.github.io/DO-DREAM/)는 [제출용 보완 공개 결과](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)의 앱 SHA `888609661595d4cbef89de15097007453c871ca3`로 배포됐다. 이후 소스·문서의 원격 main은 `8767ec82b9818d96ea6b7a28a696475ab2122408`이며 앱 배포 SHA와 다르다. 이번 로컬 보완은 [근거·검사 후속 기록](#evidence-portability-2026-10-08)을 따른다. 아래 과거 미배포·NOT_RUN은 당시 상태를 보존한 것이며, 현재 공개 데모의 배포 완료를 취소하지 않는다.
+> **현재 상태 안내 · 2026-10-14:** 최신 로컬 완료 기준은 `f11ad8987c23dba808255c1df1c0826af5fb68c0`이다. **PDF 연결 경계 수정과 관련 독립 통합 검증을 완료**했으며 [최신 완료 결과](#indexing-boundary-followup-2026-10-14)와 [실행 기록](02-local-runbook.md#indexing-boundary-runbook-2026-10-14)에서 범위를 바로 확인할 수 있다. 이번 누적 코드의 원격 반영은 아직 진행 전이며, 확인한 원격 main은 `8767ec82b9818d96ea6b7a28a696475ab2122408`이다.
+>
+> 공개 정적 앱은 배포 SHA `888609661595d4cbef89de15097007453c871ca3`를 그대로 사용한다. 코드·문서의 최신 SHA와 앱 배포 SHA는 다르며 이번 작업에는 Pages 재배포가 없다. **기존 환경은 동결**, 과거 `DATA_PRESERVATION=FAIL`·`RECOVERY_EXECUTED=false`는 유지한다. [사건과 안전한 재개 조건](#evidence-portability-safe-resume)은 새 합성 시험의 성공과 구분한다. 아래 과거 미커밋·미기동·실패·미배포 기록은 당시 상태다.
+
+> **이전 상태 안내 · 2026-10-08 당시 확인:** 이 문서는 단계별 코드 검토·검증의 누적 기록이다. 현재 [공개 정적 데모](https://rladbstn1000.github.io/DO-DREAM/)는 [제출용 보완 공개 결과](21-original-ui-showcase-results.md#제출용-보완-공개-반영-2026-10-08)의 앱 SHA `888609661595d4cbef89de15097007453c871ca3`로 배포됐다. 이후 소스·문서의 원격 main은 `8767ec82b9818d96ea6b7a28a696475ab2122408`이며 앱 배포 SHA와 다르다. 이번 로컬 보완은 [근거·검사 후속 기록](#evidence-portability-2026-10-08)을 따른다. 아래 과거 미배포·NOT_RUN은 당시 상태를 보존한 것이며, 현재 공개 데모의 배포 완료를 취소하지 않는다.
 
 2026-09-30, 팀 기준 `4c763af2316ebb00f523bc43b0c29e49ef7bf62e` 이후의 개인 개선이다. 시작 브랜치 `codex/dodream-phase5-live-ai`, 시작 HEAD `e6410fda2df84c6e7fd0ab81d46c832e73f87318`를 실제 확인하고 새 `codex/dodream-portfolio-hardening` 브랜치에서 작업했다. 진행 중인 Git 작업은 없었으며, 기존 untracked `docs/.DS_Store`는 읽기·삭제·stage에서 제외했다. GitHub main을 로컬 코드의 대체 근거로 사용하지 않았다.
 
@@ -429,3 +433,17 @@ BE·AI·PDF·web·Chroma는 별도 `dodream-evidence-20261014-*:run-0f5a799e` �
 `INDEXING_BOUNDARY_ROOT_CAUSE=CONFIRMED_OSIV_PHYSICAL_CONNECTION_AFTER_CONTROLLER_PERMISSION`, `INDEXING_BOUNDARY_REGRESSION=PASS`, `SYNTHETIC_FIXTURE_PREPARATION=PASS`, `INTEGRATION_VALIDATION=PASS_RELATED_ISOLATED_SCOPE`, `PRODUCT_CHANGE=PDF_PERMISSION_SHORT_TRANSACTION_AND_LOCAL_OBSERVATION`, `SHOWCASE_SOURCE_UNCHANGED=PASS`.
 
 `PREEXISTING_ENVIRONMENT=FROZEN`, `HISTORICAL_DATA_PRESERVATION=FAIL`, `BACKEND_DATA=CHANGED_UNEXPECTEDLY`, `DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`을 유지한다. 기존 사고의 직접 docker start 및 config 소유권 검사의 오용 판정도 그대로다. 기존 데이터 복구·데이터 삭제·prune·push·PR·merge·Pages 재배포 없음. `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`다.
+
+<a id="evidence-portability-publication-followup"></a>
+
+## 2026-10-14 최신 안내·추적 실행 명령·원격 반영 후속
+
+상단에서 [최신 로컬 완료 결과](#indexing-boundary-followup-2026-10-14)로 바로 연결한다. 당시 Java23개 실제 실행 기록은 보존하고, [현재 추적 코드의 실행 방법](02-local-runbook.md#java-boundary-repro-command)을 별도로 제공한다. `isolated_trial.py --action java-boundary-plan`은 파일 기반 계획만 출력하며, `java-boundary`는 기존 runtime·생성 증표·revision·소스/이미지·operation 검사와 `isolated_boundary_tests.run(runtime)`을 연결한다. 필요한 서비스는 신규 mysql·redis·local AI뿐이며 worker·dispatcher를 시작하지 않는다.
+
+**현재 재실행 범위:** 고정 HTTP fixture가 이미 사용된 시험은 기동 전에 거부한다. fixture를 지우거나 제품 가드를 해제하지 않았으며, 이번 Java 실제 재실행은 **NOT_RERUN**이다. 새 진입점의 순수 검사15개는 기존 실행/경계 정책60개와 함께75개 PASS다. 이 수는 Java23개 또는 브라우저 통합 검사 수가 아니다. 기존 local `validate`는 브라우저/서버 통합용이며 Java23개를 포함하지 않는다.
+
+**CI 연결:** 기존 필수5개 작업을 유지한다. offline-tools의 기존 discovery 밖에 있던 순수7파일186개와 새 진입점15개, web의 Node 자원 정책12개를 연결한다(Chrome 설정6개는 `test:hardening`에 포함). backend는 서비스 없는 Observation5·FileInput9·PdfPermission3을 실행하고 JUnit의 실제 실행·0개/skip·실패 여부를 확인한다. 실제 DB/HTTP/OSIV가 필요한 RequestBoundary6은 필수 CI에 섞지 않으며 기존 독립 시험의23개 증거와 추적 실행 명령으로 연결한다. 수동 keyless-integration은 기존 클래스와 서비스 없는 추가 회귀를 유지하는 명시 selector를 사용한다. AI·phase5 합성 준비가 없는 해당 수동 환경에서 RequestBoundary6은 별도 경로이고, 수동 workflow 자체는 이번에 **NOT_RUN**이다. 관련 CI 계약9개·Node18개·기존 순수186개는 로컬 PASS다. 원격 통과 여부는 실제 job 결과로 후속 기록한다.
+
+**공개 검토:** 원격 main `8767ec82b9818d96ea6b7a28a696475ab2122408` 이후 `f11ad8987c23dba808255c1df1c0826af5fb68c0`까지8개 커밋, 변경51경로·중간 blob62개를 검토했다. 비밀값·비공개 데이터·raw 로그·생성 증표 원문이 없고 팀 기여·AI 활용 설명을 유지했다. 로컬 문서/anchor/저장소 permalink728개를 대조했으며 외부 링크59개 재접속·전체 과거 이력 감사·이미지 layer 전체 감사는 범위 밖이다. 이후 이 절과 진입점·CI의 최소 변경도 push 전에 별도로 검토한다.
+
+**자원과 배포:** 이번 작업은 순수 검사와 필요한 읽기 전용 메타데이터 확인만 수행했다. 기존78컨테이너와 기존11개 동결 시각 불변, 신규 앱13개·전용 검사3개 모두 중지 상태다. DB 연결·서비스 기동·데이터 복구를 하지 않았다. 공개 앱 entry/UI/CSS/샘플/자산/빌드 설정/lock과 Pages workflow는 불변이며 앱 배포 SHA는 계속 `888609661595d4cbef89de15097007453c871ca3`이다. `HISTORICAL_DATA_PRESERVATION=FAIL`, `RECOVERY_EXECUTED=false`, `PREEXISTING_DATA_CONTENT_RECHECK=NOT_RUN`, `REAL_AI_INTEGRATION=NOT_RUN`, `BACKEND_PRODUCTION_READY=false`를 유지한다.

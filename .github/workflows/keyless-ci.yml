@@ -42,6 +42,7 @@ jobs:
           npm run test:indexing
           npm run test:student
           npm run test:hardening
+          node --test tests/isolated-runtime.test.mjs
           node --test tests/pages-release.test.mjs
           # verify includes typecheck, both explicit builds, graph/artifact checks,
           # and an isolated Chrome session against built static files only.
@@ -95,11 +96,30 @@ jobs:
           --tests '*A704.DODREAM.quiz.grading.GradingAcceptanceRaceTests'
           --tests '*A704.DODREAM.indexing.IndexingSourceTests'
           --tests '*A704.DODREAM.indexing.IndexingBoundaryTests'
+          --tests '*.IndexingObservationTests'
           --tests '*A704.DODREAM.hardening.ExceptionRedactionTests'
           --tests '*A704.DODREAM.hardening.SecurityExposureTests'
           --tests '*A704.DODREAM.hardening.ProgressAndDeletionTests'
           --tests '*A704.DODREAM.hardening.StorageTransportTimeoutTests'
           --tests '*A704.DODREAM.file.*'
+      - name: Verify executed Java test results
+        working-directory: be
+        run: |
+          python3 - <<'PY'
+          import glob, json, xml.etree.ElementTree as ET
+          counts = ('tests', 'failures', 'errors', 'skipped')
+          reports = [ET.parse(path).getroot() for path in sorted(glob.glob('build/test-results/test/TEST-*.xml'))]
+          rows = [{'class': report.attrib['name'], **{key: int(report.attrib[key]) for key in counts}} for report in reports]
+          targets = {'A704.DODREAM.indexing.IndexingObservationTests', 'A704.DODREAM.file.FileInputBoundaryTests',
+                     'A704.DODREAM.file.PdfUploadPermissionBoundaryTests'}
+          names = {row['class'] for row in rows}
+          print(json.dumps({'files': len(rows), **{key: sum(row[key] for row in rows) for key in counts},
+                            'boundaryTests': {row['class']: row['tests'] for row in rows if row['class'] in targets}}, sort_keys=True))
+          assert rows and all(row['tests'] > 0 for row in rows), 'Java results are missing or empty'
+          assert all(row[key] == 0 for row in rows for key in counts[1:]), 'Java failures, errors or skips are not allowed'
+          assert targets <= names, 'Required service-free boundary classes did not execute'
+          assert 'A704.DODREAM.indexing.IndexingRequestBoundaryDatabaseTests' not in names, 'Actual DB boundary requires the isolated runner'
+          PY
   offline-tools:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -115,4 +135,14 @@ jobs:
           python -m unittest discover -s scripts/ci/tests -v
           python -m unittest discover -s scripts/evaluation/tests -v
           python -m unittest discover -s scripts/local/tests -v
+          # These pure suites live beside the launchers, outside local/tests discovery.
+          # Actual DB/HTTP boundary tests remain in the receipt-bound isolated runner.
+          python scripts/local/test_isolated_trial.py
+          python scripts/local/test_isolated_images.py
+          python scripts/local/test_isolated_provenance.py
+          python scripts/local/test_isolated_execution.py
+          python scripts/local/test_isolated_launcher_bindings.py
+          python scripts/local/test_isolated_boundary_tests.py
+          python scripts/local/test_verify_pdf_boundary.py
+          python scripts/local/test_isolated_java_entrypoint.py
           git diff --exit-code -- fe-web/package-lock.json ai/requirements.local.lock.txt python-service/requirements.local.lock.txt be/gradle.lockfile

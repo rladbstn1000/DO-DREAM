@@ -61,6 +61,38 @@ python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolat
 
 최종 자원·소스·원본94개 증거 대조는 `.local/evidence-portability-indexing-boundary/20261014T045644Z/final-resource-and-source-audit.json`에 있다. 신규 앱13개와 전용 검사3개는 모두 exited이며 데이터·볼륨·네트워크를 보존한다. 기존 DB 내용 재조회·복구·원격 변경은 하지 않았다. 이후 실행도 현재 이미지/receipt·새 attempt 및 별도 승인 범위를 다시 확인해야 하며, 기존 환경으로 fallback하지 않는다.
 
+<a name="java-boundary-repro-command"></a>
+
+### 현재 추적 코드의 Java 경계 검사 진입점
+
+위 `run-focused-java-04.py`는 **당시 실제 실행 기록**으로 보존한다. 현재는 [isolated_trial.py](../../scripts/local/isolated_trial.py)의 `java-boundary` action이 [기존 helper](../../scripts/local/isolated_boundary_tests.py)를 직접 호출한다. `validate`는 브라우저/서버 통합 경로이며 Java23개를 포함하지 않는다. Git에 없는 개인 실행 파일을 현재 명령의 의존성으로 사용하지 않는다.
+
+다음은 서비스·DB·자격증명에 접근하지 않는 실제 계획 확인 명령이다. `--help`도 실행기를 생성하지 않는다.
+
+```bash
+python3 -B scripts/local/isolated_trial.py --help
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action java-boundary-plan --revision 004-fixed-03 --attempt planned-java-next
+```
+
+계획은 `executionAuthorized=false`, `resourceProvenance=NOT_CHECKED`와 mysql/redis/ai,4개 Java 클래스·정확한 Gradle selector를 표시한다. 계획 성공은 실제 자원 시작 허가가 아니다. 실행 계약은 아래와 같지만, **현재 보존 중인 시험에서는 실행 전 차단 대상**이다.
+
+```bash
+# 현재 고정 fixture는 이미 사용됨: 이 환경에서 재실행하라는 안내가 아니다.
+python3 -B scripts/local/isolated_trial.py --manifest "$PWD/scripts/local/isolated-trial.json" \
+  --action java-boundary --revision 004-fixed-03 --attempt java-boundary-next
+```
+
+현재 `IndexingRequestBoundaryDatabaseTests`의 PDF 이름은 `indexing-synthetic-44444444-4444-4444-8444-444444444444.pdf`로 고정이며 새 namespace 인자는 없다. 동일 source의 성공 결과가 있으면 기동 전에 파일 근거로 거부한다. 성공 증거가 없다는 이유로 DB가 비었다고 가정하지 않으며 Java의 중복 거부도 유지한다. 현재 `focused-java-04`의 실제23 PASS를 보존하고, 이 후속 작업에서는 **실제 Java 재실행 NOT_RUN / 진입점 순수 검사 별도**로 판정한다. 기존 행·객체·결과 삭제나 guard 해제로 재실행하지 않는다.
+
+실제 실행에는 명시 manifest/root, 새 고유 attempt, 현재 fixed revision의 소스·이미지와 생성/교체 증표, 신규5볼륨·2네트워크 및 중지된13서비스의 동일성이 필요하다. 또한 새 시험 DB의 기존 스키마·합성 seed(`authz-owner`)와 미사용 고정 fixture가 필요하다. 실행기는 이를 위한 두 번째 환경을 만들지 않는다. source/receipt/attempt를 검증한 뒤 신규 mysql/redis/ai만 시작하고 전용 검사 컨테이너를 사용한다. worker/dispatcher·브라우저는 필요 없다. 예외·SIGINT·SIGTERM은 동일한 증표 기반 `stop_started()` 경로를 거쳐 시작분만 종료한다.
+
+대상은 `IndexingObservationTests`5개, `IndexingRequestBoundaryDatabaseTests`6개, `FileInputBoundaryTests`9개, `PdfUploadPermissionBoundaryTests`3개다. 실제 helper는4개 JUnit 결과·각 클래스 검사수 양수·실패/오류/skip0을 요구한다. 전체 숫자23은 당시 실행 결과이며 새 검사 추가 시 숫자를 맞추려고 검사를 빼지 않는다.
+
+같은 시험의 재개는 기존 receipt·데이터·실패 기록을 유지하는 절차다. **빈 환경의 최초 준비**는 root 부재 확인, 새 자격증명·이미지·컨테이너 생성, 스키마와 합성 seed 준비가 먼저 필요한 다른 단계다. 새 checkout만으로 위 명령이 동작하지 않으며 이번에 빈 환경이나 다른 OS를 다시 검증하지 않았다. 기존 `.local/env`·`dodream-phase1`으로 fallback하거나 기존 볼륨을 복사하지 않는다. 합성 데이터·이전 결과·생성 증표를 삭제하지 않는다.
+
+필수 `keyless-ci`는23개 중 서비스 없는17개를 실행하며 XML로 실제 실행·0개·skip 여부를 확인한다. 실제 DB/HTTP6개는 위 독립 경로와 당시 로컬 증거에 연결한다. 기존 수동 `keyless-integration`은 이6개가 필요로 하는 local AI/phase5 seed를 제공하지 않으므로 해당 클래스만 양의 selector 목록에서 분리하고 나머지34개 클래스는 유지한다. 이번에는 수동 통합 workflow를 실행하지 않는다.
+
 <a name="isolated-execution-runbook-2026-10-14"></a>
 
 ### 독립 합성 시험 실제 실행 — 2026-10-14, 색인 준비 실패로 중단
