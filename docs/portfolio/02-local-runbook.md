@@ -34,6 +34,8 @@ npm run verify:showcase
 
 ### 호스트 브라우저 검사 보완안 — 코드 반영·통합 검증 대기
 
+**2026-10-14 후속 상태:** 기존 검사10파일 중7종 harness의 설정 전달을 보완하고, student 경계의 short origin·독립 manifest/실행 계획·순수 검사 파일을 작업트리에 추가했다. 현재 안은 명시적 `DODREAM_ISOLATED_MANIFEST`와 새 시험 receipt를 요구하고, 기존 origin·결과 경로·`.local/env` fallback을 거부한다. **준비됨, 실제 기동·통합 검증 전**이며 코드 전체를 미커밋으로 보존한다. 아래10월8일 정책의 결과 경로 기본값은 당시 안이고 현재 독립 시험에는 적용되지 않는다. 실행 없는 최소 검사 명령·서비스 표·남은 launcher 차단 조건은 [18번 후속 기록](18-portfolio-code-review.md#isolated-preflight-2026-10-14)에 있다. 문서 커밋만으로 신규 명령을 실행할 수 없고, 이전 `manage.py` 준비·기동 명령을 대신 실행해서도 안 된다.
+
 > 아래 정책은 보존 중인 **미커밋 검사10파일**에 의존한다. 문서 커밋 `dde553e2d15f678bae1986dc94914e955a3fc8ee`만 checkout하면 적용되지 않는다. 코드 반영과 새 격리 환경의 통합 검증 전에는 확정 실행 절차로 사용하지 않는다. [통합 미완료·보존 실패](18-portfolio-code-review.md#evidence-portability-2026-10-08)는 계속 유효하다.
 
 보완안은 auth·authorization·grading·indexing·student·demo-disabled·hardening을 웹 lock의 `playwright-core`만 사용하도록 변경한다. 현재 커밋의7종 검사에는 개인 모듈 fallback이 남아 있다. 아래는 패키지 준비·순수 검사의 명령 참조이며, 현재 커밋의 `test:hardening`에는 기존 HTML 경계6개만 있다. 미커밋 코드의 추가 정책 검사6개를 현재 커밋의 검사로 계산하지 않는다.
@@ -49,7 +51,7 @@ npm --prefix fe-web run test:hardening
 
 보완안의 정책 검사는 통제된 launch 대역의 단위 검사이며 실제 Chrome·인증 성공을 뜻하지 않는다. 기존 통합 전제는 auth의 짧은 토큰 서버, authorization/grading의 합성 사례, indexing·student 실행기가 준비한 plan, disabled의15174 데모 비활성 서버, hardening의15173 데모 활성 서버다. 이 전제가 현재 안전하게 재현됐다는 뜻은 아니다. 기존 `auth-test-up`, `indexing browser`, `demo-prepare`, `student-web`을 재개 목적으로 실행하지 않는다. 새 격리 환경의 plan을 별도로 준비해야 하며401/403/500을 준비 지연으로 숨기지 않는다.
 
-보완안은 `DODREAM_RESULTS_DIR`로 Python 실행기와7종 브라우저의 결과 경로를 맞추고, indexing/student의 plan·handshake를 그 형제 `browser-ui/`에 둔다. 기본값은6종의 `.local/phase5/results`와 hardening의 `.local/portfolio-hardening/results`로 구분한다. **결과 폴더 변경은 DB·큐·자격증명·볼륨 격리가 아니다.** 소유권 scope PASS나 hash 기준선 확보도 기존 데이터 변경 허가가 아니다. 현재 통합 재개는 BLOCKED이며 [18번 안전한 재개 조건](18-portfolio-code-review.md#evidence-portability-safe-resume)을 따른다.
+10월8일 보완안은 `DODREAM_RESULTS_DIR`로 Python 실행기와7종 브라우저의 결과 경로를 맞추고, indexing/student의 plan·handshake를 그 형제 `browser-ui/`에 두었다. 당시 기본값은6종의 `.local/phase5/results`와 hardening의 `.local/portfolio-hardening/results`였다. 10월14일 독립 시험안에서는 이 fallback을 제거했다. **결과 폴더 변경은 DB·큐·자격증명·볼륨 격리가 아니다.** 소유권 scope PASS나 hash 기준선 확보도 기존 데이터 변경 허가가 아니다. 현재 통합 재개는 BLOCKED이며 [18번 안전한 재개 조건](18-portfolio-code-review.md#evidence-portability-safe-resume)을 따른다.
 
 아래 4~5단계의 미배포·미실행 판정은 당시 실행 기록이며, 현재 공개된 정적 showcase의 배포 결과와 구분한다.
 

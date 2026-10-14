@@ -284,3 +284,59 @@ README의 세 사례는 공개 main 전체 SHA의 코드·검사 줄 범위와 �
 | 7종 browser harness의 기존 origin/`.local/env`; `indexing_fixtures.py:10–16`; `verify_student_web.py:28–31,65–97` | 새 시험 endpoint·자격증명 경로와 합성 seed 순서를 명시하고 기존 fixture/plan을 복사하지 않음. authorization의 게시·재게시, student의 revision/공유 변경, indexing의 finally 기동까지 새 시험 자원만 대상으로 검증 |
 
 이 제안은 새 플랫폼이나 Compose 전체 개편의 구현 완료가 아니다. 향후 순수 명령 계획·합성 metadata 검사로 기존 저장소 혼입, 암묵적 소비자 기동, 잘못된 plan을 먼저 거부해야 한다. 이번에는 저장 파일 대조와 통제된 브라우저 정책6개만 실행해 PASS였으며 실제 Chrome·통합 재실행으로 세지 않는다. Docker context/inspect의 제한된 ID·상태·소유 라벨 조회에서 자체11개가 여전히 exited임을 확인했다. 최초 sandbox 메타데이터 조회 차단과 후속 읽기 성공은 새 ignored `.local/evidence-portability-safety-review/20261008T052844Z/`에 분리했다. 기존 기준선·증거94파일·미커밋10파일은 변경하지 않으며 데이터 보존 FAIL을 새 PASS로 대체하지 않는다. 이번 문서 보완만 별도 로컬 커밋하고 push·PR·merge·Pages 재배포는 하지 않는다.
+
+<a name="isolated-preflight-2026-10-14"></a>
+
+### 독립 합성 시험의 오프라인 준비 (2026-10-14)
+
+시작 HEAD `91ebc824a36d12848b607dc7bb560778c1795a31`, 브랜치 `codex/dodream-evidence-portability`를 확인했다. **준비됨, 실제 기동·통합 검증 전**이다. 아래 설정·실행기·검사 코드는 모두 미커밋 작업트리 안이며 이 문서만 checkout해 실행할 수 없다. 제품 Java/Python·DB 스키마·기존 Compose/scope gate·showcase는 바꾸지 않았다. 사고 원인은 위 기록대로 **기존 ID를 직접 지정한 docker start에 worker/dispatcher 포함, operation=config 소유권 확인을 데이터 변경 허가로 사용**한 것이다. 재조사하거나 외부 변화로 재분류하지 않는다.
+
+**구현:** `scripts/local/isolated-trial.json` 한 파일에서 시험 ID·project·root·자격증명 위치·두 origin을 지정한다. `isolated_trial.py`는 suite별 Compose 후보와 정확한 argv를 **출력만** 한다. `.local/env`를 읽거나 `manage.py`를 import하지 않는다. `validate_invocation()`은 실제 argv의 operation·서비스·root·config와 전체 서비스 환경·볼륨·네트워크를 대조한다. 직접 ID start, config→up 허가 재사용, external/name 기존 볼륨, 기존 DB/Redis/Chroma endpoint, 객체/SQLite bind, 홈/socket, 불필요한 소비자, 누락·알 수 없는 입력을 거부한다. 상속 환경변수도 거부하고 `execute_invocation()`은 유효한 계획이어도 항상 중단한다. `validate_fresh_inventory()`는 전달된 최소 메타데이터의 이름 충돌을 검사할 뿐 실제 Docker 조회나 기동 허가가 아니다. 일반 셸의 모든 직접 명령 오용까지 차단한다고 주장하지 않는다.
+
+`fe-web/tests/isolated-runtime.mjs`는7종 실제 서버 harness에 명시 manifest·새 합성 fixture receipt를 연결한다. origin·결과·plan·자격증명 기본 경로와 자료명/계정/device/학생 ID 가정을 제거했고, `browser-student-boundaries.mjs`의 short origin도 전달받는다. 새 `fixtures/<suite>.json`은 trial/project/suite/origin/runId와 합성 seed에서 얻은 식별자를 담아야 한다. indexing/student plan도 같은 실행에 속해야 한다. 자격증명 읽기는 별도 함수이며 이번에는 메모리의 `SYNTHETIC_NOT_A_SECRET`만 사용했다. receipt 표식 자체가 실제 저장소의 새 생성 증거를 대신하지 않는다.
+
+| 자원 | 동결된 기존 환경 | 새 시험 계획 |
+|---|---|---|
+| project·root | `dodream-phase1`, `.local/`의 기존 결과·데이터 | `dodream-evidence-20261014`, `.local/isolated/evidence-portability-20261014/` |
+| 주소 | 15173/15174 및 기존 직접 API 포트 | loopback 25173/25174만; 브라우저는 same-origin API 사용 |
+| 설정·자격증명 | `.local/env` | 명시 manifest + 시험 root의 `credentials.env`; 아직 생성하지 않음, 이후 새 `ISOLATED_*` 값과 실행 ID만 |
+| MySQL·Redis | 기존 `dodream-phase1_*` 볼륨과 outbox/queue | 새 project의 `mysql-data`, `redis-data`; DB `dodream_evidence_20261014`; 내부망의 mysql:3306·redis:6379/1 |
+| Chroma·SQLite·객체 | 기존 chroma-data·ai-data·be-data | 새 project의 동명 **논리 키**에 해당하는 별개 볼륨; 내부 경로만 유지. 두 BE는 새 be-data 공유 |
+| 네트워크·bind | 기존 default/gateway·데이터 bind | 새 project default(internal)/gateway. 데이터 bind 없음; short nginx의 검토된 설정 복사본 하나만 새 root에서 read-only mount |
+| fixture·결과 | 과거 자료/작업 ID·browser plan·결과 | 새 합성 seed에서 조회한 ID, `fixtures/`, `browser-ui/`, `results/`; 기존 파일/큐 복사 금지 |
+
+queue명 `indexing-v3`는 제품 코드에 고정되어 유지한다. **새 MySQL outbox·Redis·Chroma·객체 저장소의 조합**으로 격리하며 queue명이나 project명만으로 격리를 판정하지 않는다.
+
+| 검사 | 명시할 서비스(브라우저 단계) | 소비자·준비 조건 |
+|---|---|---|
+| auth / demo-disabled | mysql, redis, be, ai, be-auth-short, web-auth-test | 소비자 없음; short BE 2초·demo=false |
+| grading | mysql, redis, be, ai, python-service, web | 소비자·Chroma 없음; 새 Spring grading seed |
+| authorization / indexing | grading의6개 + chroma, worker, index-dispatcher | 게시·복원·새 색인에 필요; 새 시험 작업만 |
+| hardening | grading의6개 + chroma | 새 catalog 준비 때 소비자 필요, 검사 단계에서는 제외; 준비 실행기는 아직 차단 |
+| student | authorization의9개 + be-auth-short, web-auth-test | short BE도 demo=true; 새 demo/색인과 장애 복구 실행기 필요 |
+| 공개 showcase | Docker 서비스 없음 | 기존 정상 공개본·검사 경로 유지, 이번에는 실행하지 않음 |
+
+기존 nginx main 설정은 사용하지 않는 PDF 경로도 시작 시 `python-service` 이름을 해석하므로 main 웹 검사에 포함한다. auth nginx에는 이 upstream이 없어 제외한다. 일반 BE의 demo는 student/hardening에서만 켜고 phase5 API는 모두 끈다. 데이터 준비 단계는 각 행에서 mysql·redis 및 필요한 chroma만 선택하며 worker/dispatcher를 공통 시작하지 않는다.
+
+**실행 없는 재현 명령(현재 미커밋 안 필요):**
+
+```bash
+python3 scripts/local/test_isolated_trial.py
+node --test fe-web/tests/isolated-runtime.test.mjs fe-web/tests/browser-runtime.test.mjs
+python3 scripts/local/isolated_trial.py \
+  --manifest "$PWD/scripts/local/isolated-trial.json" --suite auth --phase data \
+  --operation up --services mysql redis
+python3 scripts/local/isolated_trial.py \
+  --manifest "$PWD/scripts/local/isolated-trial.json" --suite auth --phase browser \
+  --operation up --services mysql redis be ai be-auth-short web-auth-test
+```
+
+`--operation up`도 실행하지 않고 JSON을 출력한다. 실제 기동 단계의 최소 명령 후보는 출력 `argv`의 `docker compose --project-directory <새 root> --env-file <새 credentials> -p <새 project> -f <새 compose.json> up -d --no-deps --wait --wait-timeout 180 <명시 서비스>`다. 현재 해당 파일들을 materialize하거나 이 명령을 실행하지 않았다. 이후 아래 차단 조건을 먼저 해결하고 기동을 별도로 승인받아야 한다. 준비 완료 후 실제 auth 브라우저 후보는 `DODREAM_ISOLATED_MANIFEST="$PWD/scripts/local/isolated-trial.json" node fe-web/tests/browser-auth.mjs`이며 현재는 새 receipt·자격증명이 없어 실행할 수 없다.
+
+**실제 기동 전 차단:** `manage.py`, `verify.py`의 import-time 기존 env/RESULTS, `scope_guard.py`의 기존 project, `indexing_browser_checks.py`의 origin override 제거와 서비스 제어, `verify_indexing.py`·`verify_student_web.py`의 기존 fixture/plan 및 finally 기동을 아직 전환하지 않았다. 새 설정을 전달해도 이들 실행기를 호출하면 안 된다. 새 시험에 한정된 V003/V004 적용 → 일반 BE 합성 seed 완료 → short BE 순서, 새 fixture/receipt/handshake 생성, 소비자 장애 복구 동작을 별도로 연결해야 한다. 첫 생성 메타데이터 검사 후의 단계 전환에는 새 자원 생성 증표와 정확한 현재 상태 검사가 더 필요하며 처음의 config PASS를 재사용하지 않는다. 이미지 재사용은 immutable digest·소스/Dockerfile/lock 대응과 비밀·데이터 미포함을 확인한 뒤에만 가능하다(현재 미확인). 새 자격증명은 이후 생성하고 MySQL URL에 안전한 문자를 사용한다. 실제 Compose 해석·포트 가용성·자원 부재도 이번에는 검사하지 않았다.
+
+**최종 순수 검사:** Python 정책28개 PASS(exit0), Node의 새 파일 격리10개 + 기존 Chrome 대역 정책6개 PASS(exit0),8개 브라우저 파일 문법 검사 exit0. 모든 신규 정책 검사에서 프로세스·네트워크 실행 진입점을 실패 처리했다.7종×2단계의 CLI 계획14개도 exit0이며 `executionAuthorized=false`다. 이 수치는 실제 Chrome·서버 통합 통과 수가 아니다. 개발 중 합성 검사 fixture 공유와 루트 경로 처리의 실패를 고친 뒤 최종 실행을 새로 수행했으며 기대값을 낮추지 않았다.
+
+새 증거는 ignored `.local/evidence-portability-isolated-preflight/20261014/`의 `before.json`, `after.json`, `working-tree.patch`, `final-pure-commands.json`, `plan-commands.json`, `plan-*.json`으로 구분한다. 시작 시 기존10파일 hash와 원본94개 증거 hash가 직전 기록과 같았다. 이번에는 그중7개 harness를 수정하고 package.json·chrome-launch·browser-runtime.test의3개 hash는 유지했다. 학생 boundary1개와 신규 설정/helper/순수 검사5개를 포함해 코드16파일을 미커밋으로 보존한다. 과거 해시 불변 기록은 당시 상태로 남기고 원본94개·기존 사용자 파일을 보존한다. 문서3개만 별도 로컬 커밋 대상이다.
+
+`PREEXISTING_ENVIRONMENT=FROZEN`, `ISOLATED_EXECUTION_PLAN=PREPARED_OFFLINE_ONLY`, `ISOLATION_POLICY_TESTS=PASS`, `NEW_ENVIRONMENT_STARTED=false`, `INTEGRATION_VALIDATION=NOT_RUN`, `RECOVERY_EXECUTED=false`. **BACKEND_DATA=CHANGED_UNEXPECTEDLY, DATA_PRESERVATION=FAIL**을 유지한다. 이번에는 Docker 명령·DB/Redis/Chroma 연결·실제 브라우저·실제 비밀 파일 읽기/생성·복구·원격 Git/Pages 변경을 하지 않았다. 시험 root 자체도 생성하지 않았고 공개 데모는 그대로다. 과거 auth17 PASS 및 나머지 BLOCKED/NOT_RUN은 새 검증으로 바꾸지 않는다.

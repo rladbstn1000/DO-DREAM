@@ -76,6 +76,8 @@ npm run preview:showcase
 
 **실제 백엔드 로컬 통합:** 기존 데이터를 사용하는 통합 검증은 현재 중단한 상태입니다. [사건 확인과 안전한 재개 조건](docs/portfolio/18-portfolio-code-review.md#evidence-portability-safe-resume)을 먼저 확인하세요. [실행 절차](docs/portfolio/02-local-runbook.md)의 기존 서비스 기동·준비 명령은 현재 재실행 안내가 아닙니다. 실제 Spring/FastAPI·MySQL·Redis·Chroma와 명시적 외부 공급자 대역을 사용하는 검증은 공개 정적 샘플과 별개입니다. 위 서버 없는 showcase 체험에는 영향이 없습니다.
 
+독립 합성 시험의 설정·명령 사전 검사는 [작업트리 준비안](docs/portfolio/18-portfolio-code-review.md#isolated-preflight-2026-10-14)으로 구분합니다. 관련 코드는 미커밋이며 **준비됨, 실제 기동·통합 검증 전**입니다. 문서만 checkout해 실행할 수 있는 절차가 아닙니다.
+
 ## 검증 범위와 한계
 
 - **백엔드:** 인증·현재 권한·채점 경쟁/복구·색인 전환은 각 결과 문서의 로컬 실행 범위에서 검증했습니다. 과거 실행을 이번 수정의 재실행 결과로 합산하지 않습니다. 원격 CI·공개 인수는 [20번 배포 기록](docs/portfolio/20-publication-and-pages-results.md)과 [21번 원본 UI 결과](docs/portfolio/21-original-ui-showcase-results.md)에 따로 기록합니다.
